@@ -1,7 +1,12 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AiDraftLine, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
+import type {
+  AiDraftLine,
+  AiTranslationConfidence,
+  AiTranslationDraftFile,
+  AiTranslationDraftInspection
+} from "@/features/ai/types";
 
 const aiTranslationDraftsRoot = path.join(process.cwd(), "data", "translations", "drafts");
 
@@ -17,6 +22,10 @@ function asNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function asConfidence(value: unknown): AiTranslationConfidence | null {
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
 function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
   if (!isRecord(value)) {
     throw new Error(`AI draft line ${index} is not a JSON object.`);
@@ -24,23 +33,34 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
 
   const order = asNumber(value.order);
   const original = asString(value.original);
-  const translated = asString(value.translated);
+  const legacyTranslated = asString(value.translated);
+  const literal = asString(value.literal) ?? legacyTranslated;
+  const natural = asString(value.natural) ?? legacyTranslated;
+  const chosen = asString(value.chosen) ?? natural ?? literal ?? legacyTranslated;
   const transliteration =
     value.transliteration === null ? null : typeof value.transliteration === "string" ? value.transliteration.trim() || null : null;
   const note = value.note === null ? null : typeof value.note === "string" ? value.note.trim() || null : null;
+  const ambiguity =
+    value.ambiguity === null ? null : typeof value.ambiguity === "string" ? value.ambiguity.trim() || null : null;
+  const confidence = asConfidence(value.confidence) ?? "medium";
   const startMs = value.startMs === null ? null : asNumber(value.startMs);
   const endMs = value.endMs === null ? null : asNumber(value.endMs);
 
-  if (order === null || !original || !translated) {
+  if (order === null || !original || !chosen || !literal || !natural) {
     throw new Error(`AI draft line ${index} is missing required Lafz AI fields.`);
   }
 
   return {
     order,
     original,
-    translated,
+    literal,
+    natural,
+    chosen,
+    translated: chosen,
     transliteration,
     note,
+    ambiguity,
+    confidence,
     startMs,
     endMs
   };

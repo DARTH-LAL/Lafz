@@ -9,13 +9,24 @@ export type AiGlossaryEntry = {
 
 const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries");
 
-function normalizeLanguageKey(value: string | null) {
+function normalizeGlossaryKey(value: string | null) {
   if (!value) {
     return null;
   }
 
   const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return normalized.length > 0 ? normalized : null;
+}
+
+function splitArtistNames(artist: string | null) {
+  if (!artist) {
+    return [];
+  }
+
+  return artist
+    .split(/,|&| feat\. | ft\. /i)
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -86,8 +97,15 @@ function mergeGlossaries(glossaries: AiGlossaryEntry[][]) {
   return Array.from(merged.values());
 }
 
-export async function getAiGlossaryEntries(language: string | null) {
-  const languageKey = normalizeLanguageKey(language);
+export async function getAiGlossaryEntries(options: {
+  language: string | null;
+  artist?: string | null;
+  spotifyTrackId?: string | null;
+}) {
+  const languageKey = normalizeGlossaryKey(options.language);
+  const artistKeys = splitArtistNames(options.artist ?? null)
+    .map((value) => normalizeGlossaryKey(value))
+    .filter((value): value is string => Boolean(value));
   const sampleCommonPath = path.join(aiGlossariesRoot, "samples", "common.json");
   const localCommonPath = path.join(aiGlossariesRoot, "local", "common.json");
 
@@ -95,7 +113,9 @@ export async function getAiGlossaryEntries(language: string | null) {
     sampleCommonPath,
     languageKey ? path.join(aiGlossariesRoot, "samples", `${languageKey}.json`) : null,
     localCommonPath,
-    languageKey ? path.join(aiGlossariesRoot, "local", `${languageKey}.json`) : null
+    languageKey ? path.join(aiGlossariesRoot, "local", `${languageKey}.json`) : null,
+    ...artistKeys.map((artistKey) => path.join(aiGlossariesRoot, "local", "artists", `${artistKey}.json`)),
+    options.spotifyTrackId ? path.join(aiGlossariesRoot, "local", "tracks", `${options.spotifyTrackId}.json`) : null
   ].filter((filePath): filePath is string => Boolean(filePath));
 
   const glossaries = await Promise.all(filePaths.map(readGlossaryFile));

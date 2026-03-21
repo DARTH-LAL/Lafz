@@ -344,9 +344,11 @@ Once a track has original lyrics cached, the track detail page can generate an A
 3. If `OPENAI_API_KEY` is set, Lafz sends the lyric lines to OpenAI first. Otherwise it falls back to your local Ollama server.
 4. Lafz saves the generated result locally to:
    - `data/translations/drafts/<spotifyTrackId>.json`
+   - the draft is reviewed on the same track page; Lafz does not bounce you back to now-playing after a successful generation
 5. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
    - `data/translations/local/<spotifyTrackId>.json`
 6. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
+7. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
 
 ### Timing editor
 
@@ -376,6 +378,8 @@ Lafz includes a small starter glossary for common romanized Punjabi lyric terms,
 - `data/ai/glossaries/local/punjabi.json`
 - `data/ai/glossaries/local/hindi.json`
 - `data/ai/glossaries/local/urdu.json`
+- `data/ai/glossaries/local/artists/<artist-name>.json`
+- `data/ai/glossaries/local/tracks/<spotifyTrackId>.json`
 
 Each file can be either an array of entries or an object with an `entries` array:
 
@@ -445,9 +449,14 @@ If you set a different `OLLAMA_MODEL` in `.env.local`, pull that model name inst
     {
       "order": 0,
       "original": "original lyric line",
-      "translated": "translated line",
+      "literal": "close meaning in English",
+      "natural": "clean natural English line",
+      "chosen": "the default line Lafz should display",
+      "translated": "same as chosen for backward compatibility",
       "transliteration": "optional romanized line",
       "note": "optional slang or cultural meaning",
+      "ambiguity": "optional note when the line has multiple plausible readings",
+      "confidence": "medium",
       "startMs": 0,
       "endMs": 4200
     }

@@ -47,6 +47,15 @@ export type PlaybackApiResponse = {
         lineCount: number;
         mode: "synced" | "plain";
         model: string | null;
+        sourceLanguage: string | null;
+        targetLanguage: string | null;
+        lines: Array<{
+          order: number;
+          original: string;
+          translated: string;
+          transliteration: string | null;
+          note: string | null;
+        }>;
       }
     | null;
 };

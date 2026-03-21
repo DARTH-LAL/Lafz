@@ -108,7 +108,11 @@ async function generateDraftLinesInBatches(
   let model = "";
 
   for (const batch of batches) {
-    const glossaryEntries = await getAiGlossaryEntries(inferredSourceLanguage);
+    const glossaryEntries = await getAiGlossaryEntries({
+      language: inferredSourceLanguage,
+      artist: options.artist,
+      spotifyTrackId: options.spotifyTrackId
+    });
 
     const aiResponse = await requestProviderTranslationDraft({
       title: options.title,
@@ -137,9 +141,14 @@ async function generateDraftLinesInBatches(
       ...batch.map((line, index) => ({
         order: line.order,
         original: line.original,
-        translated: aiResponse.lines[index]?.translated ?? "",
+        literal: aiResponse.lines[index]?.literal ?? aiResponse.lines[index]?.translated ?? "",
+        natural: aiResponse.lines[index]?.natural ?? aiResponse.lines[index]?.translated ?? "",
+        chosen: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
+        translated: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
         transliteration: normalizeGeneratedTransliteration(line.original, aiResponse.lines[index]?.transliteration ?? null),
         note: aiResponse.lines[index]?.note ?? null,
+        ambiguity: aiResponse.lines[index]?.ambiguity ?? null,
+        confidence: aiResponse.lines[index]?.confidence ?? "medium",
         startMs: line.startMs,
         endMs: line.endMs
       }))
@@ -232,7 +241,7 @@ export async function generateAiTranslationDraft(
       startMs: line.startMs ?? 0,
       endMs: line.endMs ?? 0,
       original: line.original,
-      translated: line.translated,
+      translated: line.chosen,
       transliteration: line.transliteration ?? undefined,
       note: line.note ?? undefined
     }))

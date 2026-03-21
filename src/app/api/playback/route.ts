@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { inspectAiTranslationDraftFile } from "@/features/ai/repository";
+import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { fetchCurrentSpotifyPlayback, SpotifyUnauthorizedError } from "@/features/spotify/playback";
 import { refreshSpotifySession } from "@/features/spotify/server-session";
 import {
@@ -33,22 +33,30 @@ export async function GET(request: NextRequest) {
     let playback = await fetchCurrentSpotifyPlayback(session.accessToken);
 
     if (playback.track) {
-      const [translation, aiDraftInspection] = await Promise.all([
+      const [translation, aiDraft] = await Promise.all([
         getTranslationByTrackId(playback.track.spotifyTrackId),
-        inspectAiTranslationDraftFile(playback.track.spotifyTrackId)
+        getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
       ]);
       const response = NextResponse.json({
         playback,
         translation,
-        aiDraft:
-          aiDraftInspection.exists && (aiDraftInspection.mode === "plain" || aiDraftInspection.mode === "synced")
-            ? {
-                exists: true,
-                lineCount: aiDraftInspection.lineCount,
-                mode: aiDraftInspection.mode,
-                model: aiDraftInspection.model
-              }
-            : null,
+        aiDraft: aiDraft
+          ? {
+              exists: true,
+              lineCount: aiDraft.lines.length,
+              mode: aiDraft.mode,
+              model: aiDraft.generator.model,
+              sourceLanguage: aiDraft.sourceLanguage,
+              targetLanguage: aiDraft.targetLanguage,
+              lines: aiDraft.lines.map((line) => ({
+                order: line.order,
+                original: line.original,
+                translated: line.translated,
+                transliteration: line.transliteration,
+                note: line.note
+              }))
+            }
+          : null,
         translationFileHint: getTranslationFileHint(playback.track.spotifyTrackId)
       } satisfies PlaybackApiResponse);
 
@@ -77,24 +85,32 @@ export async function GET(request: NextRequest) {
         session = await refreshSpotifySession(session);
         sessionWasRefreshed = true;
         const playback = await fetchCurrentSpotifyPlayback(session.accessToken);
-        const [translation, aiDraftInspection] = playback.track
+        const [translation, aiDraft] = playback.track
           ? await Promise.all([
               getTranslationByTrackId(playback.track.spotifyTrackId),
-              inspectAiTranslationDraftFile(playback.track.spotifyTrackId)
+              getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
             ])
           : [null, null];
         const response = NextResponse.json({
           playback,
           translation,
-          aiDraft:
-            aiDraftInspection && aiDraftInspection.exists && (aiDraftInspection.mode === "plain" || aiDraftInspection.mode === "synced")
-              ? {
-                  exists: true,
-                  lineCount: aiDraftInspection.lineCount,
-                  mode: aiDraftInspection.mode,
-                  model: aiDraftInspection.model
-                }
-              : null,
+          aiDraft: aiDraft
+            ? {
+                exists: true,
+                lineCount: aiDraft.lines.length,
+                mode: aiDraft.mode,
+                model: aiDraft.generator.model,
+                sourceLanguage: aiDraft.sourceLanguage,
+                targetLanguage: aiDraft.targetLanguage,
+                lines: aiDraft.lines.map((line) => ({
+                  order: line.order,
+                  original: line.original,
+                  translated: line.translated,
+                  transliteration: line.transliteration,
+                  note: line.note
+                }))
+              }
+            : null,
           translationFileHint: playback.track ? getTranslationFileHint(playback.track.spotifyTrackId) : null
         } satisfies PlaybackApiResponse);
 
