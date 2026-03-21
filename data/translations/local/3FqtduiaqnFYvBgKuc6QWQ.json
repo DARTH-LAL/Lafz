@@ -1,5 +1,591 @@
 {
-  "spotify_track_id": "3FqtduiaqnFYvBgKuc6QWQ",
-  "language": "unknown",
-  "lines": []
+  "spotifyTrackId": "3FqtduiaqnFYvBgKuc6QWQ",
+  "title": "Winning Speech",
+  "artist": "Karan Aujla, Seshnolan",
+  "sourceLanguage": "Punjabi",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 8000,
+      "endMs": 11099,
+      "original": "Show Mxrci on it! he-he-he!",
+      "translated": "Show Merc on it! he-he-he!",
+      "note": "“Mxrci” is a stylized spelling referring to a Merc/Mercedes (brand)."
+    },
+    {
+      "startMs": 11100,
+      "endMs": 11799,
+      "original": "(Haan)",
+      "translated": "(Yes)"
+    },
+    {
+      "startMs": 11800,
+      "endMs": 13299,
+      "original": "Do do ghode Magna ni",
+      "translated": "I don't ask for two horses"
+    },
+    {
+      "startMs": 13300,
+      "endMs": 14599,
+      "original": "Char G-Wagon'an ni",
+      "translated": "I don't ask for four G‑Wagons"
+    },
+    {
+      "startMs": 14600,
+      "endMs": 17399,
+      "original": "Utte nu main chhe chhe inch chakkiyan",
+      "translated": "I put six-by-six-inch rims on them",
+      "note": "“Chakkiyan” here refers to wheels/rims (vehicle customization)."
+    },
+    {
+      "startMs": 17400,
+      "endMs": 18899,
+      "original": "Time laggu mitne nu",
+      "translated": "It takes time to finish them"
+    },
+    {
+      "startMs": 18900,
+      "endMs": 20199,
+      "original": "Sanu thalle sittne nu",
+      "translated": "to bring us down"
+    },
+    {
+      "startMs": 20200,
+      "endMs": 22849,
+      "original": "Ikki vaari jor laa lai chhatti'an",
+      "translated": "Just once, step on it up to sixty",
+      "note": "“Chhatti'an” = sixty (likely referring to speed); literal: press the gas to sixty."
+    },
+    {
+      "startMs": 22850,
+      "endMs": 24499,
+      "original": "Fan ikko naar da main",
+      "translated": "I'm a fan of the same woman",
+      "note": "The word 'fan' is likely English 'fan' (admirer); 'naar' here is taken as 'woman'—the original is slightly ambiguous."
+    },
+    {
+      "startMs": 24500,
+      "endMs": 25949,
+      "original": "Das vaari vaarda main",
+      "translated": "I strike ten times"
+    },
+    {
+      "startMs": 25950,
+      "endMs": 28649,
+      "original": "Ohde utton sau-sau diyan gatthiyan",
+      "translated": "Hundreds and hundreds of bundles on them"
+    },
+    {
+      "startMs": 28650,
+      "endMs": 30099,
+      "original": "Time laggu mitne nu",
+      "translated": "It'll take time to be wiped away"
+    },
+    {
+      "startMs": 30100,
+      "endMs": 31499,
+      "original": "Sanu thalle sittne nu",
+      "translated": "To bring us down"
+    },
+    {
+      "startMs": 31500,
+      "endMs": 33199,
+      "original": "Ikki vaari jor laa lai chhatti",
+      "translated": "Hit the chest hard once"
+    },
+    {
+      "startMs": 33200,
+      "endMs": 36099,
+      "original": "Vall kaddta rekaane hunn tutte na crease",
+      "translated": "I pulled out the edges; now they won't tear or crease",
+      "note": "Some words ('vall', 'rekaane') are unclear/ambiguous in the original; this is a conservative literal reading (edges/margins pulled out, so no tearing/creasing)."
+    },
+    {
+      "startMs": 36100,
+      "endMs": 38069,
+      "original": "Thoda rukhe aa subaah de sanu aaundi ni tameez",
+      "translated": "We're a bit rough in the mornings; we don't know manners"
+    },
+    {
+      "startMs": 38070,
+      "endMs": 41699,
+      "original": "Aa lai tainu ditti saambh laa ni bebe wali chunni",
+      "translated": "Take it — I gave it to you; keep that girl's scarf safe.",
+      "note": "'bebe' (beeba/beeba) = girl / dear girl (see glossary)."
+    },
+    {
+      "startMs": 41700,
+      "endMs": 44399,
+      "original": "Baitha double R vich paake bapu di kameez",
+      "translated": "Sitting in a Double R, wearing my father's shirt.",
+      "note": "'Double R' likely refers to a Rolls‑Royce (luxury car)."
+    },
+    {
+      "startMs": 44400,
+      "endMs": 47099,
+      "original": "Bahla door ni rekaane hun Ranjheyan nu kheda",
+      "translated": "I won't keep the Ranjhas at a distance now; I'll play with them.",
+      "note": "'Ranjheyan' alludes to Ranjha (romantic figures) — here meaning lovers/rivals."
+    },
+    {
+      "startMs": 47100,
+      "endMs": 49799,
+      "original": "Bahla nede nu na jawan bas jhaaka ee bada mera",
+      "translated": "Don't go near; just one look from me is enough.",
+      "note": "'jhaaka' = a strong stare/glance (literal; implies power of a look)."
+    },
+    {
+      "startMs": 49800,
+      "endMs": 52079,
+      "original": "Bahla ruka na rekaane kite maaran ikk fera",
+      "translated": "Don't let them stay around — otherwise someone might land one strike.",
+      "note": "Line is idiomatic; 'fera' can mean a hit/turn — rendered conservatively as 'strike'."
+    },
+    {
+      "startMs": 52080,
+      "endMs": 55449,
+      "original": "Naddi do vall kha gayi ditta ikk vaari geda",
+      "translated": "The stream swallowed both sides and gave one round.",
+      "note": "Ambiguous imagery: 'naddi' = stream/river, 'geda' = lap/round; literal conservative rendering."
+    },
+    {
+      "startMs": 55450,
+      "endMs": 58399,
+      "original": "Kithe dabeya rekaane ehna dekh layi dabake",
+      "translated": "Where did I press them to keep, pressing down just to look at them?",
+      "note": "Contains colloquial 'dabake' (pressing); phrasing is idiomatic and ambiguous, rendered literally."
+    },
+    {
+      "startMs": 58400,
+      "endMs": 60999,
+      "original": "Karaan shopping'an Milan Afghan 'ali kha ke",
+      "translated": "I go shopping — Milan, Afghan 'Ali and the like.",
+      "note": "'Milan' likely the city/brand; 'Afghan \"Ali\"' is unclear (possibly a brand/place/name) — kept literal."
+    },
+    {
+      "startMs": 61000,
+      "endMs": 63849,
+      "original": "Tera darji rekaane change karde Mohali",
+      "translated": "We have your tailor make changes in Mohali.",
+      "note": "'darji' means 'tailor'. 'rekaane' is a Punjabi verb here meaning to arrange or set up."
+    },
+    {
+      "startMs": 63850,
+      "endMs": 66649,
+      "original": "Jutti pairan wich paavan tere Paris'on manga ke",
+      "translated": "I put shoes on my feet that I ordered for you from Paris."
+    },
+    {
+      "startMs": 66650,
+      "endMs": 69499,
+      "original": "Tin mahine tin change ne location'an rekaane",
+      "translated": "Every three months we change locations."
+    },
+    {
+      "startMs": 69500,
+      "endMs": 72199,
+      "original": "Nitt UAE ton UK nu rotation'an rekaane",
+      "translated": "We keep rotating from the UAE to the UK."
+    },
+    {
+      "startMs": 72200,
+      "endMs": 75099,
+      "original": "Main taan rukja dimag sala rukda ni mera",
+      "translated": "I don't stop — damn, my mind never stops.",
+      "note": "'sala' is an expletive/filler commonly used in Punjabi; rendered here as 'damn'."
+    },
+    {
+      "startMs": 75100,
+      "endMs": 77899,
+      "original": "Tan hi laa laiye samadhi meditation'an rekaane",
+      "translated": "So we even arrange samadhi meditations.",
+      "note": "'samadhi' refers to deep or intense meditation (Sanskrit/Punjabi usage)."
+    },
+    {
+      "startMs": 77900,
+      "endMs": 80499,
+      "original": "Loki sade kolon sikh hunn sanu den mattan",
+      "translated": "People now learn from us; they don't give to us.",
+      "note": "Literal reading: 'den mattan' = 'they don't give (to) us.' This line is a bit ambiguous in intent but translated conservatively."
+    },
+    {
+      "startMs": 80500,
+      "endMs": 83409,
+      "original": "Sanu kinna kuj de giyan ni mitti diyan vattan",
+      "translated": "How much have they given us? Nothing — just earthen pots.",
+      "note": "'mitti diyan vattan' literally means 'earthen pots'; the line implies they gave very little."
+    },
+    {
+      "startMs": 83410,
+      "endMs": 86249,
+      "original": "Jithon langhe tera yaar maare camera flash",
+      "translated": "Wherever your friend walks by, he flashes the camera."
+    },
+    {
+      "startMs": 86250,
+      "endMs": 89099,
+      "original": "Hun khinch'de ne photo kade khinch de si lattan",
+      "translated": "Now they take photos; back then they used to pull lattan.",
+      "note": "'lattan' is regional/slang and ambiguous here; I left it literal."
+    },
+    {
+      "startMs": 89100,
+      "endMs": 91799,
+      "original": "Kehndi akh na lagge ve jad di mari tere utte",
+      "translated": "She says, \"may the evil eye not fall on the one who's fallen for you.\"",
+      "note": "'akh na lagge' is a protective phrase meaning 'may the evil eye not strike.'"
+    },
+    {
+      "startMs": 91800,
+      "endMs": 94559,
+      "original": "Sanu sidha ne banage ni halaat sade puthe",
+      "translated": "Our circumstances haven't straightened out for our boys.",
+      "note": "'puthe' likely means 'boys' or 'guys' (informal)."
+    },
+    {
+      "startMs": 94560,
+      "endMs": 97529,
+      "original": "Tu taan hune ee tang aagyi biba nindran udake",
+      "translated": "Girl, you've already started to trouble me, stealing my sleep.",
+      "note": "Uses glossary term 'biba' = 'girl / dear girl'."
+    },
+    {
+      "startMs": 97530,
+      "endMs": 100199,
+      "original": "Sanu kai saal hogye naiyo changi tarah sutte",
+      "translated": "It's been many years since we've slept properly."
+    },
+    {
+      "startMs": 100200,
+      "endMs": 102999,
+      "original": "Naara thaar ke te vairi rakhan saarh ke rekaane",
+      "translated": "Shouting slogans and keeping enemies tucked away.",
+      "note": "'Naara thaar ke' = raising slogans; 'saarh ke rekaane' is idiomatic/ambiguous, rendered conservatively as 'tucked away.'"
+    },
+    {
+      "startMs": 103000,
+      "endMs": 105699,
+      "original": "Peende motran te chahan pattu kaarh ke rekaane",
+      "translated": "Riding in cars and showing off pattu to arouse desire.",
+      "note": "'motran' = motors/cars; 'pattu' is regional/slang (literal left as 'pattu' concept: showy cloth/pride), phrasing kept conservative."
+    },
+    {
+      "startMs": 105700,
+      "endMs": 108599,
+      "original": "Tere bull'an de maare ne main vi ek M laata",
+      "translated": "Because of your bullets, I too brought an M.",
+      "note": "“bull'an” likely means 'bullets' or 'shots'; “M” is ambiguous (could be a model initial or weapon). Conservative literal rendering used."
+    },
+    {
+      "startMs": 108600,
+      "endMs": 111299,
+      "original": "Haale navi aa Ferrari jutti jhaad ke rekaane",
+      "translated": "The Ferrari's still new; I park it after kicking off my shoes."
+    },
+    {
+      "startMs": 111300,
+      "endMs": 113499,
+      "original": "Dil todte main chhe chhe saak modte",
+      "translated": "Breaking hearts, I twist them six times.",
+      "note": "Phrase “chhe chhe saak modte” is idiomatic/unclear; rendered conservatively as repeated twisting (six times)."
+    },
+    {
+      "startMs": 113500,
+      "endMs": 116499,
+      "original": "Kataran wich atharan hor pakkian",
+      "translated": "Eighteen more are packed in the lines."
+    },
+    {
+      "startMs": 116500,
+      "endMs": 117999,
+      "original": "Duron matha tekdiyan",
+      "translated": "They bow their heads from afar."
+    },
+    {
+      "startMs": 118000,
+      "endMs": 119349,
+      "original": "Mud mud dekh diyan",
+      "translated": "They keep looking back."
+    },
+    {
+      "startMs": 119350,
+      "endMs": 121999,
+      "original": "Assi naiyo ikk vaari takkiyan",
+      "translated": "We don't look just once.",
+      "note": "“takkiyan” here refers to looking/staring; translated conservatively as 'look'."
+    },
+    {
+      "startMs": 122000,
+      "endMs": 123599,
+      "original": "Fan ikko naar da main",
+      "translated": "I'm a fan of only one 'naar'.",
+      "note": "The word “naar” is ambiguous in this line (could mean 'fire', a woman, or figurative passion); kept literal and quoted."
+    },
+    {
+      "startMs": 123600,
+      "endMs": 124899,
+      "original": "Das vaari vaarda main",
+      "translated": "I strike ten times"
+    },
+    {
+      "startMs": 124900,
+      "endMs": 127549,
+      "original": "Ohde utton sau sau diyan gatthiyan",
+      "translated": "Hundreds and hundreds of knots on her"
+    },
+    {
+      "startMs": 127550,
+      "endMs": 129149,
+      "original": "Time laggu mitne nu",
+      "translated": "It takes time to erase"
+    },
+    {
+      "startMs": 129150,
+      "endMs": 130599,
+      "original": "Sanu thalle sittne nu",
+      "translated": "To bring us down"
+    },
+    {
+      "startMs": 130600,
+      "endMs": 133349,
+      "original": "Ikki vaari jor laa lai chhatti'an",
+      "translated": "Just once, press your strength against our chests"
+    },
+    {
+      "startMs": 133350,
+      "endMs": 136529,
+      "original": "Oh kudi jatt di fragrance door ton pehchane",
+      "translated": "That girl recognizes a jatt's fragrance from far away",
+      "note": "“jatt” — identity term for a tough Punjabi man / bro (see glossary)."
+    },
+    {
+      "startMs": 136530,
+      "endMs": 139199,
+      "original": "Asi aashqui ch nave ni shikari aa purane",
+      "translated": "We're not new hunters in love; we're old ones"
+    },
+    {
+      "startMs": 139200,
+      "endMs": 141999,
+      "original": "Gal sukkda kehndi tu jadon supne ch aavein",
+      "translated": "You say things settle when you come in dreams"
+    },
+    {
+      "startMs": 142000,
+      "endMs": 144799,
+      "original": "Naddi ohdon di saundi aa pani rakh ke sirhane",
+      "translated": "She sleeps like a little stream, putting water by her pillow.",
+      "note": "Placing a glass/ water by the pillow is a common domestic image; kept literal."
+    },
+    {
+      "startMs": 144800,
+      "endMs": 147719,
+      "original": "Main keha chalde rekaane sikke mitran de khote",
+      "translated": "I said, as they walk by, friends' coins are counterfeit.",
+      "note": "'sikke mitran de khote' literally 'friends' coins are fake' — likely a metaphor for fake friends or false loyalty."
+    },
+    {
+      "startMs": 147720,
+      "endMs": 150399,
+      "original": "Aa ke behnde aa rekaane cheene mitran de kothe",
+      "translated": "They come and sit, snatching friends' mansions.",
+      "note": "'kothe' = large houses/mansions; 'cheene' = seize/steal — literal kept."
+    },
+    {
+      "startMs": 150400,
+      "endMs": 153249,
+      "original": "Tainu sohniye rekaane karaan hathan naal chhavaan",
+      "translated": "I'll, my beauty, make 'rekaane' — I'll touch you with my hands.",
+      "note": "'rekaane' is left untranslated (term unclear from line alone); sentence kept literal and conservative."
+    },
+    {
+      "startMs": 153250,
+      "endMs": 155999,
+      "original": "Jivein karde ne chhavaan sadde pind'an de barote",
+      "translated": "Like the touches our village's barote give.",
+      "note": "'barote' is transliterated — term unclear (local/folk reference); kept literal."
+    },
+    {
+      "startMs": 156000,
+      "endMs": 158899,
+      "original": "Tera sau ton paar para hogyi dhilli kuj khaa ke",
+      "translated": "You went past a hundred after taking some dhilli.",
+      "note": "'dhilli' is ambiguous (could be 'Delhi' the city or Punjabi 'dhilli' = looseness); left literal."
+    },
+    {
+      "startMs": 158900,
+      "endMs": 161549,
+      "original": "Teri 'taar da nazar gun powder chhuva ke",
+      "translated": "The gaze of your 'taar' brushed against gunpowder.",
+      "note": "'taar' is ambiguous (literal 'string/wire' or a figurative element); kept literal as in the line."
+    },
+    {
+      "startMs": 161550,
+      "endMs": 164249,
+      "original": "Eh ton dar na rekaane dekh akhan wich paa ke",
+      "translated": "Don't be afraid of this — rekaane see it straight in the eyes.",
+      "note": "Repeated term 'rekaane' left untranslated; note that phrasing is literal to preserve original ambiguity."
+    },
+    {
+      "startMs": 164250,
+      "endMs": 167099,
+      "original": "Jadon chaldi Beretta dindi surma bana ke",
+      "translated": "When the Beretta walks, it puts on kohl."
+    },
+    {
+      "startMs": 167100,
+      "endMs": 169999,
+      "original": "Kafi kar layi kamai kafi mitran ne udaalayi",
+      "translated": "I've earned enough money; many friends have spent it."
+    },
+    {
+      "startMs": 170000,
+      "endMs": 172649,
+      "original": "Thode humble aa rekaane Lambo nivi karwali",
+      "translated": "Some are humble; had the Lambo lowered."
+    },
+    {
+      "startMs": 172650,
+      "endMs": 175499,
+      "original": "Nave shoran ton rekaane gaddi chaldi ni sidhi",
+      "translated": "Around new guys, the car doesn't drive straight."
+    },
+    {
+      "startMs": 175500,
+      "endMs": 178209,
+      "original": "La daan meech ke ankhan nu back ganne di trolly",
+      "translated": "With her lips pursed, her eyes like the back of a sugarcane trolley.",
+      "note": "Literal image is unclear — 'back ganne di trolly' = 'rear of a sugarcane trolley'; likely a local simile for a particular look or posture."
+    },
+    {
+      "startMs": 178210,
+      "endMs": 181099,
+      "original": "Lagge gabru di tod kudi tutti payi nu aave",
+      "translated": "Seems the girl got broken by the young man's strength."
+    },
+    {
+      "startMs": 181100,
+      "endMs": 183899,
+      "original": "Age naar di fasal jiven phutti payi nu aave",
+      "translated": "Ahead, a harvest of fire seems to have burst open.",
+      "note": "'naar di fasal' is metaphorical — literally 'crop/harvest of fire', implying intense heat, chaos, or fierce scene."
+    },
+    {
+      "startMs": 183900,
+      "endMs": 186699,
+      "original": "Meri yaad di maari nu tainu hichki rekaane",
+      "translated": "Struck by memories of me, you get hiccups.",
+      "note": "In some Punjabi usages, 'hichki' (hiccup) is used figuratively to signal sudden remembrance or an involuntary reaction to memory."
+    },
+    {
+      "startMs": 186700,
+      "endMs": 189399,
+      "original": "Sachi barish de gaane wangu sutti payi nu aave",
+      "translated": "She seems to have fallen asleep like a true rain song"
+    },
+    {
+      "startMs": 189400,
+      "endMs": 191899,
+      "original": "Bechain hogyi ikk kudi fan hogyi",
+      "translated": "One girl got restless, became a fan"
+    },
+    {
+      "startMs": 191900,
+      "endMs": 194549,
+      "original": "Aujle de kanna wich nattiyan",
+      "translated": "Nattiyan in Aujla's ears",
+      "note": "Aujla refers to (Karan) Aujla; 'nattiyan' are earring-like ornaments."
+    },
+    {
+      "startMs": 194550,
+      "endMs": 197349,
+      "original": "Kari di ni care kude gaul de ni sher kude",
+      "translated": "The girl doesn't care; the boys speak like lions",
+      "note": "Line is colloquial and ambiguous. 'kude' here read as 'boys/guys'; 'sher' ('lion') implies boastful or fierce talk."
+    },
+    {
+      "startMs": 197350,
+      "endMs": 200199,
+      "original": "Bhedaan hon baara baari kathiyan",
+      "translated": "There are differences; they were tied twelve times",
+      "note": "Literal rendering due to ambiguity. 'Bhedaan' = differences/separations, 'baara baari' = twelve times, 'kathiyan' = tied/stitched."
+    },
+    {
+      "startMs": 200200,
+      "endMs": 201799,
+      "original": "Fan ikko naar da main",
+      "translated": "I'm a fan of just one woman"
+    },
+    {
+      "startMs": 201800,
+      "endMs": 203049,
+      "original": "Das vaari vaarda main",
+      "translated": "I do it ten times"
+    },
+    {
+      "startMs": 203050,
+      "endMs": 205699,
+      "original": "Ohde utton sau sau diyan gatthiyan",
+      "translated": "Hundreds and hundreds of bundles (knots) on her",
+      "note": "'gatthiyan' can mean bundles or knots; left literal."
+    },
+    {
+      "startMs": 205700,
+      "endMs": 207299,
+      "original": "Time laggu mitne nu",
+      "translated": "It'll take time to get rid of him"
+    },
+    {
+      "startMs": 207300,
+      "endMs": 208599,
+      "original": "Sanu thalle sittne nu",
+      "translated": "To bring us down"
+    },
+    {
+      "startMs": 208600,
+      "endMs": 211349,
+      "original": "Ikki vaari jor laa lai chhatti'an",
+      "translated": "Just once, put all your strength in",
+      "note": "The word \"chhatti'an\" is ambiguous here; rendered conservatively as 'give it your all.'"
+    },
+    {
+      "startMs": 211350,
+      "endMs": 212899,
+      "original": "(Fan ikko naar da main)",
+      "translated": "(I have a single shout)",
+      "note": "Original phrasing is ambiguous; literally reads like 'I am of one cry/chant.'"
+    },
+    {
+      "startMs": 212900,
+      "endMs": 214249,
+      "original": "(Das vaari vaarda main)",
+      "translated": "(I hit it ten times)"
+    },
+    {
+      "startMs": 214250,
+      "endMs": 216799,
+      "original": "(Ohde utton sau-sau diyan gatthiyan)",
+      "translated": "(Hundreds of knots/bundles on him)",
+      "note": "Literal: 'sau-sau diyan gatthiyan' = 'hundreds of knots/bundles.'"
+    },
+    {
+      "startMs": 216800,
+      "endMs": 218249,
+      "original": "(Time laggu mitne nu)",
+      "translated": "(It'll take time to get rid of him)"
+    },
+    {
+      "startMs": 218250,
+      "endMs": 219749,
+      "original": "(Sanu thalle sittne nu)",
+      "translated": "(To bring us down)"
+    },
+    {
+      "startMs": 219750,
+      "endMs": 227440,
+      "original": "(Ikki vaari jor laa lai chhatti'an)",
+      "translated": "Just once, give the chests a hard push",
+      "note": "'Ikki vaari' = 'just once'; 'jor laa lai' = 'apply force / push hard'. 'chhatti'an' is ambiguous — likely plural of 'chhati' (chest) or a regional slang term; kept a literal reading. Parentheses indicate a backing/aside vocal."
+    }
+  ]
 }

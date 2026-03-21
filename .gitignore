@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env.local
+.DS_Store
+tsconfig.tsbuildinfo
+
+data/library/playlists/
+data/lyrics/cache/
+data/translations/local/
+data/translations/drafts/
+data/translations/backups/
+data/ai/glossaries/local/

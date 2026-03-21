@@ -68,6 +68,15 @@ function buildSchema(lineCount: number) {
           type: "object",
           additionalProperties: false,
           properties: {
+            literal: {
+              type: "string"
+            },
+            natural: {
+              type: "string"
+            },
+            chosen: {
+              type: "string"
+            },
             translated: {
               type: "string"
             },
@@ -76,9 +85,16 @@ function buildSchema(lineCount: number) {
             },
             note: {
               anyOf: [{ type: "string" }, { type: "null" }]
+            },
+            ambiguity: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            },
+            confidence: {
+              type: "string",
+              enum: ["low", "medium", "high"]
             }
           },
-          required: ["translated", "transliteration", "note"]
+          required: ["literal", "natural", "chosen", "translated", "transliteration", "note", "ambiguity", "confidence"]
         }
       }
     },
@@ -94,9 +110,13 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       : `First infer the lyric language from the provided lines, then translate each line into ${options.targetLanguage}.`,
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script, not English.",
     "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
-    "Keep the translation natural, faithful, and easy to sing or follow.",
+    "For each line, produce: literal, natural, chosen, transliteration, note, ambiguity, and confidence.",
+    "Literal must stay very close to the original meaning, even if the English sounds plain.",
+    "Natural should sound like clean English while keeping the actual meaning.",
+    "Chosen should be the best final line for Lafz to display by default.",
     "Do not invent scenes, emotions, or metaphors that are not present in the original line.",
     "If a line is slangy or ambiguous, prefer a conservative literal translation over a poetic rewrite.",
+    "If the meaning is uncertain, keep chosen conservative and explain the uncertainty in ambiguity or note instead of guessing confidently.",
     "Use nearby context only to disambiguate meaning. Do not copy context words into the translation unless they belong to the current line.",
     options.sourceLanguage
       ? `Set detectedSourceLanguage to "${options.sourceLanguage}".`
@@ -107,6 +127,8 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
     options.includeNotes
       ? "Return a short note only when slang, cultural context, wordplay, or double meaning needs explanation. Otherwise return null."
       : "Return null for note on every line.",
+    "Set confidence to low, medium, or high based on how certain you are about the line meaning.",
+    "Use ambiguity only when the line genuinely has multiple plausible readings or unclear slang. Otherwise return null.",
     options.glossaryEntries.length > 0
       ? "Use the provided glossary meanings whenever a matching slang word or phrase appears. Prefer the glossary over guessing."
       : "No glossary is available, so translate conservatively.",
@@ -290,15 +312,24 @@ export async function requestAiTranslationDraft(
     }
 
     const translated = asString(line.translated);
+    const literal = asString(line.literal);
+    const natural = asString(line.natural);
+    const chosen = asString(line.chosen) ?? translated;
+    const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
 
-    if (!translated) {
+    if (!translated || !literal || !natural || !chosen || !confidence) {
       throw new Error(`Ollama returned an empty translated line at index ${index}.`);
     }
 
     return {
+      literal,
+      natural,
+      chosen,
       translated,
       transliteration: normalizeNullableString(line.transliteration),
-      note: normalizeNullableString(line.note)
+      note: normalizeNullableString(line.note),
+      ambiguity: normalizeNullableString(line.ambiguity),
+      confidence
     } satisfies GeneratedTranslationLineDraft;
   });
 

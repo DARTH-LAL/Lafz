@@ -1,8 +1,9 @@
 import Link from "next/link";
 
+import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { StatePanel } from "@/components/state-panel";
 import { TimingEditor } from "@/components/timing-editor";
-import type { AiProviderStatus, AiTranslationDraftInspection } from "@/features/ai/types";
+import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { LyricsCacheInspection } from "@/features/lyrics/types";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
 import type { LibraryQueueRecord } from "@/features/library/types";
@@ -18,14 +19,11 @@ function formatUpdatedAt(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
-function getAiProviderLabel(provider: AiProviderStatus["provider"]) {
-  return provider === "openai" ? "OpenAI" : "Ollama";
-}
-
 type LibraryTrackDetailProps = {
   record: LibraryQueueRecord | null;
   translationInspection: TranslationFileInspection;
   lyricsInspection: LyricsCacheInspection;
+  aiDraft: AiTranslationDraftFile | null;
   aiDraftInspection: AiTranslationDraftInspection;
   timingEditorDocument: TimingEditorDocument | null;
   aiProviderStatus: AiProviderStatus;
@@ -44,6 +42,7 @@ export function LibraryTrackDetail({
   record,
   translationInspection,
   lyricsInspection,
+  aiDraft,
   aiDraftInspection,
   timingEditorDocument,
   aiProviderStatus,
@@ -367,222 +366,26 @@ or synced JSON`}
         )}
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr] xl:items-start">
-        <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">AI translation draft</p>
-          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
-            Generate a first-pass translation draft.
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-slate-300">
-            Lafz uses the cached original lyrics for this track, asks the active AI provider for a line-by-line
-            translation draft, and saves the result locally. If the cache is synced, Lafz can also write a real synced
-            translation JSON file.
-          </p>
-
-          {aiMessage ? (
-            <div
-              className={`mt-5 rounded-[22px] p-4 text-sm leading-7 ${
-                aiStatus === "error" || aiStatus === "provider_unavailable" || aiStatus === "model_missing"
-                  ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-                  : "border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
-              }`}
-            >
-              {aiMessage}
-            </div>
-          ) : null}
-
-          <div className="mt-5 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current AI behavior</p>
-            <p className="mt-2">
-              {lyricsInspection.kind === "synced"
-                ? "This track has synced original lyrics, so Lafz can generate a draft and write a playback-ready translation file."
-                : lyricsInspection.kind === "plain"
-                  ? "This track only has plain original lyrics right now, so Lafz will save an untimed AI draft without replacing the synced translation file."
-                : "Fetch official lyrics or import a local lyrics fallback first, then generate an AI draft from that cache."}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current AI provider</p>
-            <p className="mt-2">
-              Provider: <span className="text-slate-100">{getAiProviderLabel(aiProviderStatus.provider)}</span>
-            </p>
-            <p className="mt-2">
-              Endpoint: <span className="font-mono text-xs text-slate-100">{aiProviderStatus.baseUrl}</span>
-            </p>
-            <p className="mt-2">
-              Model: <span className="font-mono text-xs text-slate-100">{aiProviderStatus.model}</span>
-            </p>
-            <p className="mt-2">
-              Status: <span className={aiProviderStatus.available ? "text-cyan-100" : "text-amber-100"}>{aiProviderStatus.available ? "reachable" : "not reachable"}</span>
-            </p>
-            <p className="mt-2">
-              Model ready: <span className={aiProviderStatus.modelAvailable ? "text-cyan-100" : "text-amber-100"}>{aiProviderStatus.modelAvailable ? "yes" : "no"}</span>
-            </p>
-            {aiProviderStatus.errorMessage ? <p className="mt-3 text-amber-100">{aiProviderStatus.errorMessage}</p> : null}
-            {aiProviderStatus.provider === "ollama" && !aiProviderStatus.modelAvailable ? (
-              <p className="mt-3 text-slate-400">
-                Run <span className="font-mono text-xs text-slate-200">ollama pull {aiProviderStatus.model}</span> on your Mac once to install the model.
-              </p>
-            ) : null}
-            {aiProviderStatus.provider === "openai" ? (
-              <p className="mt-3 text-xs leading-6 text-slate-400">
-                Lafz will prefer OpenAI whenever <span className="font-mono text-xs text-slate-200">OPENAI_API_KEY</span> is set. If you remove that key, it falls back to Ollama.
-              </p>
-            ) : null}
-          </div>
-
-          {aiConfigured ? (
-            lyricsInspection.kind === "synced" || lyricsInspection.kind === "plain" ? (
-              <form action="/api/ai/generate-translation" method="post" className="mt-6 space-y-4">
-                <input type="hidden" name="spotifyTrackId" value={record.spotify_track_id} />
-                <input type="hidden" name="title" value={record.title} />
-                <input type="hidden" name="artist" value={record.artist} />
-                <input type="hidden" name="album" value={record.album} />
-                <input type="hidden" name="durationMs" value={record.duration_ms.toString()} />
-                <input type="hidden" name="redirectTo" value={`/library/track/${record.spotify_track_id}`} />
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Source language</span>
-                    <input
-                      type="text"
-                      name="sourceLanguage"
-                      defaultValue={
-                        lyricsInspection.language ?? (record.language !== "unknown" ? record.language : "")
-                      }
-                      placeholder="Leave blank to auto-detect from lyrics"
-                      className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Target language</span>
-                    <input
-                      type="text"
-                      name="targetLanguage"
-                      defaultValue="English"
-                      className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
-                    />
-                  </label>
-                </div>
-
-                <div className="space-y-3 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      name="includeTransliteration"
-                      defaultChecked
-                      className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
-                    />
-                    <span>Include transliteration when it helps. Lafz will store it per line.</span>
-                  </label>
-
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      name="includeNotes"
-                      defaultChecked
-                      className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
-                    />
-                    <span>Include short slang or cultural notes when the line needs extra context.</span>
-                  </label>
-
-                  {(translationInspection.kind === "translated" || translationInspection.kind === "malformed") && lyricsInspection.kind === "synced" ? (
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        name="overwriteExistingTranslation"
-                        className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
-                      />
-                      <span>Replace the current synced translation file for this track.</span>
-                    </label>
-                  ) : null}
-                </div>
-
-                <div className="rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Active model</p>
-                  <p className="mt-2 font-mono text-xs text-slate-100">{aiModel}</p>
-                  <p className="mt-3 text-xs leading-6 text-slate-400">
-                    Leave source language blank and Lafz will ask {getAiProviderLabel(aiProviderStatus.provider)} to infer it from the cached lyrics.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                >
-                  Generate AI draft
-                </button>
-              </form>
-            ) : (
-              <div className="mt-6 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-7 text-amber-100">
-                Lafz needs a readable original-lyrics cache for this track before it can generate an AI translation
-                draft.
-              </div>
-            )
-          ) : (
-            <div className="mt-6 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-7 text-amber-100">
-              Lafz could not initialize the local AI translation service yet.
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">AI draft preview</p>
-
-          {aiDraftInspection.exists ? (
-            <>
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Mode</p>
-                  <p className="mt-2 text-base capitalize text-white">{aiDraftInspection.mode}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Lines</p>
-                  <p className="mt-2 text-base text-white">{aiDraftInspection.lineCount}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Languages</p>
-                  <p className="mt-2 text-base text-white">
-                    {aiDraftInspection.sourceLanguage ?? "Unknown"}
-                    {" -> "}
-                    {aiDraftInspection.targetLanguage ?? "Unknown"}
-                  </p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Last modified</p>
-                  <p className="mt-2 text-base text-white">{formatUpdatedAt(aiDraftInspection.lastModifiedAt)}</p>
-                </div>
-              </div>
-
-              {aiDraftInspection.parseError ? (
-                <div className="mt-5 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
-                  Lafz found an AI draft file, but it could not be parsed cleanly: {aiDraftInspection.parseError}
-                </div>
-              ) : null}
-
-              <div className="mt-5 rounded-[22px] border border-dashed border-white/12 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Local draft path</p>
-                <p className="mt-2 break-all font-mono text-xs text-slate-200">{aiDraftInspection.filePath}</p>
-                <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">Model</p>
-                <p className="mt-2 font-mono text-xs text-slate-200">{aiDraftInspection.model ?? "Unknown model"}</p>
-              </div>
-
-              <pre className="mt-5 max-h-[70vh] overflow-auto rounded-[24px] border border-white/8 bg-black/25 p-5 text-xs leading-6 text-slate-200">
-                {aiDraftInspection.preview}
-              </pre>
-            </>
-          ) : (
-            <StatePanel
-              eyebrow="No AI draft yet"
-              title="Generate a draft after you have original lyrics"
-              description="Lafz will save AI output locally in a separate draft file first, so you can review it before relying on it."
-              className="mt-5 border-white/8 bg-white/[0.03] shadow-none"
-            />
-          )}
-        </section>
-      </div>
+      <AiDraftWorkspace
+        track={{
+          spotifyTrackId: record.spotify_track_id,
+          title: record.title,
+          artist: record.artist,
+          album: record.album,
+          durationMs: record.duration_ms,
+          defaultSourceLanguage: record.language
+        }}
+        lyricsKind={lyricsInspection.kind}
+        lyricsLanguage={lyricsInspection.language}
+        translationKind={translationInspection.kind}
+        aiConfigured={aiConfigured}
+        aiModel={aiModel}
+        aiProviderStatus={aiProviderStatus}
+        initialDraft={aiDraft}
+        initialInspection={aiDraftInspection}
+        initialMessage={aiMessage}
+        initialStatus={aiStatus}
+      />
 
       <TimingEditor document={timingEditorDocument} />
     </main>

@@ -1,5 +1,479 @@
 {
-  "spotify_track_id": "1dFrZr9eMUsFqeag04ClqD",
-  "language": "unknown",
-  "lines": []
+  "spotifyTrackId": "1dFrZr9eMUsFqeag04ClqD",
+  "title": "Russian Bandana",
+  "artist": "Dhanda Nyoliwala",
+  "sourceLanguage": "Punjabi (code-mixed with Hindi/Urdu)",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 70,
+      "endMs": 6489,
+      "original": "And if by chance an honest man like yourself should make enemies",
+      "translated": "And if, by chance, an honest man like you makes enemies"
+    },
+    {
+      "startMs": 6490,
+      "endMs": 10399,
+      "original": "Then, they would become my enemies",
+      "translated": "Then they would become my enemies"
+    },
+    {
+      "startMs": 10400,
+      "endMs": 13979,
+      "original": "And then they would fear you (fear you)",
+      "translated": "And then they would fear you (fear you)"
+    },
+    {
+      "startMs": 13980,
+      "endMs": 17899,
+      "original": "डब्बी भरे फिराँ गाडी जमाँ काळी ले के (काळी ले के)",
+      "translated": "I go around with boxes full, taking a black car (black one)",
+      "transliteration": "Dabbi bhare phirān gāḍī jamāṁ kālī le ke (kālī le ke)",
+      "note": "डब्बी (dabbi) = crates/boxes; काली/काळी (kālī) = black. The exact function of 'जमाँ / जमां' here is unclear in dialect — likely linking to 'with/like'."
+    },
+    {
+      "startMs": 17900,
+      "endMs": 21319,
+      "original": "घुमाँ सर-ए-आम बंदे पूरे चाळी ले के (चाळी)",
+      "translated": "I parade openly with a full crew of forty (forty)",
+      "transliteration": "Ghumāṁ sar-e-ām bande pūre cāḷī le ke (cāḷī)",
+      "note": "सर-ए-आम = in public. चाळी / cāḷī is likely '40' (forty), i.e., a group of forty people or a crew."
+    },
+    {
+      "startMs": 21320,
+      "endMs": 24199,
+      "original": "चक्या पूरा जिम्मा वैरियाँ की funeral का",
+      "translated": "I took full responsibility for the enemies' funeral",
+      "transliteration": "Chakyā pūrā zimma vairiyāṅ kī funeral kā",
+      "note": "वैरियाँ (vairiyāṅ) = enemies. 'चक्या' (chakya) appears to be dialectal for 'handled/took care of/took on'."
+    },
+    {
+      "startMs": 24200,
+      "endMs": 27029,
+      "original": "ख़ुद पहुँचाँ कराँ कफ़नों पराळी ले के",
+      "translated": "I'll come myself with shrouds and straw",
+      "transliteration": "Kẖud pahunchāṅ karāṅ kafanõ parāḷī le ke",
+      "note": "कफ़नों (kafanõ) = shrouds; पराळी (parāḷī) = straw/stubble (often used for funeral pyres in rural contexts)."
+    },
+    {
+      "startMs": 27030,
+      "endMs": 30049,
+      "original": "मो-मो-मोर बत्ती लागी, ३६ घूमें देश, छोरी",
+      "translated": "Mo‑mo‑mor light lit; thirty‑six toured the country, girl",
+      "transliteration": "Mo-mo-mor baṭṭī lāgī, 36 ghoomeṅ deś, chhorī",
+      "note": "मो‑मो‑मोर appears onomatopoeic or highly colloquial/slang; छोरी (chhorī) = girl. '३६ घूमें देश' literally reads as '36 toured the country' but exact cultural reference is unclear."
+    },
+    {
+      "startMs": 30050,
+      "endMs": 32719,
+      "original": "पेश होए नहीं आँ, बड़े करैं chase, छोरी",
+      "translated": "They don't show up; they do a big chase, girl.",
+      "transliteration": "pesh hoye nahin aan, bade karen chase, chhori"
+    },
+    {
+      "startMs": 32720,
+      "endMs": 35759,
+      "original": "सीख्या India में जादू यो Bengal आळा",
+      "translated": "I learned that Bengal-style magic in India.",
+      "transliteration": "sikhya India mein jadu yo Bengal aala",
+      "note": "Here 'आळा / aala' indicates 'from' or 'of that type' (Bengal-style / of the Bengal person)."
+    },
+    {
+      "startMs": 35760,
+      "endMs": 37189,
+      "original": "गंगा तार देवाँ बदळ के भेस, छोरी",
+      "translated": "I'll cross the Ganges after changing my disguise, girl.",
+      "transliteration": "ganga taar devaan badal ke bhes, chhori",
+      "note": "Minor uncertainty over 'तार/taar' — read here as 'cross (the Ganges)'."
+    },
+    {
+      "startMs": 37190,
+      "endMs": 41469,
+      "original": "ठेका parking का ले रहे आँ कचहरी आळा (कचहरी आळा)",
+      "translated": "Court people are taking the bar's parking spot (kacheri people).",
+      "transliteration": "theka parking ka le rahe aan kacheri aala (kacheri aala)",
+      "note": "ठेका (theka) commonly refers to a liquor shop/bar; कचहरी (kacheri) refers to court/officials."
+    },
+    {
+      "startMs": 41470,
+      "endMs": 44339,
+      "original": "एक case चालै HAU में firing आळा (firing आळा)",
+      "translated": "There's a case going on; there's firing at HAU.",
+      "transliteration": "ek case chale HAU mein firing aala (firing aala)",
+      "note": "HAU is likely a place/institution (abbreviation); 'firing aala' means someone who fires/shoots or an incident of firing."
+    },
+    {
+      "startMs": 44340,
+      "endMs": 47239,
+      "original": "ठेके L1 की दारू आळे जाणैं सारे",
+      "translated": "Everyone who supplies L1 liquor knows.",
+      "transliteration": "theke L1 ki daru aale jaanen saare",
+      "note": "L1 likely refers to a liquor license/classification; 'दारू आळे' = people dealing with alcohol."
+    },
+    {
+      "startMs": 47240,
+      "endMs": 49709,
+      "original": "जाणै कल्ले-कल्ले शहर के मैं थाणे, बिल्लो",
+      "translated": "They know every police station in every city, girl.",
+      "transliteration": "jaane kalle-kalle shahar ke main thane, billo",
+      "note": "थाणा (thane) = police station; बिल्लो / billo is an affectionate address to a woman."
+    },
+    {
+      "startMs": 49710,
+      "endMs": 53609,
+      "original": "ले के Russia के मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "Taking bandanas to Russia's face, girl.",
+      "transliteration": "le ke Russia ke muh pe bandane, billo (bandane, billo)",
+      "note": "बंडाने = bandanas; 'मुँहाँ पे बंडाने' means wearing/placing bandanas on the face. 'Russia' likely refers to the country or a named place/person."
+    },
+    {
+      "startMs": 53610,
+      "endMs": 56839,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "They never miss their mark, billo.",
+      "transliteration": "Chuke kade vi nahin maare hoye nisaane, billo (nisaane, billo)",
+      "note": "बिल्लो (billo) is an affectionate vocative for a woman (see glossary entry 'biba'/'beeba')."
+    },
+    {
+      "startMs": 56840,
+      "endMs": 58619,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "A golden butt hangs on the left side.",
+      "transliteration": "Tangya khabbe paase butt jo sunahre aala",
+      "note": "Butt is English here; could refer to a gun butt or to buttocks—see ambiguity."
+    },
+    {
+      "startMs": 58620,
+      "endMs": 61339,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बिल्लो (बहाने, बिल्लो)",
+      "translated": "He spits bullets and wanders around making excuses, billo.",
+      "transliteration": "Gol thukne ke tonda phire bahane, billo (bahane, billo)",
+      "note": "गोळ (gol) can mean 'bullet' or 'round'; थूकणे (thukne) = 'to spit' — imagery may imply shooting or aggressive talk."
+    },
+    {
+      "startMs": 61340,
+      "endMs": 65049,
+      "original": "छोरे reckless, मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "Boys are reckless, bandanas over their faces, billo.",
+      "transliteration": "Chhore reckless, munha pe bandane, billo (bandane, billo)",
+      "note": "मुँहाँ पे बंडाने = bandanas on/over the mouth/face."
+    },
+    {
+      "startMs": 65050,
+      "endMs": 68609,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "They never miss their mark, billo.",
+      "transliteration": "Chuke kade vi nahin maare hoye nisaane, billo (nisaane, billo)",
+      "note": "बिल्लो (billo) is an affectionate vocative for a woman (see glossary entry 'biba'/'beeba')."
+    },
+    {
+      "startMs": 68610,
+      "endMs": 70039,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "A golden butt hangs on the left side.",
+      "transliteration": "Tangya khabbe paase butt jo sunahre aala",
+      "note": "Butt is English here; could refer to a gun butt or to buttocks—see ambiguity."
+    },
+    {
+      "startMs": 70040,
+      "endMs": 73279,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बिल्लो (बहाने, बिल्लो)",
+      "translated": "He spits bullets and wanders around making excuses, billo.",
+      "transliteration": "Gol thukne ke tonda phire bahane, billo (bahane, billo)",
+      "note": "गोळ (gol) can mean 'bullet' or 'round'; थुकणे (thukne) = 'to spit' — imagery may imply shooting or aggressive talk."
+    },
+    {
+      "startMs": 73280,
+      "endMs": 77739,
+      "original": "लाके यारी ना गिणाए घाटे-वादे कदे (वादे कदे)",
+      "translated": "Don't measure friendship by losses and gains, ever.",
+      "transliteration": "Laake yaari na ginae ghaate-vaade kade (vaade kade)",
+      "note": "घाटे-वादे refers to profit/loss or give-and-take; line stresses that friendship isn't tallied like accounts."
+    },
+    {
+      "startMs": 77740,
+      "endMs": 80049,
+      "original": "बंद राखी सदा कॉपी मैं हिसाबाँ आळी (हिसाबाँ आळी)",
+      "translated": "I always keep the notebook closed; I'm the one who keeps the accounts.",
+      "transliteration": "Band rakhi sada copy main hisaban aali (hisaban aali)"
+    },
+    {
+      "startMs": 80050,
+      "endMs": 83619,
+      "original": "ज्यादा ठोकराँ तै मिले ऐं तजरबे रै (तजरबे रै)",
+      "translated": "I've gained a lot of experience from many knocks.",
+      "transliteration": "Zyada thokaran te mile ain tajarbe re (tajarbe re)"
+    },
+    {
+      "startMs": 83620,
+      "endMs": 86469,
+      "original": "कम मिली मन्ने knowledge किताबाँ आळी",
+      "translated": "I got little knowledge from books.",
+      "transliteration": "Kam mili manne knowledge kitaban aali",
+      "note": "Line mixes English 'knowledge' with Punjabi; literal meaning kept conservative."
+    },
+    {
+      "startMs": 86470,
+      "endMs": 89939,
+      "original": "म्हारी चुप ने ना गिणों कमजोरियाँ में",
+      "translated": "Don't count my silence as a weakness.",
+      "transliteration": "Mhari chup ne na gino kamzoriyaan mein"
+    },
+    {
+      "startMs": 89940,
+      "endMs": 92569,
+      "original": "खाज मेट देवाँ, वैद आ पुराणे, बिल्लो",
+      "translated": "I'll cure the itch—like a vaid and the old remedies, billo.",
+      "transliteration": "Khaj met devaan, vaid aa purane, billo",
+      "note": "'billo' is an affectionate vocative (addressing a woman), similar to 'biba' in the provided glossary."
+    },
+    {
+      "startMs": 92570,
+      "endMs": 95759,
+      "original": "ले के Russia के मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "Putting a bandana on Russia's face, billo.",
+      "transliteration": "Le ke Russia ke muh pe bandane, billo (bandane, billo)",
+      "note": "'billo' = affectionate vocative (see glossary)."
+    },
+    {
+      "startMs": 95760,
+      "endMs": 99709,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "I've never missed any target I aimed at, billo.",
+      "transliteration": "Chuke kade vi nahin maare hoe nisaane, billo (nisaane, billo)",
+      "note": "'billo' = affectionate vocative (see glossary)."
+    },
+    {
+      "startMs": 99710,
+      "endMs": 101479,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "A golden butt hanging on my left side.",
+      "transliteration": "Tangya khabbe paase butt jo sunehre aala",
+      "note": "The English loan 'butt' could mean the butt/stock of a firearm or the body ('butt'); 'सुनहरे आळा' is read as 'the golden one.'"
+    },
+    {
+      "startMs": 101480,
+      "endMs": 105599,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बिल्लो (बहाने, बिल्लो)",
+      "translated": "Spitting bullets and wandering around with excuses, billo (excuses, billo)",
+      "transliteration": "Gol thookne ke tonda phire bahane, billo (bahane, billo)",
+      "note": "बिल्लो (billo) is an affectionate vocative for a woman; 'गोळ/गोल' likely refers to a 'bullet' and 'थूकणे' ('thookne') literally 'to spit' — here possibly slang for firing. 'टोंदा फ़िरे' is regional/dialectal and read conservatively as 'wanders around'."
+    },
+    {
+      "startMs": 105600,
+      "endMs": 109339,
+      "original": "छोरे reckless, मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "The boys are reckless, with bandanas over their faces, billo (bandana, billo)",
+      "transliteration": "Chhore reckless, munhā̃ pe bandana, billo (bandana, billo)"
+    },
+    {
+      "startMs": 109340,
+      "endMs": 112909,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "They never miss their marks, billo (targets, billo)",
+      "transliteration": "Chuke kade vi nahin maare hoye nisaane, billo (nisaane, billo)"
+    },
+    {
+      "startMs": 112910,
+      "endMs": 113639,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "A golden butt hangs on the left side",
+      "transliteration": "Tangya khabbe pase butt jo sunahre aala",
+      "note": "Phrase mixes Punjabi with the English word 'butt'. 'टंग्या' and 'आळा' are dialectal; exact referent of 'butt' (object, person, or slang) is unclear."
+    },
+    {
+      "startMs": 113640,
+      "endMs": 116839,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बहाने, बहाने",
+      "translated": "Spitting bullets, wandering around with excuses — excuses, excuses",
+      "transliteration": "Gol thookne ke tonda phire bahane, bahane, bahane"
+    },
+    {
+      "startMs": 116840,
+      "endMs": 121019,
+      "original": "Liquid सवा लाख का गलासियाँ मैं (गलासियाँ मैं)",
+      "translated": "Liquid worth one hundred twenty-five thousand in glasses (in glasses)",
+      "transliteration": "Liquid sawa lakh ka gilaasiyan main (gilaasiyan main)",
+      "note": "'सवा लाख' = 125,000 (units implied, likely rupees); 'Liquid' likely refers to expensive liquor; 'गलासियाँ' = 'glasses'."
+    },
+    {
+      "startMs": 121020,
+      "endMs": 125049,
+      "original": "माल पूरा मिल्या परसों तलासियाँ में(तलासियाँ में)",
+      "translated": "Found all the goods during searches the day before yesterday (during searches)",
+      "transliteration": "Maal pura milya parson talasiyan mein (talasiyan mein)",
+      "note": "परसों (parson) can mean 'the day before yesterday' (or sometimes 'the day after tomorrow' in other dialects); read here conservatively as 'the day before yesterday'."
+    },
+    {
+      "startMs": 125050,
+      "endMs": 127189,
+      "original": "Suit करदा नहींं weather, रै, बाहर आळा",
+      "translated": "A suit doesn't suit the weather, re — the one outside",
+      "transliteration": "Suit karda nahin weather, re, bahar aala",
+      "note": "Mixture of English and Punjabi; 'रै' (re) is a colloquial vocative/exclamatory particle and 'आळा' (aala) usually means 'one' or 'person'."
+    },
+    {
+      "startMs": 127190,
+      "endMs": 130039,
+      "original": "हवा भीतर आळी लिखी मेरी रासियाँ में",
+      "translated": "Written in the air, in my rasiyaan.",
+      "transliteration": "Hawa bheetar aali likhi meri rasiyaan mein",
+      "note": "रासियाँ (rasiyaan) likely a regional word (literally 'ropes'/'ties') — meaning is uncertain in context."
+    },
+    {
+      "startMs": 130040,
+      "endMs": 133979,
+      "original": "ते-तेरी चढ़दी जवानी, मेरा पारा, गोरी (पारा, गोरी)",
+      "translated": "Your rising youth raises my temperature, girl.",
+      "transliteration": "Te-teri chadhdi jawani, mera paara, gori (paara, gori)"
+    },
+    {
+      "startMs": 133980,
+      "endMs": 137899,
+      "original": "करवा के हटैगा कोई कारा, गोरी (कारा, गोरी)",
+      "translated": "I'll have someone remove any 'kaara', girl.",
+      "transliteration": "Karwa ke hataega koi kaara, gori (kaara, gori)",
+      "note": "The word 'कारा' (kaara) is unclear in this line — can mean different things regionally (e.g., an obstacle, a mark, or even 'kada'/bangle in some dialects)."
+    },
+    {
+      "startMs": 137900,
+      "endMs": 138979,
+      "original": "चंडीगढ़ seize करैं हरियाणे आळे",
+      "translated": "The guys from Haryana will seize Chandigarh.",
+      "transliteration": "Chandigarh seize karan Haryane aale"
+    },
+    {
+      "startMs": 138980,
+      "endMs": 141329,
+      "original": "टेढी आँख तै तो कर तू इशारा, गोरी",
+      "translated": "Give the signal with a sidelong glance, girl.",
+      "transliteration": "Tedhi aankh te to kar tu ishara, gori"
+    },
+    {
+      "startMs": 141330,
+      "endMs": 145399,
+      "original": "तळे Jordan, मोढे Burberry पहराँ (Burberry पहराँ)",
+      "translated": "I wear Jordans on my feet and Burberry draped on my shoulders.",
+      "transliteration": "Tale Jordan, modhe Burberry pehraan (Burberry pehraan)",
+      "note": "Jordan and Burberry are international brand names used here as style markers."
+    },
+    {
+      "startMs": 145400,
+      "endMs": 149929,
+      "original": "जमाँ line मैं लगा के कोढे वैरी कराँ (वैरी कराँ)",
+      "translated": "I'll line them up and deal with my enemies.",
+      "transliteration": "Jama line main laga ke kodhe vaeri karaan (vaeri karaan)",
+      "note": "'वैरी' (vaeri) = enemy (see glossary). The word 'कोढे' (kodhe) is unclear/colloquial here and could refer to a group, heads, or a local slang term for opponents."
+    },
+    {
+      "startMs": 149930,
+      "endMs": 152899,
+      "original": "वैसे गाम में रवाँ, हाँ, देसी बणके मैं",
+      "translated": "Anyway I go to my village, yeah, becoming desi.",
+      "transliteration": "Vaise gaam mein rawan, haan, desi banke main",
+      "note": "'देसी' (desi) means local/native/traditional — here 'becoming desi' suggests returning to or adopting a local/native style or attitude."
+    },
+    {
+      "startMs": 152900,
+      "endMs": 155589,
+      "original": "तेरे शहर में drip जमाँ जहरी कराँ",
+      "translated": "I'll bring toxic drip to your city.",
+      "transliteration": "Tere shahar mein drip jamaān jahri karān",
+      "note": "Here 'drip' is English slang for flashy style; 'jahri karān' literally 'make poisonous' likely used metaphorically (intensify/make lethal)."
+    },
+    {
+      "startMs": 155590,
+      "endMs": 158139,
+      "original": "छोरा educate, लाइए ना गवाराँ में तै",
+      "translated": "I'm educated — don't lump me in with the uneducated.",
+      "transliteration": "Chhora educate, laiye na gawaraan mein tai",
+      "note": "Chhora = boy; 'gawaraan' (from 'gawar') = uneducated/rustic people."
+    },
+    {
+      "startMs": 158140,
+      "endMs": 161149,
+      "original": "नहीं मिलैं मेरे जिसे, रै, हजाराँ में तै",
+      "translated": "You won't find someone like me even among thousands.",
+      "transliteration": "Nahin milain mere jise, re, hazaaran mein tai"
+    },
+    {
+      "startMs": 161150,
+      "endMs": 164339,
+      "original": "हीरे-कोयले की खानाँ में ना टोवे, छोरी",
+      "translated": "You won't be found in diamond-and-coal mines, girl.",
+      "transliteration": "Heere-koyale ki khaanān mein na tove, chhori",
+      "note": "Addressing the girl (chhori)."
+    },
+    {
+      "startMs": 164340,
+      "endMs": 166709,
+      "original": "तन्ने ढूँढदी ना लग ज्या जमाने, बिल्लो",
+      "translated": "The world won't start looking for you, billo.",
+      "transliteration": "Tanne dhoondhdi na lag jya zamaane, billo",
+      "note": "Billo = affectionate address for a girl (see glossary: biba/beeba)."
+    },
+    {
+      "startMs": 166710,
+      "endMs": 170989,
+      "original": "ले के Russia के मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "Wearing a Russian bandana over your mouth, billo.",
+      "transliteration": "Le ke Russia ke muh pe bandane, billo (bandane, billo)",
+      "note": "‘Bandane/बंडाने’ = bandana; likely literal cloth tied over the face."
+    },
+    {
+      "startMs": 170990,
+      "endMs": 175759,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "I never miss my targets, billo.",
+      "transliteration": "Chuke kade vi nahin maare hoye nisaane, billo (nisaane, billo)"
+    },
+    {
+      "startMs": 175760,
+      "endMs": 178129,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "On the left side hangs a golden butt.",
+      "transliteration": "Tangya khabbe paase butt jo sunahre aala",
+      "note": "‘खब्बे पासे’ = on the left side. 'बिल्लो' not in this line but earlier addressed the girl. 'butt' is English here — could mean buttocks, a cigarette butt, or gun butt depending on context."
+    },
+    {
+      "startMs": 178130,
+      "endMs": 181479,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बिल्लो (बहाने, बिल्लो)",
+      "translated": "He wanders around making excuses like he's spitting bullets, billo (excuses, billo)",
+      "transliteration": "gol thookne ke tonda phire bahaane, billo (bahaane, billo)",
+      "note": "‘billo’ is an affectionate vocative for a woman (similar to 'girl'); kept here as 'billo'."
+    },
+    {
+      "startMs": 181480,
+      "endMs": 185759,
+      "original": "छोरे reckless, मुँहाँ पे बंडाने, बिल्लो (बंडाने, बिल्लो)",
+      "translated": "The boys are reckless, bandanas over their mouths, billo",
+      "transliteration": "chhore reckless, munh pe bandane, billo (bandane, billo)",
+      "note": "‘billo’ is an affectionate vocative for a woman; 'bandane' = bandanas. 'chhore' = boys/young men."
+    },
+    {
+      "startMs": 185760,
+      "endMs": 190039,
+      "original": "चूके कदे वी नहींं मारे होए निसाने, बिल्लो (निसाने, बिल्लो)",
+      "translated": "We've never missed our targets, billo",
+      "transliteration": "chuke kade vi nahin maare hoye nisaane, billo (nisaane, billo)",
+      "note": "‘nisaane’ = targets/aims; phrase expresses not missing a shot or figurative aim."
+    },
+    {
+      "startMs": 190040,
+      "endMs": 192899,
+      "original": "टंग्या खब्बे पासे butt जो सुनहरे आळा",
+      "translated": "Hanging on the left side, a butt with golden trim",
+      "transliteration": "tangya khabbe paase butt jo sunahre aala",
+      "note": "Contains English 'butt' in the original. 'सुनहरे आळा / sunahre aala' likely means 'golden trim/ornament' but 'आळा/aala' is dialectal and ambiguous."
+    },
+    {
+      "startMs": 192900,
+      "endMs": 197141,
+      "original": "गोळ थूकणे के टोंदा फ़िरे बहाने, बिल्लो (बहाने, बहाने)",
+      "translated": "He wanders around making excuses like he's spitting bullets, billo (excuses, excuses)",
+      "transliteration": "gol thookne ke tonda phire bahaane, billo (bahaane, bahaane)",
+      "note": "Repeated line; same ambiguities as the earlier occurrence. 'billo' kept as vocative."
+    }
+  ]
 }

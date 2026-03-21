@@ -148,6 +148,7 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       record={record}
       translationInspection={translationInspection}
       lyricsInspection={lyricsInspection}
+      aiDraft={aiDraft}
       aiDraftInspection={aiDraftInspection}
       timingEditorDocument={timingEditorDocument}
       musixmatchConfigured={isMusixmatchConfigured()}

@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import type { PlaybackState } from "@/features/spotify/types";
+import type { PlaybackApiResponse, PlaybackState } from "@/features/spotify/types";
 import type { TrackTranslation } from "@/features/translations/types";
 import { ProgressBar } from "@/components/progress-bar";
 
@@ -8,9 +8,10 @@ type PlayerCardProps = {
   playback: PlaybackState;
   visualProgressMs: number;
   translation: TrackTranslation | null;
+  aiDraft: PlaybackApiResponse["aiDraft"];
 };
 
-export function PlayerCard({ playback, visualProgressMs, translation }: PlayerCardProps) {
+export function PlayerCard({ playback, visualProgressMs, translation, aiDraft }: PlayerCardProps) {
   if (!playback.track) {
     return null;
   }
@@ -60,7 +61,11 @@ export function PlayerCard({ playback, visualProgressMs, translation }: PlayerCa
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Translation</p>
             <p className="mt-2 text-base text-white">
-              {translation ? `${translation.sourceLanguage} -> ${translation.targetLanguage}` : "Not available yet"}
+              {translation
+                ? `${translation.sourceLanguage} -> ${translation.targetLanguage}`
+                : aiDraft
+                  ? `${aiDraft.sourceLanguage ?? "Unknown"} -> ${aiDraft.targetLanguage ?? "English"} draft`
+                  : "Not available yet"}
             </p>
           </div>
         </div>

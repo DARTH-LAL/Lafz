@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { LyricsPanel } from "@/components/lyrics-panel";
 import { PlayerCard } from "@/components/player-card";
 import { StatePanel } from "@/components/state-panel";
+import { UntimedLyricsPanel } from "@/components/untimed-lyrics-panel";
 import { PLAYBACK_POLL_INTERVAL_MS } from "@/features/spotify/config";
 import type { PlaybackApiResponse } from "@/features/spotify/types";
 import { usePlaybackClock } from "@/features/sync/use-playback-clock";
@@ -152,13 +153,23 @@ export function NowPlayingClient() {
             </StatePanel>
           ) : (
             <div className="grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start">
-              <PlayerCard playback={playback} visualProgressMs={visualProgressMs} translation={payload.translation} />
+              <PlayerCard
+                playback={playback}
+                visualProgressMs={visualProgressMs}
+                translation={payload.translation}
+                aiDraft={payload.aiDraft}
+              />
 
               {payload.translation ? (
                 <LyricsPanel
                   translation={payload.translation}
                   progressMs={visualProgressMs}
                   isPlaying={playback.isPlaying}
+                />
+              ) : payload.aiDraft?.mode === "plain" && payload.aiDraft.lines.length > 0 ? (
+                <UntimedLyricsPanel
+                  draft={payload.aiDraft}
+                  trackHref={`/library/track/${playback.track.spotifyTrackId}`}
                 />
               ) : (
                 <StatePanel

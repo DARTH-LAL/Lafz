@@ -35,6 +35,42 @@ function sanitizeAiDetail(value: string) {
   return value.trim().slice(0, 180);
 }
 
+function wantsJsonResponse(request: NextRequest) {
+  return request.headers.get("x-lafz-response") === "json";
+}
+
+function getStatusMessage(status: string) {
+  if (status === "saved_translation") {
+    return "Lafz generated a stronger AI draft and updated the synced translation file.";
+  }
+
+  if (status === "draft_only_plain") {
+    return "Lafz generated a stronger AI draft and kept it on this track page because the lyrics are still untimed.";
+  }
+
+  if (status === "draft_only_preserved") {
+    return "Lafz generated a stronger AI draft and preserved the existing translation file.";
+  }
+
+  if (status === "missing_lyrics") {
+    return "Fetch or import original lyrics before generating a translation draft.";
+  }
+
+  if (status === "missing_ai_config") {
+    return "Configure the active AI provider before generating a translation draft.";
+  }
+
+  if (status === "provider_unavailable") {
+    return "Lafz could not reach the active AI provider right now.";
+  }
+
+  if (status === "model_missing") {
+    return "The selected AI model is not available yet.";
+  }
+
+  return "Lafz could not generate the translation draft right now.";
+}
+
 function withAiStatus(redirectTo: string, status: string, detail?: string) {
   const redirectUrl = new URL(redirectTo, "http://lafz.local");
   redirectUrl.searchParams.set("ai", status);
@@ -54,6 +90,10 @@ export async function POST(request: NextRequest) {
   const session = readSpotifySessionFromRequest(request);
 
   if (!session) {
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json({ success: false, status: "session_expired", message: "Spotify session expired." }, { status: 401 });
+    }
+
     return NextResponse.redirect(new URL("/login?reason=session_expired", request.url), 303);
   }
 
@@ -71,6 +111,10 @@ export async function POST(request: NextRequest) {
   const redirectTo = sanitizeRedirectTo(asNonEmptyString(formData.get("redirectTo")));
 
   if (!spotifyTrackId || !title || !artist || !album || !targetLanguage || durationMs === null) {
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json({ success: false, status: "error", message: getStatusMessage("error") }, { status: 400 });
+    }
+
     return redirectWithStatus(request, redirectTo, "error");
   }
 
@@ -88,16 +132,60 @@ export async function POST(request: NextRequest) {
       overwriteExistingTranslation
     });
 
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json({
+        success: true,
+        status: result.status,
+        message: getStatusMessage(result.status)
+      });
+    }
+
     return redirectWithStatus(request, redirectTo, result.status);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown AI error.";
 
     if (/could not reach ollama|could not reach openai|econnrefused|fetch failed|connect/i.test(message)) {
+      if (wantsJsonResponse(request)) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "provider_unavailable",
+            message: getStatusMessage("provider_unavailable"),
+            detail: sanitizeAiDetail(message)
+          },
+          { status: 503 }
+        );
+      }
+
       return redirectWithStatus(request, redirectTo, "provider_unavailable", message);
     }
 
     if (/model .*not found|pull .*first|not installed|does not exist/i.test(message)) {
+      if (wantsJsonResponse(request)) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "model_missing",
+            message: getStatusMessage("model_missing"),
+            detail: sanitizeAiDetail(message)
+          },
+          { status: 400 }
+        );
+      }
+
       return redirectWithStatus(request, redirectTo, "model_missing", message);
+    }
+
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "error",
+          message: getStatusMessage("error"),
+          detail: sanitizeAiDetail(message)
+        },
+        { status: 500 }
+      );
     }
 
     return redirectWithStatus(request, redirectTo, "error", message);

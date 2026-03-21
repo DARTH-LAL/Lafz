@@ -1,11 +1,17 @@
 export type AiTranslationDraftMode = "synced" | "plain";
+export type AiTranslationConfidence = "low" | "medium" | "high";
 
 export type AiDraftLine = {
   order: number;
   original: string;
+  literal: string;
+  natural: string;
+  chosen: string;
   translated: string;
   transliteration: string | null;
   note: string | null;
+  ambiguity: string | null;
+  confidence: AiTranslationConfidence;
   startMs: number | null;
   endMs: number | null;
 };
@@ -52,9 +58,14 @@ export type AiTranslationDraftInspection = {
 };
 
 export type GeneratedTranslationLineDraft = {
+  literal: string;
+  natural: string;
+  chosen: string;
   translated: string;
   transliteration: string | null;
   note: string | null;
+  ambiguity: string | null;
+  confidence: AiTranslationConfidence;
 };
 
 export type GenerateAiTranslationOptions = {
