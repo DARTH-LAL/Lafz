@@ -1,0 +1,93 @@
+import { access, mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import type { LafzLibraryTrack } from "@/features/spotify/types";
+import type { TranslationStubFile } from "@/features/translations/types";
+
+const translationStubsRoot = path.join(process.cwd(), "data", "translations", "local");
+
+export function getLocalTranslationFilePath(trackId: string) {
+  return path.join(translationStubsRoot, `${trackId}.json`);
+}
+
+export function getTranslationStubFilePath(trackId: string) {
+  return getLocalTranslationFilePath(trackId);
+}
+
+async function fileExists(filePath: string) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function createTranslationStubFile(options: {
+  spotifyTrackId: string;
+  language: string | null;
+  overwriteExistingStub: boolean;
+}) {
+  await mkdir(translationStubsRoot, { recursive: true });
+
+  const filePath = getLocalTranslationFilePath(options.spotifyTrackId);
+  const exists = await fileExists(filePath);
+
+  // Preserve any local translation work unless the caller explicitly opts into overwriting stubs.
+  if (exists && !options.overwriteExistingStub) {
+    return {
+      filePath,
+      created: false,
+      overwritten: false,
+      skipped: true
+    };
+  }
+
+  const stub: TranslationStubFile = {
+    spotify_track_id: options.spotifyTrackId,
+    language: options.language,
+    lines: []
+  };
+
+  await writeFile(filePath, `${JSON.stringify(stub, null, 2)}\n`, "utf8");
+
+  return {
+    filePath,
+    created: !exists,
+    overwritten: exists,
+    skipped: false
+  };
+}
+
+export async function createTranslationStubsForTracks(
+  tracks: LafzLibraryTrack[],
+  options: { overwriteExistingStubs: boolean }
+) {
+  await mkdir(translationStubsRoot, { recursive: true });
+
+  let createdCount = 0;
+  let overwrittenCount = 0;
+  let skippedCount = 0;
+
+  for (const track of tracks) {
+    const result = await createTranslationStubFile({
+      spotifyTrackId: track.spotify_track_id,
+      language: track.language,
+      overwriteExistingStub: options.overwriteExistingStubs
+    });
+
+    if (result.overwritten) {
+      overwrittenCount += 1;
+    } else if (result.created) {
+      createdCount += 1;
+    } else {
+      skippedCount += 1;
+    }
+  }
+
+  return {
+    createdCount,
+    overwrittenCount,
+    skippedCount
+  };
+}

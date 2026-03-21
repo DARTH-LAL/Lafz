@@ -1,0 +1,450 @@
+{
+  "spotifyTrackId": "6PRFDCNAMLeSZimkPGrKMG",
+  "title": "5-7",
+  "artist": "Karan Aujla, Mxrci",
+  "album": "5-7",
+  "durationMs": 154105,
+  "sourceLanguage": "Punjabi",
+  "targetLanguage": "English",
+  "generatedAt": "2026-03-21T17:02:22.324Z",
+  "mode": "plain",
+  "sourceLyricsKind": "plain",
+  "generator": {
+    "provider": "openai",
+    "model": "gpt-5-mini"
+  },
+  "lines": [
+    {
+      "order": 0,
+      "original": "Mai keha yaariyan ch jatta teri meri da ni hunda",
+      "translated": "I say in friendship, bro, there's no 'yours and mine'.",
+      "transliteration": null,
+      "note": "'jatta' = vocative 'bro' (see glossary). 'ni hunda' = 'doesn't happen' — implying possessions/claims don't exist within true friendship.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 1,
+      "original": "Jadaan pakki aale aa saanu neri da ni hunda",
+      "translated": "When we're the true/firm ones, jealousy doesn't happen to us.",
+      "transliteration": null,
+      "note": "'neri' is ambiguous in the original; I rendered it conservatively as 'jealousy'. 'pakki aale' = 'true/loyal ones.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 2,
+      "original": "Sutta peya sher kade chhedi da ni hunda",
+      "translated": "With a cigarette in his mouth, a lion's never one to be provoked.",
+      "transliteration": null,
+      "note": "'Sutta peya' refers to smoking/a lit cigarette; 'sher' is a metaphor for a tough/proud man—line implies someone too tough to be messed with.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 3,
+      "original": "Kalla dekh ke bagana putt gheri da ni hunda",
+      "translated": "Just because you see me alone and run off, son — an ambush won't work.",
+      "transliteration": null,
+      "note": "I read 'bagana' as 'bhagana' (to run away). 'Putt' is a vocative 'son/kid'; 'gheri' means 'ambush/encirclement.' Translation kept literal and conservative.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 4,
+      "original": "5-7 cheejan hun bikaneri pehli hove",
+      "translated": "Now, out of 5–7 things, Bikaneri should come first.",
+      "transliteration": null,
+      "note": "“Bikaneri” literally means someone or something from Bikaner (a city in Rajasthan). Here it's ambiguous—could refer to a person, a style, or a thing associated with Bikaner.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 5,
+      "original": "Dooji hove bande khaane tor jivein baili hove",
+      "translated": "Second, men eat like buffaloes.",
+      "transliteration": null,
+      "note": "baili = buffalo; comparing someone's eating to a buffalo implies heavy, messy, or greedy eating in Punjabi imagery.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 6,
+      "original": "Teeja chale naam pura gal saare faili hove",
+      "translated": "When the third one moves, his full name and all the talk spread.",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 7,
+      "original": "Aava pindo aiddan lagge biba jivein rally hove",
+      "translated": "She comes to the village like there's a rally, girl",
+      "transliteration": null,
+      "note": "'biba' = girl (affectionate); 'pindo' = village. Line suggests she arrives so flashy the village looks like a rally.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 8,
+      "original": "Kade time si kehndi si ki aa palle palle jatta",
+      "translated": "There were times she used to say, \"Come close, come close, bro.\"",
+      "transliteration": null,
+      "note": "'jatta' is a vocative from 'jatt' used as 'bro'/'young man'; 'aa palle palle' here means 'come close' or 'come to my side.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 9,
+      "original": "Kehndi dekh ke ferrari kitthe challe kalle jatta",
+      "translated": "She says, looking at me, 'Where will the Ferrari go alone, jatta?'",
+      "transliteration": null,
+      "note": "‘jatta’ is a vocative (jatt / bro) per glossary; 'kalle' means 'alone'. Translation kept literal.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 10,
+      "original": "Jinne opp ne saare ve terе thalle thalle jatta",
+      "translated": "All the opps are under you, jatt",
+      "transliteration": null,
+      "note": "‘opp(s)’ = opponents/rivals; 'thalle thalle' (repetition) emphasizes 'beneath/under your feet'. 'jatta' is a vocative (see glossary: jatt / bro).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 11,
+      "original": "Naddi dekh kе chadhayi kehndi balle balle jatta",
+      "translated": "Seeing the river, the swell rises and says, \"balle balle, jatta.\"",
+      "transliteration": "Naddi dekh ke chadhayi kehndi balle balle jatta",
+      "note": "‘balle balle’ is a celebratory exclamation (left untranslated here); ‘jatta’ is a vocative address meaning ‘jatt / bro’ (per glossary). ‘chadhayi’ is ambiguous—rendered conservatively as ‘swell/rise’ rather than a poetic metaphor.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 12,
+      "original": "5-7 cheeja hon pehli kaali ghodi hove",
+      "translated": "There should be five to seven things; the first should be a black mare.",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 13,
+      "original": "Dooji beeba farm te cheeneyan di jodi hove",
+      "translated": "Second, a girl on the farm and a pair of Chinese.",
+      "transliteration": null,
+      "note": "'beeba' = 'girl / dear girl' (from glossary). The word 'cheeneyan' is ambiguous here — literally 'Chinese' (e.g., Chinese people/women) but could be a misheard word (for example, 'chains' or another local term); context doesn't fully disambiguate.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 14,
+      "original": "Teeji hove anakh ve maaya chahe thodi hove",
+      "translated": "Let pride be third, even if wealth is little.",
+      "transliteration": null,
+      "note": "anakh = pride/self-respect; maaya = wealth/material things. 'Teeji' = 'third' (placing pride third among priorities); 've' is a vocative/emphatic particle.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 15,
+      "original": "Chadh ke aayi nu bhajj dooni ghar modi hove",
+      "translated": "If she comes riding, both will run and the house will be turned.",
+      "transliteration": null,
+      "note": "The line is dialectal and ambiguous. 'Bhajj dooni' could mean 'both will run' or 'she'll run twice'; 'ghar modi hove' literally 'the house will be turned' — possibly 'the household will be upset/changed' depending on regional usage. Original is already romanized, so transliteration omitted.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 16,
+      "original": "Saade jigre nu dekhi beeba matta nu na dekhi",
+      "translated": "Look at our guts; don't look at the girl's face.",
+      "transliteration": null,
+      "note": "'jigre' = guts/courage; 'beeba' = girl (see glossary). 'matta' is ambiguous here—rendered conservatively as 'face'.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 17,
+      "original": "Takkaan nu naa dekhi ehna satta nu na dekhi",
+      "translated": "Don't look at the weak, don't look at their power.",
+      "transliteration": null,
+      "note": "The word 'takkaan' is dialectal/ambiguous — here taken conservatively as 'the weak/lowly'. 'Satta' means 'power' or 'authority.' Translation is kept literal rather than poetic.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 18,
+      "original": "Jor gaaddaran chon hunda beeba chatta nu na dekhi",
+      "translated": "Strength comes from traitors — beeba, don't look at the betrayer.",
+      "transliteration": null,
+      "note": "beeba = 'girl / dear girl' (glossary). 'gaaddaran' means 'traitors.' The word 'chatta' is ambiguous in this line; I rendered it conservatively as 'betrayer' to match 'gaaddaran.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 19,
+      "original": "Sirr ghum jau rakaane ehna akhan nu na dekhi",
+      "translated": "Keep your head turned—don't look into these eyes.",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 20,
+      "original": "Panj saat cheejan hun pehli yaari pakki hove",
+      "translated": "Five or seven things now — first, let friendship be firm.",
+      "transliteration": null,
+      "note": "“Panj saat” is colloquial for 'a few' or 'several.' “Yaari” means friendship/loyalty (see glossary). “Pakki hove” = 'be firm/secure/confirmed.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 21,
+      "original": "Dooja paaya kurta te jeep thalle rakhi hove",
+      "translated": "Secondly, he'd have kept a kurta under the jeep.",
+      "transliteration": null,
+      "note": "‘Dooja paaya’ = 'secondly'. Literal image: 'kept a kurta under the jeep.' Likely a boastful detail about possessions (owning a jeep) rather than a standard idiom.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 22,
+      "original": "Teeji hovi ohth ohdi ehna munda lucky hove",
+      "translated": "May her third one be there — may those boys be lucky.",
+      "transliteration": null,
+      "note": "'teeji' literally means 'third' (ambiguous here — could mean a third person or item). 'munda' = boys.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 23,
+      "original": "Latta khich khich jaanda jor laala thakki hove",
+      "translated": "He keeps tugging and tugging; with all his strength the lad becomes tired.",
+      "transliteration": null,
+      "note": "“Latta khich khich” literally means repeatedly tugging/pulling. “Laala” is a colloquial male address (like 'lad' or 'guy'); “jor” means force/strength.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 24,
+      "original": "Fer ki karegi mile nitt ni je",
+      "translated": "Then what will she do if she doesn't meet him every day?",
+      "transliteration": null,
+      "note": "‘karegi’ marks a female subject. ‘je’ = if; ‘nitt’ = daily. The original doesn't specify who is being 'met'—rendered here as 'him' as a natural interpretation common in songs, but the object is ambiguous.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 25,
+      "original": "Dass main ki kara ni laga chitt ni je",
+      "translated": "Tell me what I should do if my heart isn't in it.",
+      "transliteration": null,
+      "note": "'chitt' here means mind/heart; 'ni je' is a conditional 'if'—so this is a literal, conservative reading: 'if my heart isn't in it.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 26,
+      "original": "Mere sohniye dream kuch hor aithe",
+      "translated": "My beautiful one, dreams are different here",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 27,
+      "original": "Jor baahaan ch chahida jang jitt ni je",
+      "translated": "You need strong arms — you can't win the war if you don't.",
+      "transliteration": null,
+      "note": "‘Jor baahaan’ literally means 'strong arms' (physical strength or supportive backing). ‘Jang’ is 'war' or 'fight' and ‘je’ means 'if' — the line says that without strength/support the battle can't be won.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 28,
+      "original": "Paanj saat cheejan pehla lv da leeda hove",
+      "translated": "Five or seven things — the first should be an LV item.",
+      "transliteration": null,
+      "note": "'lv' is ambiguous in the original; it likely refers to LV (Louis Vuitton) or could be shorthand for 'love'. Context doesn't make the meaning clear, so 'LV' is kept literal.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 29,
+      "original": "Dooja kuch karne da andar koi keeda hove",
+      "translated": "Second, there should be some bug inside to do something",
+      "transliteration": null,
+      "note": "‘keeda’ literally means 'insect' but here idiomatically refers to an inner itch/obsession or restless urge to act.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 30,
+      "original": "Teeja hove yaari aisa jebo chahe peeda hove",
+      "translated": "Let the third be a friendship such that even if there is pain.",
+      "transliteration": null,
+      "note": "yaari = friendship/loyalty (see glossary). The word \"jebo\" in the line is unclear/ambiguous; translation treats the phrase as 'aisa... chahe peeda hove' = 'such that even if there is pain.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 31,
+      "original": "Jithe akhaan adh jaave sachi ehna cheeda hove",
+      "translated": "Where the eyes half-close, truly such teasing exists.",
+      "transliteration": null,
+      "note": "'adh jaave' means eyes half-close; 'cheeda' (from 'chedna') refers to teasing/flirtiness; 'sachi' is an emphatic 'truly/indeed.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 32,
+      "original": "Mere kurta hove te tera booti aala suit",
+      "translated": "If I'm wearing a kurta and you're wearing a booti-style suit",
+      "transliteration": null,
+      "note": "‘Booti’ refers to a small floral/embroidered motif on clothing; here it describes the style of the suit.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 33,
+      "original": "Chete kari firre tu ghurale aala route",
+      "translated": "You keep remembering, you wander that winding route",
+      "transliteration": null,
+      "note": "‘ghurale’ is ambiguous here; interpreted conservatively as 'curvy/winding'. 'Chete kari firre tu' = 'you keep remembering/you keep thinking (about it).'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 34,
+      "original": "Main keha mere naal chali jado jaave gedi route",
+      "translated": "I said, come with me when I go for a joyride.",
+      "transliteration": null,
+      "note": "‘gedi route’ = cruising around/going for a joyride; colloquial phrase for driving around town for fun.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 35,
+      "original": "Dekhi dedh minute bich vajju dedh sau salute mai keha",
+      "translated": "I said to fire one hundred fifty salutes within one and a half minutes.",
+      "transliteration": null,
+      "note": "dedh minute = one and a half minutes; dedh sau = 150; 'salute' refers to gun salutes; 'vajju' is colloquial here, interpreted as 'to fire/play' (ambiguous in dialect).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 36,
+      "original": "5-7 cheejan hun pehli bebe khush hove",
+      "translated": "Five or seven things now — first, may the dear girl be happy.",
+      "transliteration": null,
+      "note": "“bebe” is a variant of biba/beeba (girl/dear girl). “5-7” is a loose count meaning a few items; “khush hove” is a wish (‘may be happy’).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 37,
+      "original": "Dooji meri baapu di haye rabb valla mucch hove",
+      "translated": "Second, may my father's mustache be blessed by God.",
+      "transliteration": null,
+      "note": "In Punjabi culture a mustache often stands for pride/honor; 'haye rabb valla' is an exclamatory invocation meaning roughly 'oh God' or 'God-blessed.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 38,
+      "original": "Teeja saala area ch naam hove puchh hove",
+      "translated": "Third, may my name be known in the area, may people ask about me.",
+      "transliteration": null,
+      "note": "'Teeja' = 'third' (enumerating). 'saala' here is a colloquial intensifier/expletive common in Punjabi (not meant literally). 'puchh hove' implies people ask about or inquire after him.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 39,
+      "original": "Meri jaan jaavein mere yaaran nu na kuch hove",
+      "translated": "Even if I lose my life, may nothing happen to my friends.",
+      "transliteration": null,
+      "note": "'Meri jaan jaavein' = 'even if I lose my life / die.' 'yaaran' = friends (implies close loyalty — see glossary entry 'yaari').",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 40,
+      "original": "Ni main gaddiyan na thaalda barola jitho langga",
+      "translated": "I don't park cars where Barola passes",
+      "transliteration": null,
+      "note": "Ni is a vocative particle. 'Barola' appears to be a name or place; 'thaalda' is taken conservatively as 'park/stop' (literal meaning uncertain).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 41,
+      "original": "Ni main maadeyaan li maada biba changeyaan layi changga",
+      "translated": "Hey, I'm bad for the bad girls, and good for the good ones.",
+      "transliteration": null,
+      "note": "biba = girl (see glossary). The phrase 'maadeyaan li' is ambiguous; here read literally as 'for the bad ones,' yielding a conservative 'bad-for-bad, good-for-good' meaning.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 42,
+      "original": "Jaane neeli chhat aala dass ohto kahda sanga",
+      "translated": "Tell me which companion is from that blue-roofed place.",
+      "transliteration": null,
+      "note": "Ambiguous: 'Jaane' can be a vocative 'jaan(e)' (beloved) or part of an imperative/request; I translated conservatively as 'Tell me'. 'neeli chhat aala' is rendered literally as 'blue-roofed place/house.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 43,
+      "original": "Bas paanj saat cheejan ohto jyada naa mai manga mai keha",
+      "translated": "I said I'd only ask for five or seven things, not more than that.",
+      "transliteration": null,
+      "note": "“paanj saat” literally means ‘five or seven’ used colloquially for ‘a few’; “ohto” here means ‘than that’ / ‘from that’ (i.e., not more than that).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 44,
+      "original": "Panj saat cheejan pehla daang utte dera hove",
+      "translated": "Let five or seven things be camped on the front line.",
+      "transliteration": null,
+      "note": "Literal rendering: 'panj saat' = 'five or seven' (approx.); 'dera' = 'camp/settlement'. The word 'daang' is ambiguous here—rendered conservatively as 'front line/post.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 45,
+      "original": "Dooji akh baaj aali sher jeha jera hove",
+      "translated": "The other eye would be hawk-like, the kind a lion would have",
+      "transliteration": null,
+      "note": "Uses animal metaphors: 'baaj' (hawk) implies sharp eyesight/alertness, 'sher' (lion) implies strength or courage.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 46,
+      "original": "Teeja aida vedha hove kile jeda ghera hove",
+      "translated": "The third should be so strange, like a fort that's surrounded.",
+      "transliteration": "ਤੀਜਾ ਐਦਾ ਵੇਧਾ ਹੋਵੇ ਕਿਲੇ ਜੇਦਾ ਘੇਰਾ ਹੋਵੇ",
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 47,
+      "original": "5 7 cheejan hun hor na bathera hove",
+      "translated": "There shouldn't be many other things now besides five and seven.",
+      "transliteration": null,
+      "note": "'5 7' references the song/title; 'bathera' means 'many' or 'a lot'.",
+      "startMs": null,
+      "endMs": null
+    }
+  ]
+}

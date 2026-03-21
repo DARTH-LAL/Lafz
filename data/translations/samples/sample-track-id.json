@@ -1,0 +1,37 @@
+{
+  "spotifyTrackId": "sample-track-id",
+  "title": "Placeholder Song",
+  "artist": "Example Artist",
+  "sourceLanguage": "Punjabi",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 0,
+      "endMs": 2500,
+      "original": "placeholder opening line",
+      "translated": "A sample opening thought appears here.",
+      "transliteration": "placeholder opening line",
+      "note": "Replace this placeholder file with your own timestamped translation JSON for a real Spotify track ID."
+    },
+    {
+      "startMs": 2600,
+      "endMs": 5200,
+      "original": "placeholder second line",
+      "translated": "The next translated line fades in with the beat.",
+      "transliteration": "placeholder second line"
+    },
+    {
+      "startMs": 5400,
+      "endMs": 7800,
+      "original": "placeholder third line",
+      "translated": "Tap any line to reveal original text and notes.",
+      "note": "Notes are useful for slang, idioms, cultural references, and context."
+    },
+    {
+      "startMs": 8000,
+      "endMs": 10400,
+      "original": "placeholder closing line",
+      "translated": "Lafz keeps the active line highlighted while the song progresses."
+    }
+  ]
+}

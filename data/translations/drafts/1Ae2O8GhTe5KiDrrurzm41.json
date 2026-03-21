@@ -1,0 +1,522 @@
+{
+  "spotifyTrackId": "1Ae2O8GhTe5KiDrrurzm41",
+  "title": "At Peace",
+  "artist": "Karan Aujla, Ikky",
+  "album": "At Peace",
+  "durationMs": 164042,
+  "sourceLanguage": "Punjabi",
+  "targetLanguage": "English",
+  "generatedAt": "2026-03-21T16:17:33.726Z",
+  "mode": "plain",
+  "sourceLyricsKind": "plain",
+  "generator": {
+    "provider": "openai",
+    "model": "gpt-5-mini"
+  },
+  "lines": [
+    {
+      "order": 0,
+      "original": "Pakki aa jabaan, jeeb kare na slip",
+      "translated": "My tongue's steady; it doesn't slip.",
+      "transliteration": null,
+      "note": "Pakki/jeeb both refer to 'tongue' or speech — the line asserts the speaker won't misspeak; 'slip' is an English loanword used in the original.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 1,
+      "original": "Kurta ae kaala, beeba yaaran di drip",
+      "translated": "The kurta is black, the girl has her friends' drip.",
+      "transliteration": null,
+      "note": "\"beeba\" = girl (affectionate). \"yaaran di drip\" literally \"friends' drip\" — \"drip\" is slang for style/fashion; conservative reading: she has the style of her friends or is stylish like her friends.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 2,
+      "original": "Yatch te maal phi si chali sip-sip",
+      "translated": "On the yacht, the goods were moving, sip‑sip.",
+      "transliteration": null,
+      "note": "'maal' is slang and can mean goods, valuables, or attractive people — ambiguous here. 'sip‑sip' is an onomatopoeic reference to sipping drinks.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 3,
+      "original": "Saala quarter milli ch peya europe trip",
+      "translated": "Damn, a Europe trip cost a quarter million.",
+      "transliteration": null,
+      "note": "“Saala” is an expletive filler (colloquial 'damn'). “quarter milli” means 'quarter million' (currency unspecified); 'ch peya' indicates it was spent or went into that amount.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 4,
+      "original": "Fir tadkadi re thalle ho gayi muchh jeh ni",
+      "translated": "Then the tadkadi fell down beneath; there wasn't even a moustache.",
+      "transliteration": null,
+      "note": "“Tadkadi” is ambiguous here (likely something like a spark/sizzle/flash); “muchh” means moustache and can symbolize pride or bravado. Translation stays literal because the exact colloquial sense is unclear.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 5,
+      "original": "Sadda rabb raaji re baaki duniyan russ jaye ni",
+      "translated": "If our God is pleased, let the rest of the world be upset.",
+      "transliteration": "Saddā rabb rāzī re, bākī duniyā̃ rus jāe nī",
+      "note": "“rabb raaji” = ‘May God be pleased’; “russ jaye” = ‘may (others) get upset/sulk’; the final “ni” is an emphatic particle.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 6,
+      "original": "Sadda rab raaji rahe",
+      "translated": "May God be pleased with us",
+      "transliteration": null,
+      "note": "A short blessing/wish asking that God remain pleased or content with the singer and their people.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 7,
+      "original": "Assi nahiyon kise naal number bataune",
+      "translated": "We don't give our number to anyone",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 8,
+      "original": "Beeba assi nahiyon kise muhre number banaune",
+      "translated": "Beeba, we don't share our number with anyone.",
+      "transliteration": null,
+      "note": "Beeba is an affectionate address meaning 'girl'/'dear girl'. 'Number banaune' is ambiguous — it can mean giving/sharing a phone number or 'making a scene/putting on a show'; here it's rendered as 'share our number' based on the preceding line's context.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 9,
+      "original": "Hatth naa chadde ni bas neeli chatt aala",
+      "translated": "Don't let go of my hand, just the one with the blue roof.",
+      "transliteration": null,
+      "note": "Literal: 'neeli chatt aala' means 'the one with the blue roof' (could refer to a house, vehicle, or something marked by a blue roof). 'Hatth naa chadde ni' is an emphatic 'don't let go of (my) hand.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 10,
+      "original": "Main keha rab nu manauna assi bande ni manaune",
+      "translated": "I said I'd appease God — we don't appease people",
+      "transliteration": null,
+      "note": "‘Manauna’ means to appease/convince/please; the line stresses refusing to bow to or flatter other people.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 11,
+      "original": "Machde machauna dinda single ni f",
+      "translated": "I let them make a fuss — I'm not single, f",
+      "transliteration": null,
+      "note": "Literal, conservative render. 'dinda' (lets/gives) subject is implicit. The trailing 'f' is ambiguous (possible typo/abbreviation); kept as in original rather than guessing its meaning.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 12,
+      "original": "Ohdi raja bina hai ni single breath",
+      "translated": "There isn't a single breath without her king.",
+      "transliteration": null,
+      "note": "Literal, conservative reading. 'Ohdi' = 'her' (could be 'his' depending on context), 'raja' = 'king' (often used for a lover/important man), 'ni' is an emphatic Punjabi particle, and 'single breath' is English here meaning 'not even one breath/moment.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 13,
+      "original": "Karna ni kaara rakhe taar mexico aale",
+      "translated": "He won't do it; those from Mexico wear black threads.",
+      "transliteration": null,
+      "note": "Literal rendering. The line is ambiguous: kaara can mean 'black' or 'kara' (a wrist bangle) and taar can mean 'thread' or 'wire'; I conservatively rendered it as 'black threads'. 'Mexico aale' = 'those from Mexico.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 14,
+      "original": "Rotiyan khawaunda bai ayeh italian chef",
+      "translated": "He feeds rotis, bro — he's an Italian chef.",
+      "transliteration": null,
+      "note": "“bai” is slang for 'bro'; the line contrasts plain Punjabi rotis with an 'Italian chef'—an ironic or boastful image.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 15,
+      "original": "Hatth ohda sir te",
+      "translated": "His hand on his head",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 16,
+      "original": "Yaar kidda fir rukk jaye ni",
+      "translated": "Friend, how could I stop then?",
+      "transliteration": null,
+      "note": "‘Yaar’ is a vocative 'friend/buddy'; 'ni' is an emphatic Punjabi particle (colloquial).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 17,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 18,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world be upset",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 19,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased.",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 20,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world be upset",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 21,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased.",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 22,
+      "original": "Mittraan ne paayi jehde khutti sun bole",
+      "translated": "My friends have set up those who speak nonsense.",
+      "transliteration": null,
+      "note": "Conservative reading: 'paayi jehde' = 'set up/put in place those who'; 'khutti' is slangy/ambiguous—likely means 'nonsense' or 'fake talk'.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 23,
+      "original": "Beeba vairi meri nok meri jutti sun bole",
+      "translated": "Dear girl — my enemy talks about the tip of my shoe",
+      "transliteration": null,
+      "note": "‘Beeba’ = ‘dear girl’ (glossary). ‘nok’ is ambiguous (literal: 'tip' or 'point'; can also imply a jab/insult); ‘sun bole’ conveys talking/gossiping.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 24,
+      "original": "Jatt de asoolan ch ni dovein paase challan",
+      "translated": "In a jatt's code, I don't play both sides.",
+      "transliteration": null,
+      "note": "‘Jatt’ refers to a tough/proud Punjabi man (see glossary). 'Don't play both sides' means he won't be two-faced or take both sides.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 25,
+      "original": "Tahiyon chaare paase aujle di tooti sun bole",
+      "translated": "So all around you hear Aujla's broken words.",
+      "transliteration": null,
+      "note": "Aujla is the artist's name. 'chaare paase' = 'all around'; 'tooti' literally means 'broken' — here it likely refers to fragmented or harsh-sounding words/voice, which is somewhat ambiguous, so a literal reading is used. Transliteration omitted because the original is already in Latin script.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 26,
+      "original": "Naam bole peak te ni sun laake kann",
+      "translated": "When my name is spoken, don't listen, even if you cup your ear.",
+      "transliteration": null,
+      "note": "The phrase 'peak' in the original is ambiguous here (could mean 'at the peak' or be phonetic); I rendered a conservative, literal meaning focused on 'naam bole' and 'sun laake kann' ('don't listen even if you put your ear to listen').",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 27,
+      "original": "Chann jeha gabru chadhaunda phire chann",
+      "translated": "A moon-like young man struts around, moon",
+      "transliteration": null,
+      "note": "'gabru' means a young man; 'chann jeha' = 'like the moon'. The final 'chann' functions as a vocative/refrain.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 28,
+      "original": "Yaar naal turde aa chadhe jivein chann",
+      "translated": "They walk with their friends, as if the moon had risen.",
+      "transliteration": null,
+      "note": "'Chann' (moon) is often used as a compliment in Punjabi, likening someone's looks or presence to the moon.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 29,
+      "original": "Main keha rm gutt te aa thirty-zero-one",
+      "translated": "I said rm gutt is on the thirty-zero-one",
+      "transliteration": null,
+      "note": "'rm gutt' is unclear here and left as-is; 'thirty-zero-one' appears to be a numeric reference (possibly a firearm calibre or code).",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 30,
+      "original": "Oh sittda kitthe",
+      "translated": "Where's he sitting?",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 31,
+      "original": "Jehda buch jaye buch jaye ni",
+      "translated": "Whoever's spared, whoever's spared, oh",
+      "transliteration": null,
+      "note": "'ni' is an emphatic/vocative particle; 'buch jaye' here likely means 'is spared' or 'survives.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 32,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": "'rabb' = God; 'raaji' = pleased/satisfied; 're' is an emphatic particle — a short prayer/blessing asking that God be pleased with us.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 33,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world stay upset",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 34,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": "rabb = God; raaji = pleased/content; 're' is an emphatic/vocative particle adding emphasis.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 35,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world be upset",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 36,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased with us",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 37,
+      "original": "Lagde ta ohne jih te sakk vi ni painda",
+      "translated": "It seems they're the kind who aren't even affected by a blow.",
+      "transliteration": null,
+      "note": "‘Lagde ta’ = 'it seems'. ‘ohne jih’ ≈ 'they are the kind (such as)', and ‘sakk’ here means 'blow/impact/effect' — so the line says they don't get affected even by a blow.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 38,
+      "original": "Beeba vairi da farak sahnu kakh vi ni painda",
+      "translated": "The difference between a girl and an enemy doesn't matter to us at all.",
+      "transliteration": null,
+      "note": "“Beeba” = girl/dear girl (glossary). “kakh vi ni painda” = doesn’t affect us / we don’t care at all—line expresses indifference to whether someone is a lover or an enemy.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 39,
+      "original": "Bagge de munde di saale karde ne rees",
+      "translated": "The Bagge boys' bastards get jealous.",
+      "transliteration": null,
+      "note": "'saale' is a slang insult (literally 'brother-in-law' but used like 'bastards/jerks'); 'rees' means jealousy/grudge. 'Bagge' likely refers to a name or group identifier.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 40,
+      "original": "Ni main ohton kadda note jithe atth vi ni painda",
+      "translated": "I pull out a bill from where even an eight won't fit.",
+      "transliteration": null,
+      "note": "“Ni” is a filler address. “note” refers to a banknote/cash. “atth” (aath/eight) is ambiguous here—likely literal 'eight' used to emphasize how tight or stingy the place is; translation kept conservatively literal.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 41,
+      "original": "Bachke rakaane sutte sher naa jaga di",
+      "translated": "Be careful — don't wake a sleeping lion.",
+      "transliteration": null,
+      "note": "'sutte sher' ('sleeping lion') is an idiom warning not to provoke someone dangerous or powerful.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 42,
+      "original": "Jammeyan ni koyi nehde tehde tan dikha di",
+      "translated": "No one, since birth, has ever shown up this close.",
+      "transliteration": null,
+      "note": "\"Jammeyan ni koyi\" literally means \"no one since birth.\" \"nehde tehde\" conveys being near/close; \"tan\" is an emphatic particle. The exact nuance of \"showed up this close\" is ambiguous in the original, so this is a conservative, literal rendering.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 43,
+      "original": "Mohde naal mittaran di khainge kithon ni sahnu",
+      "translated": "They'll mess with my friends in front of me; I won't tolerate that from anywhere.",
+      "transliteration": null,
+      "note": "The word 'khainge' is ambiguous (literally from 'khana' = 'to eat') and here likely slang for 'mess with/attack.' 'Mohde naal' means 'in front of me.' Translation errs on a conservative, literal rendering.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 44,
+      "original": "Hatth vi jeh lage sadda naam badla di",
+      "translated": "Even the hands seem like they're for taking revenge for our name.",
+      "transliteration": null,
+      "note": "The word 'badla' can mean 'revenge' or 'change'—here it likely means 'revenge'. 'jeh' is a colloquial particle meaning 'as if' or 'sort of', giving a tentative sense.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 45,
+      "original": "Phir dharla ni haaye",
+      "translated": "I won't be scared again, oh",
+      "transliteration": null,
+      "note": "‘dharla’ likely derives from Punjabi/Hindi for being scared or cowed; could alternatively imply 'won't back down' depending on context. 'haaye' is an exclamatory interjection.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 46,
+      "original": "Baal vi jatt da muchh jaye ni",
+      "translated": "Not even a hair from a jatt's mustache will go.",
+      "transliteration": null,
+      "note": "“jatt” refers to a tough Punjabi man/identity (see glossary). The line is a boastful claim — literally that not even a hair of his moustache will be lost or taken.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 47,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": "'rabb' means God; 'raaji re' is a colloquial blessing meaning 'be pleased' or 'be content.'",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 48,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world get upset.",
+      "transliteration": null,
+      "note": "'russ jaye' = 'get upset' or 'sulk'; phrase expresses indifference to others' displeasure. 'ni' is an emphatic particle.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 49,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": "'rabb' means God; 'raaji re' is a wish/blessing—asking that God be content or pleased.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 50,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world be upset",
+      "transliteration": null,
+      "note": "'russ jaye' means 'become upset/hold a grudge'; the final 'ni' is a colloquial particle used for emphasis, not a negation.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 51,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 52,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world be upset",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 53,
+      "original": "Sadda rabb raaji re",
+      "translated": "May our God be pleased with us",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 54,
+      "original": "Baaki duniyan russ jaye ni",
+      "translated": "Let the rest of the world get upset.",
+      "transliteration": null,
+      "note": "'russ jana' means 'to sulk / be upset'; 'baaki duniyan' = 'the rest of the world' or 'everyone else'. 'ni' is a colloquial particle used for emphasis.",
+      "startMs": null,
+      "endMs": null
+    },
+    {
+      "order": 55,
+      "original": "Sadda rabb raaji rahe",
+      "translated": "May our God remain pleased with us",
+      "transliteration": null,
+      "note": null,
+      "startMs": null,
+      "endMs": null
+    }
+  ]
+}
