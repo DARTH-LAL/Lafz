@@ -1,1 +1,7 @@
-{}
+{
+  "/api/playback/route": "app/api/playback/route.js",
+  "/api/ai/save-draft/route": "app/api/ai/save-draft/route.js",
+  "/library/track/[spotifyTrackId]/page": "app/library/track/[spotifyTrackId]/page.js",
+  "/page": "app/page.js",
+  "/library/queue/page": "app/library/queue/page.js"
+}
