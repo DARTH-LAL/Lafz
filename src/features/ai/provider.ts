@@ -1,6 +1,18 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { getOllamaModel, inspectOllamaStatus, isOllamaConfigured, requestAiTranslationDraft } from "@/features/ai/ollama";
-import { getOpenAiModel, inspectOpenAiStatus, isOpenAiConfigured, requestOpenAiTranslationDraft } from "@/features/ai/openai";
+import {
+  getOllamaModel,
+  inspectOllamaStatus,
+  isOllamaConfigured,
+  requestAiTranslationDraft,
+  requestAiTranslationRefinement
+} from "@/features/ai/ollama";
+import {
+  getOpenAiModel,
+  inspectOpenAiStatus,
+  isOpenAiConfigured,
+  requestOpenAiTranslationDraft,
+  requestOpenAiTranslationRefinement
+} from "@/features/ai/openai";
 import type { AiProviderStatus, GeneratedTranslationLineDraft } from "@/features/ai/types";
 
 type RequestAiTranslationDraftOptions = {
@@ -17,6 +29,34 @@ type RequestAiTranslationDraftOptions = {
     original: string;
     contextBefore?: string[];
     contextAfter?: string[];
+  }>;
+};
+
+type RequestAiTranslationRefinementOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  includeTransliteration: boolean;
+  includeNotes: boolean;
+  glossaryEntries: AiGlossaryEntry[];
+  lines: Array<{
+    index: number;
+    original: string;
+    literal: string;
+    natural: string;
+    chosen: string;
+    ambiguity: string | null;
+    confidence: "low" | "medium" | "high";
+    contextBefore?: Array<{
+      original: string;
+      chosen: string;
+    }>;
+    contextAfter?: Array<{
+      original: string;
+      chosen: string;
+    }>;
   }>;
 };
 
@@ -40,4 +80,12 @@ export async function requestProviderTranslationDraft(
   options: RequestAiTranslationDraftOptions
 ): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
   return getActiveAiProvider() === "openai" ? requestOpenAiTranslationDraft(options) : requestAiTranslationDraft(options);
+}
+
+export async function requestProviderTranslationRefinement(
+  options: RequestAiTranslationRefinementOptions
+): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
+  return getActiveAiProvider() === "openai"
+    ? requestOpenAiTranslationRefinement(options)
+    : requestAiTranslationRefinement(options);
 }

@@ -1,16 +1,35 @@
 import { getAiGlossaryEntries } from "@/features/ai/glossary";
-import { getActiveAiProvider, requestProviderTranslationDraft } from "@/features/ai/provider";
+import {
+  getActiveAiProvider,
+  requestProviderTranslationDraft,
+  requestProviderTranslationRefinement
+} from "@/features/ai/provider";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
-import type { GenerateAiTranslationOptions, GenerateAiTranslationResult } from "@/features/ai/types";
+import type { AiDraftLine, GenerateAiTranslationOptions, GenerateAiTranslationResult } from "@/features/ai/types";
 import { getLyricsCacheByTrackId } from "@/features/lyrics/repository";
 import type { LyricsCacheFile } from "@/features/lyrics/types";
 import { inspectTranslationFile } from "@/features/translations/inspection";
 import { writeTrackTranslationFile } from "@/features/translations/repository";
 import type { TrackTranslation } from "@/features/translations/types";
 
-const MAX_LINES_PER_BATCH_SYNCED = 8;
-const MAX_LINES_PER_BATCH_PLAIN = 1;
-const CONTEXT_WINDOW_LINES = 1;
+const CONTEXT_WINDOW_LINES = 2;
+const REFINEMENT_CONTEXT_WINDOW_LINES = 2;
+
+function getInitialBatchSize(sourceLyricsKind: "synced" | "plain") {
+  if (getActiveAiProvider() === "openai") {
+    return sourceLyricsKind === "plain" ? 4 : 12;
+  }
+
+  return sourceLyricsKind === "plain" ? 1 : 6;
+}
+
+function getRefinementBatchSize(sourceLyricsKind: "synced" | "plain") {
+  if (getActiveAiProvider() === "openai") {
+    return sourceLyricsKind === "plain" ? 8 : 18;
+  }
+
+  return sourceLyricsKind === "plain" ? 4 : 8;
+}
 
 type SourceDraftLine = {
   order: number;
@@ -66,6 +85,29 @@ function chunkSourceLines(lines: SourceDraftLine[], chunkSize: number) {
   return chunks;
 }
 
+function normalizeLineKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[\u2018\u2019']/g, "")
+    .replace(/[^a-z0-9\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function filterRelevantGlossaryEntries(
+  glossaryEntries: Awaited<ReturnType<typeof getAiGlossaryEntries>>,
+  lineTexts: string[]
+) {
+  if (glossaryEntries.length <= 12) {
+    return glossaryEntries;
+  }
+
+  const normalizedText = lineTexts.map(normalizeLineKey).join(" ");
+  const relevantEntries = glossaryEntries.filter((entry) => normalizedText.includes(normalizeLineKey(entry.term)));
+
+  return relevantEntries.length > 0 ? relevantEntries : glossaryEntries.slice(0, 12);
+}
+
 function buildContextLines(lines: SourceDraftLine[], centerIndex: number, startOffset: number, endOffset: number) {
   const context: string[] = [];
 
@@ -84,6 +126,30 @@ function buildContextLines(lines: SourceDraftLine[], centerIndex: number, startO
   return context;
 }
 
+function buildRefinementContext(lines: AiDraftLine[], centerIndex: number, startOffset: number, endOffset: number) {
+  const context: Array<{
+    original: string;
+    chosen: string;
+  }> = [];
+
+  for (let offset = startOffset; offset <= endOffset; offset += 1) {
+    if (offset === 0) {
+      continue;
+    }
+
+    const candidate = lines[centerIndex + offset];
+
+    if (candidate) {
+      context.push({
+        original: candidate.original,
+        chosen: candidate.chosen
+      });
+    }
+  }
+
+  return context;
+}
+
 function normalizeRequestedSourceLanguage(value: string | null) {
   return value && value.trim().length > 0 ? value.trim() : null;
 }
@@ -96,23 +162,83 @@ function normalizeGeneratedTransliteration(original: string, value: string | nul
   return value.trim().toLowerCase() === original.trim().toLowerCase() ? null : value;
 }
 
+function alignDraftLinesToSource(sourceLines: SourceDraftLine[], draftLines: AiDraftLine[]) {
+  return sourceLines.map((sourceLine, index) => {
+    const draftLine = draftLines[index];
+
+    return {
+      order: sourceLine.order,
+      original: sourceLine.original,
+      literal: draftLine?.literal ?? "",
+      natural: draftLine?.natural ?? "",
+      chosen: draftLine?.chosen ?? draftLine?.translated ?? "",
+      translated: draftLine?.chosen ?? draftLine?.translated ?? "",
+      transliteration: normalizeGeneratedTransliteration(sourceLine.original, draftLine?.transliteration ?? null),
+      note: draftLine?.note ?? null,
+      ambiguity: draftLine?.ambiguity ?? null,
+      confidence: draftLine?.confidence ?? "medium",
+      startMs: sourceLine.startMs,
+      endMs: sourceLine.endMs
+    } satisfies AiDraftLine;
+  });
+}
+
+function applyDuplicateLineReuse(lines: AiDraftLine[]) {
+  const firstSeenByKey = new Map<string, AiDraftLine>();
+
+  return lines.map((line) => {
+    const key = normalizeLineKey(line.original);
+
+    if (!key) {
+      return line;
+    }
+
+    const firstSeen = firstSeenByKey.get(key);
+
+    if (!firstSeen) {
+      firstSeenByKey.set(key, line);
+      return line;
+    }
+
+    return {
+      ...line,
+      literal: firstSeen.literal,
+      natural: firstSeen.natural,
+      chosen: firstSeen.chosen,
+      translated: firstSeen.chosen,
+      transliteration: firstSeen.transliteration,
+      note: firstSeen.note,
+      ambiguity: firstSeen.ambiguity,
+      confidence: firstSeen.confidence
+    } satisfies AiDraftLine;
+  });
+}
+
 async function generateDraftLinesInBatches(
   options: GenerateAiTranslationOptions,
   sourceLines: SourceDraftLine[],
   sourceLyricsKind: "synced" | "plain"
 ) {
-  const batchSize = sourceLyricsKind === "plain" ? MAX_LINES_PER_BATCH_PLAIN : MAX_LINES_PER_BATCH_SYNCED;
+  const batchSize = getInitialBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
-  const generatedLines = [];
+  const generatedLines: AiDraftLine[] = [];
   let inferredSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
   let model = "";
 
   for (const batch of batches) {
-    const glossaryEntries = await getAiGlossaryEntries({
+    const loadedGlossaryEntries = await getAiGlossaryEntries({
       language: inferredSourceLanguage,
       artist: options.artist,
       spotifyTrackId: options.spotifyTrackId
     });
+    const glossaryEntries = filterRelevantGlossaryEntries(
+      loadedGlossaryEntries,
+      batch.flatMap((line) => [
+        line.original,
+        ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
+        ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES)
+      ])
+    );
 
     const aiResponse = await requestProviderTranslationDraft({
       title: options.title,
@@ -158,7 +284,98 @@ async function generateDraftLinesInBatches(
   return {
     model,
     sourceLanguage: normalizeLanguage(inferredSourceLanguage ?? "Unknown"),
-    lines: generatedLines
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(generatedLines))
+  };
+}
+
+async function refineDraftLinesInBatches(
+  options: GenerateAiTranslationOptions,
+  sourceLines: SourceDraftLine[],
+  draftLines: AiDraftLine[],
+  sourceLyricsKind: "synced" | "plain",
+  sourceLanguage: string
+) {
+  const batchSize = getRefinementBatchSize(sourceLyricsKind);
+  const batches = chunkSourceLines(sourceLines, batchSize);
+  const refinedLines: AiDraftLine[] = [];
+  let model = "";
+
+  for (const batch of batches) {
+    const batchDraftLines = batch.map((line) => draftLines[line.order]).filter((line): line is AiDraftLine => Boolean(line));
+
+    const loadedGlossaryEntries = await getAiGlossaryEntries({
+      language: sourceLanguage,
+      artist: options.artist,
+      spotifyTrackId: options.spotifyTrackId
+    });
+    const glossaryEntries = filterRelevantGlossaryEntries(
+      loadedGlossaryEntries,
+      batch.flatMap((line) => [
+        line.original,
+        ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+        ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        draftLines[line.order]?.chosen ?? "",
+        draftLines[line.order]?.literal ?? "",
+        draftLines[line.order]?.natural ?? ""
+      ])
+    );
+
+    const aiResponse = await requestProviderTranslationRefinement({
+      title: options.title,
+      artist: options.artist,
+      album: options.album,
+      sourceLanguage,
+      targetLanguage: normalizeLanguage(options.targetLanguage),
+      includeTransliteration: options.includeTransliteration,
+      includeNotes: options.includeNotes,
+      glossaryEntries,
+      lines: batchDraftLines.map((line) => ({
+        index: line.order + 1,
+        original: line.original,
+        literal: line.literal,
+        natural: line.natural,
+        chosen: line.chosen,
+        ambiguity: line.ambiguity,
+        confidence: line.confidence,
+        contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+      }))
+    });
+
+    model = aiResponse.model || model;
+
+    refinedLines.push(
+      ...batch.map((line, index) => ({
+        order: line.order,
+        original: line.original,
+        literal: aiResponse.lines[index]?.literal ?? draftLines[line.order]?.literal ?? "",
+        natural: aiResponse.lines[index]?.natural ?? draftLines[line.order]?.natural ?? "",
+        chosen:
+          aiResponse.lines[index]?.chosen ??
+          aiResponse.lines[index]?.translated ??
+          draftLines[line.order]?.chosen ??
+          "",
+        translated:
+          aiResponse.lines[index]?.chosen ??
+          aiResponse.lines[index]?.translated ??
+          draftLines[line.order]?.chosen ??
+          "",
+        transliteration: normalizeGeneratedTransliteration(
+          line.original,
+          aiResponse.lines[index]?.transliteration ?? draftLines[line.order]?.transliteration ?? null
+        ),
+        note: aiResponse.lines[index]?.note ?? draftLines[line.order]?.note ?? null,
+        ambiguity: aiResponse.lines[index]?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
+        confidence: aiResponse.lines[index]?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
+        startMs: line.startMs,
+        endMs: line.endMs
+      }))
+    );
+  }
+
+  return {
+    model,
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(refinedLines))
   };
 }
 
@@ -190,7 +407,19 @@ export async function generateAiTranslationDraft(
   }
 
   const targetLanguage = normalizeLanguage(options.targetLanguage);
-  const aiResponse = await generateDraftLinesInBatches(options, sourceLines, lyricsCache.kind);
+  const initialDraft = await generateDraftLinesInBatches(options, sourceLines, lyricsCache.kind);
+  const refinedDraft = await refineDraftLinesInBatches(
+    options,
+    sourceLines,
+    initialDraft.lines,
+    lyricsCache.kind,
+    initialDraft.sourceLanguage
+  ).catch(() => null);
+  const aiResponse = {
+    model: refinedDraft?.model || initialDraft.model,
+    sourceLanguage: initialDraft.sourceLanguage,
+    lines: refinedDraft?.lines ?? initialDraft.lines
+  };
 
   const draftFile = {
     spotifyTrackId: options.spotifyTrackId,

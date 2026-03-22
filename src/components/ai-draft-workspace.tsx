@@ -227,8 +227,8 @@ export function AiDraftWorkspace({
           Generate a stronger translation draft.
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-300">
-          Lafz now asks the model for a literal meaning, a natural English version, a chosen default line, ambiguity,
-          and confidence so you can review harder lines instead of trusting a single opaque output.
+          Lafz now does a first-pass translation plus a second-pass consistency review, then gives you a literal meaning,
+          a natural English version, a chosen default line, ambiguity, and confidence so the harder lines are easier to trust and refine.
         </p>
 
         {message ? (

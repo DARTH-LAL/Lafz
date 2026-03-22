@@ -29,6 +29,7 @@ This repository is intentionally scoped as a personal prototype:
 - Official lyrics fetch scaffold with local cache
 - Local fallback import for `.lrc`, synced JSON, or plain lyrics text
 - AI-assisted translation drafts from cached original lyrics
+- Two-pass AI translation review for stronger consistency and slang accuracy
 - Automatic synced playback when timed lyrics are available
 - Plain reading mode when only untimed lyrics are available
 - Clean loading, empty, and error states
@@ -367,13 +368,14 @@ Once a track has original lyrics cached, the track detail page can generate an A
 1. Lafz reads the cached original lyrics from `data/lyrics/cache/<spotifyTrackId>.json`.
 2. Lafz loads any matching glossary hints for the detected language from `data/ai/glossaries`.
 3. If `OPENAI_API_KEY` is set, Lafz sends the lyric lines to OpenAI first. Otherwise it falls back to your local Ollama server.
-4. Lafz saves the generated result locally to:
+4. Lafz generates a first-pass draft, then runs a second-pass consistency review across the lyric lines to improve repeated slang, tone, and line-to-line accuracy.
+5. Lafz saves the generated result locally to:
    - `data/translations/drafts/<spotifyTrackId>.json`
    - the draft is reviewed on the same track page; Lafz does not bounce you back to now-playing after a successful generation
-5. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
+6. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
    - `data/translations/local/<spotifyTrackId>.json`
-6. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
-7. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
+7. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
+8. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
 
 ### Local glossary hints
 

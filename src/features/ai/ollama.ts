@@ -21,6 +21,34 @@ type RequestAiTranslationDraftOptions = {
   }>;
 };
 
+type RequestAiTranslationRefinementOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  includeTransliteration: boolean;
+  includeNotes: boolean;
+  glossaryEntries: AiGlossaryEntry[];
+  lines: Array<{
+    index: number;
+    original: string;
+    literal: string;
+    natural: string;
+    chosen: string;
+    ambiguity: string | null;
+    confidence: "low" | "medium" | "high";
+    contextBefore?: Array<{
+      original: string;
+      chosen: string;
+    }>;
+    contextAfter?: Array<{
+      original: string;
+      chosen: string;
+    }>;
+  }>;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -136,6 +164,31 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
   ].join(" ");
 }
 
+function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOptions) {
+  return [
+    "You are reviewing a first-pass lyric translation draft for Lafz, a personal local-first translation tool.",
+    `The source lyrics are in ${options.sourceLanguage}. Refine them into ${options.targetLanguage}.`,
+    "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script.",
+    "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
+    "Review the current literal, natural, and chosen translations for each line and improve them only when needed.",
+    "Your main goals are semantic accuracy, slang correctness, and consistency across repeated phrases or recurring terms.",
+    "If a repeated original line appears multiple times, keep its chosen translation consistent unless the local context clearly changes the meaning.",
+    "Literal should remain close to the original meaning. Natural should sound like clear English. Chosen should be the best conservative final line for display.",
+    "Do not invent imagery, emotional emphasis, or cultural detail that is not present in the original lyric.",
+    "If the draft is uncertain, keep chosen conservative, lower the confidence, and explain ambiguity instead of guessing.",
+    options.includeTransliteration
+      ? "Keep transliteration only if it adds value beyond the original line. Otherwise return null."
+      : "Return null for transliteration on every line.",
+    options.includeNotes
+      ? "Keep note short and use it only for slang, context, or double meaning that really needs explanation."
+      : "Return null for note on every line.",
+    options.glossaryEntries.length > 0
+      ? "Use the provided glossary meanings whenever a matching slang term or phrase appears. Prefer the glossary over guessing."
+      : "No glossary is available, so refine conservatively.",
+    "Respond only with JSON matching the schema."
+  ].join(" ");
+}
+
 function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
   return JSON.stringify(
     {
@@ -155,6 +208,43 @@ function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
       lines: options.lines.map((line) => ({
         index: line.index,
         original: line.original,
+        contextBefore: line.contextBefore ?? [],
+        contextAfter: line.contextAfter ?? []
+      }))
+    },
+    null,
+    2
+  );
+}
+
+function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOptions) {
+  return JSON.stringify(
+    {
+      track: {
+        title: options.title,
+        artist: options.artist,
+        album: options.album
+      },
+      sourceLanguage: options.sourceLanguage,
+      targetLanguage: options.targetLanguage,
+      outputRules: {
+        exactLineCount: options.lines.length,
+        includeTransliteration: options.includeTransliteration,
+        includeNotes: options.includeNotes,
+        preserveOrder: true,
+        focus: ["semantic_accuracy", "slang_consistency", "conservative_choice"]
+      },
+      glossary: options.glossaryEntries,
+      lines: options.lines.map((line) => ({
+        index: line.index,
+        original: line.original,
+        currentDraft: {
+          literal: line.literal,
+          natural: line.natural,
+          chosen: line.chosen,
+          ambiguity: line.ambiguity,
+          confidence: line.confidence
+        },
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? []
       }))
@@ -191,6 +281,50 @@ function matchesModelName(installedModelName: string, requestedModelName: string
     installedModelName.startsWith(`${requestedModelName}:`) ||
     requestedModelName.startsWith(`${installedModelName}:`)
   );
+}
+
+function parseGeneratedLines(
+  parsed: unknown,
+  expectedLineCount: number,
+  providerLabel: string
+): { sourceLanguage: string; lines: GeneratedTranslationLineDraft[] } {
+  const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
+
+  if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.lines) || parsed.lines.length !== expectedLineCount) {
+    throw new Error(`${providerLabel} returned an invalid draft shape or changed the lyric line count.`);
+  }
+
+  const lines = parsed.lines.map((line, index) => {
+    if (!isRecord(line)) {
+      throw new Error(`${providerLabel} returned a non-object line at index ${index}.`);
+    }
+
+    const translated = asString(line.translated);
+    const literal = asString(line.literal);
+    const natural = asString(line.natural);
+    const chosen = asString(line.chosen) ?? translated;
+    const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
+
+    if (!translated || !literal || !natural || !chosen || !confidence) {
+      throw new Error(`${providerLabel} returned an empty translated line at index ${index}.`);
+    }
+
+    return {
+      literal,
+      natural,
+      chosen,
+      translated,
+      transliteration: normalizeNullableString(line.transliteration),
+      note: normalizeNullableString(line.note),
+      ambiguity: normalizeNullableString(line.ambiguity),
+      confidence
+    } satisfies GeneratedTranslationLineDraft;
+  });
+
+  return {
+    sourceLanguage: detectedSourceLanguage,
+    lines
+  };
 }
 
 export async function inspectOllamaStatus(): Promise<AiProviderStatus> {
@@ -300,42 +434,73 @@ export async function requestAiTranslationDraft(
     throw new Error("Ollama returned a draft that was not valid JSON.");
   }
 
-  const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
-
-  if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.lines) || parsed.lines.length !== options.lines.length) {
-    throw new Error("Ollama returned an invalid draft shape or changed the lyric line count.");
-  }
-
-  const lines = parsed.lines.map((line, index) => {
-    if (!isRecord(line)) {
-      throw new Error(`Ollama returned a non-object line at index ${index}.`);
-    }
-
-    const translated = asString(line.translated);
-    const literal = asString(line.literal);
-    const natural = asString(line.natural);
-    const chosen = asString(line.chosen) ?? translated;
-    const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
-
-    if (!translated || !literal || !natural || !chosen || !confidence) {
-      throw new Error(`Ollama returned an empty translated line at index ${index}.`);
-    }
-
-    return {
-      literal,
-      natural,
-      chosen,
-      translated,
-      transliteration: normalizeNullableString(line.transliteration),
-      note: normalizeNullableString(line.note),
-      ambiguity: normalizeNullableString(line.ambiguity),
-      confidence
-    } satisfies GeneratedTranslationLineDraft;
-  });
+  const normalized = parseGeneratedLines(parsed, options.lines.length, "Ollama");
 
   return {
     model,
-    sourceLanguage: detectedSourceLanguage,
-    lines
+    sourceLanguage: normalized.sourceLanguage,
+    lines: normalized.lines
+  };
+}
+
+export async function requestAiTranslationRefinement(
+  options: RequestAiTranslationRefinementOptions
+): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
+  if (options.lines.length === 0) {
+    throw new Error("No lyric lines were provided to the AI refinement generator.");
+  }
+
+  const model = getOllamaModel();
+  const response = await fetch(`${getOllamaApiBaseUrl()}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      format: buildSchema(options.lines.length),
+      options: {
+        temperature: 0.05
+      },
+      messages: [
+        {
+          role: "system",
+          content: buildRefinementSystemPrompt(options)
+        },
+        {
+          role: "user",
+          content: buildRefinementUserPrompt(options)
+        }
+      ]
+    })
+  });
+
+  const payload = (await response.json().catch(() => null)) as unknown;
+
+  if (!response.ok) {
+    throw new Error(getOllamaErrorMessage(payload, `Ollama refinement failed with status ${response.status}.`));
+  }
+
+  const outputText = extractContentText(payload);
+
+  if (!outputText) {
+    throw new Error("Ollama returned an empty response for the refinement draft.");
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(outputText) as unknown;
+  } catch {
+    throw new Error("Ollama returned a refinement draft that was not valid JSON.");
+  }
+
+  const normalized = parseGeneratedLines(parsed, options.lines.length, "Ollama");
+
+  return {
+    model,
+    sourceLanguage: normalized.sourceLanguage,
+    lines: normalized.lines
   };
 }
