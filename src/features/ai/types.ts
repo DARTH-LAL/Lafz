@@ -1,17 +1,35 @@
 export type AiTranslationDraftMode = "synced" | "plain";
 export type AiTranslationConfidence = "low" | "medium" | "high";
 
+export type AiSongContext = {
+  summary: string;
+  themes: string[];
+  tone: string;
+  notablePhrases: string[];
+};
+
+export type AiArtistMemory = {
+  artistKey: string;
+  displayName: string;
+  translationPreferences: string[];
+  recurringThemes: string[];
+  toneNotes: string[];
+  notes: string[];
+};
+
 export type AiDraftLine = {
   order: number;
   original: string;
   literal: string;
   natural: string;
+  slangAware: string;
   chosen: string;
   translated: string;
   transliteration: string | null;
   note: string | null;
   ambiguity: string | null;
   confidence: AiTranslationConfidence;
+  selectorReason: string | null;
   startMs: number | null;
   endMs: number | null;
 };
@@ -31,6 +49,8 @@ export type AiTranslationDraftFile = {
     provider: "ollama" | "openai";
     model: string;
   };
+  songContext: AiSongContext | null;
+  artistMemory: AiArtistMemory | null;
   lines: AiDraftLine[];
 };
 
@@ -60,12 +80,14 @@ export type AiTranslationDraftInspection = {
 export type GeneratedTranslationLineDraft = {
   literal: string;
   natural: string;
+  slangAware: string;
   chosen: string;
   translated: string;
   transliteration: string | null;
   note: string | null;
   ambiguity: string | null;
   confidence: AiTranslationConfidence;
+  selectorReason: string | null;
 };
 
 export type GenerateAiTranslationOptions = {

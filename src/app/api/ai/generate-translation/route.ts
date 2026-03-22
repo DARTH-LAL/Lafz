@@ -41,15 +41,15 @@ function wantsJsonResponse(request: NextRequest) {
 
 function getStatusMessage(status: string) {
   if (status === "saved_translation") {
-    return "Lafz generated a stronger AI draft and updated the synced translation file.";
+    return "Lafz generated a reviewed AI draft and updated the synced translation file.";
   }
 
   if (status === "draft_only_plain") {
-    return "Lafz generated a stronger AI draft and kept it on this track page because the lyrics are still untimed.";
+    return "Lafz generated a reviewed AI draft and kept it on this track page because the lyrics are still untimed.";
   }
 
   if (status === "draft_only_preserved") {
-    return "Lafz generated a stronger AI draft and preserved the existing translation file.";
+    return "Lafz generated a reviewed AI draft and preserved the existing translation file.";
   }
 
   if (status === "missing_lyrics") {

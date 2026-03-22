@@ -176,14 +176,14 @@ export function NowPlayingClient() {
                   eyebrow={payload.aiDraft ? "Draft only" : "No translation yet"}
                   title={
                     payload.aiDraft
-                      ? "This track has an AI draft, but it is not playback-ready yet"
+                      ? "This track has a translation draft, but it is not synced for karaoke-style playback yet"
                       : "This track is playing, but Lafz does not have a synced local file for it"
                   }
                   description={
                     payload.aiDraft
                       ? payload.aiDraft.mode === "plain"
-                        ? `Lafz found an untimed AI draft for this song, but playback only uses timestamped translation files in ${payload.translationFileHint}. Import synced lyrics or create a timed local translation file to make the lyrics appear during playback.`
-                        : `Lafz found an AI draft for this song, but it has not been applied to the local playback translation file yet. Save a synced local translation file in ${payload.translationFileHint} and refresh playback.`
+                        ? "Lafz found an untimed AI draft for this song, so it stays in plain reading mode until synced lyrics are available."
+                        : `Lafz found a synced AI draft for this song, but playback could not materialize the local translation file at ${payload.translationFileHint} yet. Generate the AI draft again from the track page to recreate it.`
                       : `Create ${payload.translationFileHint} with your own timestamped translation data and refresh playback. Lafz will pick it up on the next poll.`
                   }
                   className="min-h-[420px]"

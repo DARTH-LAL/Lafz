@@ -4,11 +4,8 @@ import { LibraryTrackDetail } from "@/components/library-track-detail";
 import { getActiveAiModel, inspectAiProviderStatus, isAiConfigured } from "@/features/ai/provider";
 import { getAiTranslationDraftByTrackId, inspectAiTranslationDraftFile } from "@/features/ai/repository";
 import { getLibraryTrackRecord } from "@/features/library/queue";
-import { getLyricsCacheByTrackId, inspectLyricsCache } from "@/features/lyrics/repository";
-import { isMusixmatchConfigured } from "@/features/lyrics/musixmatch";
+import { inspectLyricsCache } from "@/features/lyrics/repository";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
-import { buildTimingEditorDocument } from "@/features/timing/editor";
-import { getTranslationByTrackId } from "@/features/translations/repository";
 import { inspectTranslationFile } from "@/features/translations/inspection";
 
 export const dynamic = "force-dynamic";
@@ -42,22 +39,6 @@ function getStubMessage(status: string | undefined) {
 }
 
 function getLyricsMessage(status: string | undefined) {
-  if (status === "official_fetched") {
-    return "Lafz fetched original lyrics from the official provider and cached them locally.";
-  }
-
-  if (status === "official_not_found") {
-    return "The official provider did not return lyrics for this track. Use the local import fallback below.";
-  }
-
-  if (status === "official_missing_provider") {
-    return "Set MUSIXMATCH_API_KEY in .env.local before fetching official lyrics.";
-  }
-
-  if (status === "official_error") {
-    return "Lafz could not fetch lyrics from the official provider right now. Try again or use the local import fallback.";
-  }
-
   if (status === "local_imported") {
     return "Lafz saved your local lyrics import into the local cache for this track.";
   }
@@ -75,11 +56,11 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "draft_only_plain") {
-    return "Lafz generated an AI draft and saved it locally, but the current original lyrics cache has no timestamps yet, so the synced translation file was left alone.";
+    return "Lafz generated an AI draft and kept it in untimed reading mode because the current lyrics do not have timestamps yet.";
   }
 
   if (status === "draft_only_preserved") {
-    return "Lafz generated an AI draft but preserved your existing translation file because overwrite was not enabled.";
+    return "Lafz generated an AI draft and left your existing synced translation file untouched because overwrite was not enabled.";
   }
 
   if (status === "missing_ai_config") {
@@ -87,7 +68,7 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "missing_lyrics") {
-    return "Fetch official lyrics or import a local lyrics fallback before asking Lafz to draft a translation.";
+    return "Import local lyrics for this track before asking Lafz to draft a translation.";
   }
 
   if (status === "provider_unavailable") {
@@ -119,29 +100,14 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
   const aiStatus = getFirstParamValue(resolvedSearchParams.ai);
   const aiDetail = getFirstParamValue(resolvedSearchParams.aiDetail);
 
-  const [{ record }, translationInspection, lyricsInspection, aiDraftInspection, aiProviderStatus, translation, aiDraft, lyricsCache] = await Promise.all([
+  const [{ record }, translationInspection, lyricsInspection, aiDraftInspection, aiProviderStatus, aiDraft] = await Promise.all([
     getLibraryTrackRecord(spotifyTrackId),
     inspectTranslationFile(spotifyTrackId),
     inspectLyricsCache(spotifyTrackId),
     inspectAiTranslationDraftFile(spotifyTrackId),
     inspectAiProviderStatus(),
-    getTranslationByTrackId(spotifyTrackId),
-    getAiTranslationDraftByTrackId(spotifyTrackId),
-    getLyricsCacheByTrackId(spotifyTrackId)
+    getAiTranslationDraftByTrackId(spotifyTrackId)
   ]);
-
-  const timingEditorDocument = record
-    ? buildTimingEditorDocument({
-        spotifyTrackId: record.spotify_track_id,
-        title: record.title,
-        artist: record.artist,
-        album: record.album,
-        durationMs: record.duration_ms,
-        translation,
-        aiDraft,
-        lyricsCache
-      })
-    : null;
 
   return (
     <LibraryTrackDetail
@@ -150,8 +116,6 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       lyricsInspection={lyricsInspection}
       aiDraft={aiDraft}
       aiDraftInspection={aiDraftInspection}
-      timingEditorDocument={timingEditorDocument}
-      musixmatchConfigured={isMusixmatchConfigured()}
       aiConfigured={isAiConfigured()}
       aiModel={getActiveAiModel()}
       aiProviderStatus={aiProviderStatus}

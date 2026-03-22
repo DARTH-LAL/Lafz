@@ -100,6 +100,12 @@ export type PlaylistImportOptions = {
   overwriteExistingStubs: boolean;
 };
 
+export type TrackImportOptions = {
+  trackInput: string;
+  createMissingTranslationStubs: boolean;
+  overwriteExistingStubs: boolean;
+};
+
 export type PlaylistImportResult = {
   playlistId: string;
   playlistName: string;
@@ -118,6 +124,21 @@ export type PlaylistImportSuccessResponse = {
   summary: PlaylistImportResult;
 };
 
+export type TrackImportStubOutcome = "created" | "overwritten" | "preserved" | "not_requested";
+
+export type TrackImportResult = {
+  syntheticLibraryId: string;
+  trackId: string;
+  trackTitle: string;
+  trackArtist: string;
+  trackAlbum: string;
+  trackDurationMs: number;
+  trackUrl: string | null;
+  libraryFilePath: string;
+  stubFileOutcome: TrackImportStubOutcome;
+  stubFilePath: string | null;
+};
+
 export type PlaylistImportErrorResponse = {
   success: false;
   status: number;
@@ -125,5 +146,18 @@ export type PlaylistImportErrorResponse = {
 };
 
 export type PlaylistImportApiResponse = PlaylistImportSuccessResponse | PlaylistImportErrorResponse;
+
+export type TrackImportSuccessResponse = {
+  success: true;
+  summary: TrackImportResult;
+};
+
+export type TrackImportErrorResponse = {
+  success: false;
+  status: number;
+  error: string;
+};
+
+export type TrackImportApiResponse = TrackImportSuccessResponse | TrackImportErrorResponse;
 
 export type SpotifyPlaylistImportApiResponse = PlaylistImportApiResponse;

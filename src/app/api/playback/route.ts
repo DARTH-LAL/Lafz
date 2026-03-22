@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
+import { buildTrackTranslationFromAiDraft, getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { fetchCurrentSpotifyPlayback, SpotifyUnauthorizedError } from "@/features/spotify/playback";
 import { refreshSpotifySession } from "@/features/spotify/server-session";
 import {
@@ -37,9 +37,10 @@ export async function GET(request: NextRequest) {
         getTranslationByTrackId(playback.track.spotifyTrackId),
         getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
       ]);
+      const resolvedTranslation = translation ?? (aiDraft ? buildTrackTranslationFromAiDraft(aiDraft) : null);
       const response = NextResponse.json({
         playback,
-        translation,
+        translation: resolvedTranslation,
         aiDraft: aiDraft
           ? {
               exists: true,
@@ -91,9 +92,10 @@ export async function GET(request: NextRequest) {
               getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
             ])
           : [null, null];
+        const resolvedTranslation = translation ?? (aiDraft ? buildTrackTranslationFromAiDraft(aiDraft) : null);
         const response = NextResponse.json({
           playback,
-          translation,
+          translation: resolvedTranslation,
           aiDraft: aiDraft
             ? {
                 exists: true,
