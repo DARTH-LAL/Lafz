@@ -26,10 +26,9 @@ This repository is intentionally scoped as a personal prototype:
 - Optional translation stub generation for imported tracks
 - Local translation queue aggregated across imported playlists
 - Track detail view with translation JSON preview and one-click stub creation
-- Official lyrics fetch scaffold with local cache
 - Local fallback import for `.lrc`, synced JSON, or plain lyrics text
-- AI-assisted translation drafts from cached original lyrics
-- Multi-pass AI translation pipeline with song context, artist memory, selector pass, and low-confidence review
+- AI-assisted translation drafts from locally cached original lyrics
+- Multi-pass AI translation pipeline with song context, artist memory, selector pass, low-confidence review, and correction memory
 - Automatic synced playback when timed lyrics are available
 - Plain reading mode when only untimed lyrics are available
 - Clean loading, empty, and error states
@@ -49,7 +48,7 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   │   ├── glossaries/           # local glossary overrides + committed starter glossary samples
 │   │   └── memory/               # optional artist-memory JSON for recurring tone/slang
 │   ├── lyrics/
-│   │   └── cache/                # provider-fetched or locally imported lyrics cache, ignored by git
+│   │   └── cache/                # locally imported lyrics cache, ignored by git
 │   └── translations/
 │       ├── drafts/               # AI-generated draft files, ignored by git
 │       ├── local/                # your private translation or stub files, ignored by git
@@ -77,7 +76,7 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   ├── features/
 │   │   ├── ai/                   # Ollama draft generation, provider status, local AI-draft repository
 │   │   ├── library/              # queue aggregation, filtering, sorting
-│   │   ├── lyrics/               # provider adapter, cache inspection, local import parsing
+│   │   ├── lyrics/               # cache inspection, LRC parsing, and local import handling
 │   │   ├── spotify/              # auth, playback, server-side playlist importer
 │   │   ├── sync/                 # active-line engine + local playback clock
 │   │   └── translations/         # JSON types, repository loader, stub generation, inspection
@@ -102,9 +101,9 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/ai/translation-draft.ts`: builds song context, grouped verse batches, refinement passes, and final selector output before writing synced or untimed draft files
 - `src/features/ai/repository.ts`: stores and inspects local AI draft files
 - `src/features/library/queue.ts`: reads imported playlist JSON files, deduplicates tracks, inspects translation files, and derives queue-ready status records
-- `src/features/lyrics/musixmatch.ts`: official-provider adapter for fetching synced or plain lyrics when a Musixmatch API key is configured
 - `src/features/lyrics/repository.ts`: stores and inspects the local original-lyrics cache and imports local `.lrc` / JSON / plain text fallback content
 - `src/features/lyrics/lrc.ts`: parses and formats LRC-style synced lyric timestamps
+- `src/features/ai/correction-memory.ts`: learns from reviewed draft edits and stores preferred renderings in local track and artist memory files
 - `src/features/translations/repository.ts`: loads local JSON by track ID and safely ignores empty stub files
 - `src/features/translations/stubs.ts`: creates translation stub files without overwriting existing files unless requested
 - `src/features/translations/inspection.ts`: inspects local translation files for existence, line count, preview JSON, and last-modified timestamps
@@ -115,7 +114,6 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/app/api/library/import-track/route.ts`: runs the protected local single-song import
 - `src/app/api/library/create-stub/route.ts`: creates a missing local translation stub for a specific track
 - `src/app/api/ai/generate-translation/route.ts`: generates an AI translation draft from the cached original lyrics for a track
-- `src/app/api/lyrics/fetch/route.ts`: fetches official lyrics for a track and caches them locally
 - `src/app/api/lyrics/import/route.ts`: imports local lyrics text as a fallback cache file for a track
 - `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist and single-song imports
 - `src/app/library/queue/page.tsx`: protected aggregated queue for translation work
@@ -268,15 +266,12 @@ cp .env.example .env.local
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/spotify/callback
-MUSIXMATCH_API_KEY=your_musixmatch_api_key
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-5-mini
 OPENAI_BASE_URL=https://api.openai.com/v1
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=qwen2.5:14b
 ```
-
-`MUSIXMATCH_API_KEY` is optional. If it is missing, Lafz will still work, but the track detail page will only offer the local fallback import path for original lyrics.
 
 `OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5-mini` and `https://api.openai.com/v1`.
 
@@ -332,25 +327,11 @@ Lafz intentionally treats these empty stubs as placeholders, not as finished syn
 
 ## Original lyrics sources
 
-Lafz now supports two original-lyrics paths:
+### Local lyrics import
 
-1. official provider fetch
-2. local fallback import
+Paste local lyrics content on the track detail page to create the original-lyrics cache for a song.
 
-### Official provider fetch
-
-If `MUSIXMATCH_API_KEY` is configured, the track detail page can try to fetch original lyrics from Musixmatch first.
-
-- If synced lyrics are available, Lafz stores the timed lyric cues locally.
-- If only plain lyrics are available, Lafz stores the plain lyric text locally.
-- Fetched provider lyrics are cached here:
-  - `data/lyrics/cache/<spotifyTrackId>.json`
-
-### Local fallback import
-
-If the official provider does not return lyrics for a track, Lafz also lets you paste local content on the track detail page.
-
-Supported fallback input:
+Supported input:
 
 - `.lrc` timed lyrics
 - synced lyric JSON with `lines`
@@ -360,7 +341,7 @@ That local fallback is also stored here:
 
 - `data/lyrics/cache/<spotifyTrackId>.json`
 
-The lyrics cache is git-ignored so provider-fetched or locally imported original lyrics do not end up in the repo by default.
+The lyrics cache is git-ignored so imported original lyrics do not end up in the repo by default.
 
 ## AI translation drafts
 
@@ -667,7 +648,7 @@ Open:
 3. Restart Lafz with `npm run dev`.
 4. Open `/library/queue`.
 5. Open a track detail page.
-6. Fetch official lyrics or import a local lyrics fallback first.
+6. Import local lyrics first.
 7. In the `AI translation draft` section, choose the source and target languages.
 8. Optionally keep transliteration and note generation enabled.
 9. Click `Generate AI draft`.

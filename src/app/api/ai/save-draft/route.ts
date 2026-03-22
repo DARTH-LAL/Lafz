@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAiTranslationDraftByTrackId, writeAiTranslationDraftFile } from "@/features/ai/repository";
+import { learnFromDraftCorrections } from "@/features/ai/correction-memory";
+import {
+  buildTrackTranslationFromAiDraft,
+  getAiTranslationDraftByTrackId,
+  writeAiTranslationDraftFile
+} from "@/features/ai/repository";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
+import { writeTrackTranslationFile } from "@/features/translations/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -85,9 +91,27 @@ export async function POST(request: NextRequest) {
   };
 
   await writeAiTranslationDraftFile(nextDraft);
+  const learnedCorrections = await learnFromDraftCorrections(existingDraft, nextDraft);
+  const playbackTranslation = buildTrackTranslationFromAiDraft(nextDraft);
+
+  if (playbackTranslation) {
+    await writeTrackTranslationFile(playbackTranslation);
+  }
+
+  const messageParts = ["Saved the AI draft review changes."];
+
+  if (playbackTranslation) {
+    messageParts.push("Lafz also refreshed the synced playback translation file.");
+  }
+
+  if (learnedCorrections.count > 0) {
+    messageParts.push(
+      `Lafz learned from ${learnedCorrections.count} corrected line${learnedCorrections.count === 1 ? "" : "s"} for future drafts.`
+    );
+  }
 
   return NextResponse.json({
     success: true,
-    message: "Saved the AI draft review changes."
+    message: messageParts.join(" ")
   });
 }

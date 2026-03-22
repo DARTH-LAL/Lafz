@@ -5,7 +5,6 @@ import { getActiveAiModel, inspectAiProviderStatus, isAiConfigured } from "@/fea
 import { getAiTranslationDraftByTrackId, inspectAiTranslationDraftFile } from "@/features/ai/repository";
 import { getLibraryTrackRecord } from "@/features/library/queue";
 import { inspectLyricsCache } from "@/features/lyrics/repository";
-import { isMusixmatchConfigured } from "@/features/lyrics/musixmatch";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
 import { inspectTranslationFile } from "@/features/translations/inspection";
 
@@ -40,22 +39,6 @@ function getStubMessage(status: string | undefined) {
 }
 
 function getLyricsMessage(status: string | undefined) {
-  if (status === "official_fetched") {
-    return "Lafz fetched original lyrics from the official provider and cached them locally.";
-  }
-
-  if (status === "official_not_found") {
-    return "The official provider did not return lyrics for this track. Use the local import fallback below.";
-  }
-
-  if (status === "official_missing_provider") {
-    return "Set MUSIXMATCH_API_KEY in .env.local before fetching official lyrics.";
-  }
-
-  if (status === "official_error") {
-    return "Lafz could not fetch lyrics from the official provider right now. Try again or use the local import fallback.";
-  }
-
   if (status === "local_imported") {
     return "Lafz saved your local lyrics import into the local cache for this track.";
   }
@@ -85,7 +68,7 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "missing_lyrics") {
-    return "Fetch official lyrics or import a local lyrics fallback before asking Lafz to draft a translation.";
+    return "Import local lyrics for this track before asking Lafz to draft a translation.";
   }
 
   if (status === "provider_unavailable") {
@@ -133,7 +116,6 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       lyricsInspection={lyricsInspection}
       aiDraft={aiDraft}
       aiDraftInspection={aiDraftInspection}
-      musixmatchConfigured={isMusixmatchConfigured()}
       aiConfigured={isAiConfigured()}
       aiModel={getActiveAiModel()}
       aiProviderStatus={aiProviderStatus}

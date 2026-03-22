@@ -290,7 +290,7 @@ export function AiDraftWorkspace({
               ? "This track has synced original lyrics, so Lafz can generate a draft and automatically use those timings for playback."
               : lyricsKind === "plain"
                 ? "This track only has plain original lyrics right now, so Lafz will save an untimed draft and keep playback in reading mode."
-              : "Fetch official lyrics or import a local lyrics fallback first, then generate a draft from that cache."}
+                : "Import local lyrics for this track first, then generate a draft from that cache."}
           </p>
         </div>
 
@@ -465,7 +465,7 @@ export function AiDraftWorkspace({
               Review only the uncertain lines.
             </h2>
             <p className="mt-2 text-base text-slate-400">
-              Lafz keeps literal, natural, and slang-aware versions side by side, then bubbles low-confidence lines to the top so you can fix the risky ones first.
+              Lafz keeps literal, natural, and slang-aware versions side by side, then bubbles low-confidence lines to the top so you can fix the risky ones first. Saving your edits also teaches Lafz track-level and artist-level preferred renderings for future drafts.
             </p>
           </div>
 
