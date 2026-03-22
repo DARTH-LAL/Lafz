@@ -15,6 +15,7 @@ export type SpotifySession = {
 };
 
 export type PlaybackStatus = "playing" | "paused" | "idle";
+export type SpotifyRepeatMode = "off" | "context" | "track";
 
 export type NormalizedTrack = {
   spotifyTrackId: string;
@@ -30,6 +31,8 @@ export type NormalizedTrack = {
 export type PlaybackState = {
   status: PlaybackStatus;
   isPlaying: boolean;
+  shuffleEnabled: boolean;
+  repeatMode: SpotifyRepeatMode;
   progressMs: number;
   fetchedAt: string;
   deviceName: string | null;

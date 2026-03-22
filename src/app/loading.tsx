@@ -6,7 +6,7 @@ export default function Loading() {
       <StatePanel
         eyebrow="Loading"
         title="Booting Lafz"
-        description="Preparing the web prototype and checking whether Spotify is already connected."
+        description="Preparing your session and checking whether Spotify is already connected."
       />
     </main>
   );

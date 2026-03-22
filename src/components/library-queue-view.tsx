@@ -24,7 +24,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
     <main className="mx-auto min-h-screen w-full max-w-7xl px-6 py-8 lg:px-10">
       <header className="mb-8 flex flex-col gap-4 border-b border-white/8 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Lafz library queue</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz library queue</p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
             Translation work across all imported playlists.
           </h1>
@@ -59,12 +59,12 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
           <p className="text-xs uppercase tracking-[0.24em] text-amber-100/70">Pending</p>
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.pending}</p>
         </div>
-        <div className="rounded-[24px] border border-cyan-300/15 bg-cyan-300/8 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-cyan-100/70">Stub</p>
+        <div className="rounded-[24px] border border-[rgba(255,45,120,0.14)] bg-[rgba(255,45,120,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          <p className="text-xs uppercase tracking-[0.24em] text-[#fff0f6]/70">Stub</p>
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.stub}</p>
         </div>
-        <div className="rounded-[24px] border border-emerald-300/15 bg-emerald-300/8 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-emerald-100/70">Translated</p>
+        <div className="rounded-[24px] border border-[rgba(255,140,66,0.14)] bg-[rgba(255,140,66,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          <p className="text-xs uppercase tracking-[0.24em] text-[#ffd9b8]/70">Translated</p>
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.translated}</p>
         </div>
       </section>
@@ -78,7 +78,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
               name="q"
               defaultValue={filters.search}
               placeholder="Title, artist, album, playlist..."
-              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
             />
           </label>
 
@@ -87,7 +87,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             <select
               name="status"
               defaultValue={filters.status}
-              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff2d78]/50"
             >
               <option value="all">All statuses</option>
               <option value="pending">Pending</option>
@@ -101,7 +101,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             <select
               name="language"
               defaultValue={filters.language || "all"}
-              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff2d78]/50"
             >
               <option value="all">All languages</option>
               {queue.filterOptions.languages.map((language) => (
@@ -117,7 +117,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             <select
               name="playlist"
               defaultValue={filters.playlist || "all"}
-              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff2d78]/50"
             >
               <option value="all">All playlists</option>
               {queue.filterOptions.playlists.map((playlist) => (
@@ -134,7 +134,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
               <select
                 name="sort"
                 defaultValue={filters.sort}
-                className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/50"
+                className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff2d78]/50"
               >
                 <option value="status">Status</option>
                 <option value="title">Title</option>
@@ -144,7 +144,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             </label>
             <button
               type="submit"
-              className="mt-[1.6rem] inline-flex h-[46px] items-center justify-center rounded-full bg-cyan-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+              className="mt-[1.6rem] inline-flex h-[46px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 text-sm font-semibold text-white transition hover:opacity-90"
             >
               Apply
             </button>
@@ -215,13 +215,13 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                         </p>
                       ) : null}
                       {!record.translation_file_exists && record.ai_draft_exists ? (
-                        <p className="mt-3 max-w-[16rem] text-xs leading-6 text-cyan-200">
+                        <p className="mt-3 max-w-[16rem] text-xs leading-6 text-[#ffb3d0]">
                           AI draft ready: {record.ai_draft_line_count} line{record.ai_draft_line_count === 1 ? "" : "s"} ({record.ai_draft_mode})
                           {record.ai_draft_mode === "synced" ? " and ready for synced playback." : " in plain reading mode."}
                         </p>
                       ) : null}
                       {record.translation_file_exists && record.translation_line_count === 0 && record.ai_draft_exists ? (
-                        <p className="mt-3 max-w-[16rem] text-xs leading-6 text-cyan-200">
+                        <p className="mt-3 max-w-[16rem] text-xs leading-6 text-[#ffb3d0]">
                           Stub file is present, and a separate AI draft is ready for review.
                         </p>
                       ) : null}
@@ -247,14 +247,14 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                         </p>
                       ) : null}
                       {!record.translation_file_exists && record.ai_draft_mode === "synced" ? (
-                        <p className="mt-2 text-xs text-cyan-300">Playback can fall back to the synced AI draft.</p>
+                        <p className="mt-2 text-xs text-[#ff6ba8]">Playback can fall back to the synced AI draft.</p>
                       ) : null}
                     </td>
                     <td className="px-5 py-5 text-slate-400">{formatUpdatedAt(record.translation_last_modified_at)}</td>
                     <td className="px-5 py-5">
                       <Link
                         href={`/library/track/${record.spotify_track_id}`}
-                        className="inline-flex items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+                        className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
                       >
                         Open track
                       </Link>

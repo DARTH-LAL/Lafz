@@ -9,8 +9,8 @@ const statusLabelMap: Record<DerivedQueueStatus, string> = {
 
 const statusClassMap: Record<DerivedQueueStatus, string> = {
   pending: "border-amber-300/25 bg-amber-300/10 text-amber-100",
-  stub: "border-cyan-300/25 bg-cyan-300/10 text-cyan-100",
-  translated: "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+  stub: "border-[rgba(255,45,120,0.24)] bg-[rgba(255,45,120,0.09)] text-[#ffd2e4]",
+  translated: "border-[rgba(255,140,66,0.24)] bg-[rgba(255,140,66,0.1)] text-[#ffd9b8]"
 };
 
 type TranslationStatusBadgeProps = {

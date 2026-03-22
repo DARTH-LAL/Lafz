@@ -8,94 +8,121 @@ import { cx } from "@/lib/utils";
 
 type UntimedLyricsPanelProps = {
   draft: NonNullable<PlaybackApiResponse["aiDraft"]>;
+  trackTitle: string;
+  trackArtist: string;
   trackHref: string;
 };
 
-export function UntimedLyricsPanel({ draft, trackHref }: UntimedLyricsPanelProps) {
+export function UntimedLyricsPanel({ draft, trackTitle, trackArtist, trackHref }: UntimedLyricsPanelProps) {
   const [expandedLineIndex, setExpandedLineIndex] = useState<number | null>(null);
+  const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null);
+
+  const handleCopy = async (index: number, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLineIndex(index);
+      window.setTimeout(() => {
+        setCopiedLineIndex((currentValue) => (currentValue === index ? null : currentValue));
+      }, 1400);
+    } catch {
+      setCopiedLineIndex(null);
+    }
+  };
 
   return (
-    <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-      <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex flex-col gap-4 border-b border-white/6 px-5 py-5 sm:flex-row sm:items-end sm:justify-between lg:px-8">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Translation draft</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-white">Untimed reading mode</h2>
-          <p className="mt-2 text-base text-slate-400">
-            {draft.sourceLanguage ?? "Unknown"}
-            {" -> "}
-            {draft.targetLanguage ?? "English"}
-          </p>
+          <h2 className="text-[24px] font-extrabold tracking-[-0.8px] text-[#fff0f6]">{trackTitle}</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#8570a0]">
+            <span>{trackArtist}</span>
+            <span className="h-1 w-1 rounded-full bg-[#50445f]" />
+            <div className="flex items-center gap-2 text-xs">
+              <span className="rounded-md border border-white/12 bg-[#131020] px-2.5 py-1 font-semibold text-[#8570a0]">
+                {draft.sourceLanguage ?? "Unknown"}
+              </span>
+              <span className="text-[#ff2d78] opacity-70">→</span>
+              <span className="rounded-md border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-2.5 py-1 font-semibold text-[#ff6ba8]">
+                {draft.targetLanguage ?? "English"}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.24em] text-slate-400">
-          <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
+        <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
+          <div className="rounded-full border border-white/12 bg-[#131020] px-3 py-2 text-[#8570a0]">
             {draft.lineCount} draft lines
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">Not synced</span>
+          </div>
+          <div className="rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-3 py-2 text-[#ff6ba8]">
+            Reading mode
+          </div>
         </div>
       </div>
 
-      <div className="mt-5 rounded-[22px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm leading-7 text-cyan-100">
-        Lafz found a translation draft for this song, but the lyrics do not have timestamps yet. So for now it shows
-        the translation as a plain reading view instead of karaoke-style synced lines.
-        <div className="mt-4">
-          <Link
-            href={trackHref}
-            className="inline-flex items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
-          >
-            Open track detail
-          </Link>
+      <div className="px-5 pt-5 lg:px-8">
+        <div className="rounded-[20px] border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] p-4 text-sm leading-7 text-[#fff0f6]">
+          Lafz found a translation draft for this song, but the lyrics do not have timestamps yet. So for now it shows
+          the translation as a plain reading view instead of karaoke-style synced lines.
+          <div className="mt-4">
+            <Link
+              href={trackHref}
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
+            >
+              Open track detail
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 max-h-[72vh] overflow-y-auto pr-2">
-        <div className="space-y-3 pb-4">
-          {draft.lines.map((line, index) => {
-            const isExpanded = expandedLineIndex === index;
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-20 pt-4 lg:px-6">
+        {draft.lines.map((line, index) => {
+          const isExpanded = expandedLineIndex === index;
 
-            return (
+          return (
+            <div
+              key={`${line.order}-${index}`}
+              className={cx(
+                "group relative mx-1 my-2 cursor-pointer rounded-[16px] border border-white/8 bg-white/[0.03] px-4 py-4 transition hover:border-white/15 hover:bg-white/[0.05]",
+                isExpanded ? "border-[rgba(255,45,120,0.22)] bg-[#0d0b1a]" : ""
+              )}
+              onClick={() => {
+                setExpandedLineIndex((currentIndex) => (currentIndex === index ? null : index));
+              }}
+            >
               <button
-                key={`${line.order}-${index}`}
                 type="button"
-                onClick={() => {
-                  setExpandedLineIndex((currentIndex) => (currentIndex === index ? null : index));
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleCopy(index, line.translated);
                 }}
                 className={cx(
-                  "block w-full rounded-[26px] border border-white/8 bg-white/[0.03] px-5 py-5 text-left transition duration-300 ease-out hover:border-white/15 hover:bg-white/[0.05]",
-                  isExpanded ? "border-cyan-300/30 bg-cyan-300/10" : ""
+                  "absolute right-3 top-4 inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-white/12 bg-[#131020] text-[#8570a0] opacity-0 transition hover:border-[rgba(255,45,120,0.22)] hover:bg-[rgba(255,45,120,0.09)] hover:text-[#ff6ba8] group-hover:opacity-100",
+                  copiedLineIndex === index ? "border-[rgba(255,140,66,0.3)] bg-[rgba(255,140,66,0.12)] text-[#ff8c42] opacity-100" : ""
                 )}
+                aria-label="Copy translation"
               >
-                <p className="font-display text-xl leading-8 text-slate-100 sm:text-2xl">{line.translated}</p>
-                <p className="mt-3 text-xs uppercase tracking-[0.24em] text-slate-500">
-                  {isExpanded ? "Tap to hide details" : "Tap to reveal original, transliteration, and note"}
-                </p>
-
-                {isExpanded ? (
-                  <div className="mt-4 space-y-3 border-t border-white/8 pt-4 text-sm text-slate-300">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Original</p>
-                      <p className="mt-1 text-base text-white/90">{line.original}</p>
-                    </div>
-
-                    {line.transliteration ? (
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Transliteration</p>
-                        <p className="mt-1 text-base">{line.transliteration}</p>
-                      </div>
-                    ) : null}
-
-                    {line.note ? (
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Note</p>
-                        <p className="mt-1 text-base leading-7 text-slate-300">{line.note}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                </svg>
               </button>
-            );
-          })}
-        </div>
+
+              <p className="pr-8 text-[17px] font-semibold leading-[1.5] tracking-[-0.2px] text-[#fff0f6]">{line.translated}</p>
+              <p className="mt-2 text-[10px] font-medium tracking-[0.08em] text-[#50445f]">
+                {isExpanded ? "Click to hide original" : "Click to expand original"}
+              </p>
+
+              {isExpanded ? (
+                <div className="mt-4 border-t border-white/8 pt-4 text-sm text-slate-300">
+                  <p className="leading-[1.55] text-[#8570a0]">{line.original}</p>
+                  {line.transliteration ? (
+                    <p className="mt-1 text-[13px] italic leading-[1.55] text-[#50445f]">{line.transliteration}</p>
+                  ) : null}
+                  {line.note ? <p className="mt-3 leading-7 text-slate-300">{line.note}</p> : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
