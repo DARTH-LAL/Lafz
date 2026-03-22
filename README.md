@@ -28,7 +28,8 @@ This repository is intentionally scoped as a personal prototype:
 - Official lyrics fetch scaffold with local cache
 - Local fallback import for `.lrc`, synced JSON, or plain lyrics text
 - AI-assisted translation drafts from cached original lyrics
-- Manual timing editor for turning AI drafts into playback-ready local translation files
+- Automatic synced playback when timed lyrics are available
+- Plain reading mode when only untimed lyrics are available
 - Clean loading, empty, and error states
 
 ## Architecture
@@ -349,26 +350,6 @@ Once a track has original lyrics cached, the track detail page can generate an A
    - `data/translations/local/<spotifyTrackId>.json`
 6. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
 7. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
-
-### Timing editor
-
-After Lafz creates an AI draft, open the track detail page and use the built-in timing editor to turn that untimed draft into a real playback translation file.
-
-The timing editor:
-
-1. loads the current source from the best available input:
-   - existing timed translation file
-   - AI draft
-   - lyrics cache
-2. lets you edit the translated line text, transliteration, and notes inline
-3. can auto-estimate timings for the full song in one pass when lines are still untimed
-4. can interpolate the untimed gaps around any anchor starts you have already stamped manually
-5. shows the live Spotify playback clock when the same track is playing
-6. still lets you stamp start and end times line by line when you need precise corrections
-7. saves a real local translation file to:
-   - `data/translations/local/<spotifyTrackId>.json`
-
-Once that local timed translation file exists with one or more lines, Lafz treats the song as translated for playback and the now-playing screen can render it in sync.
 
 ### Local glossary hints
 

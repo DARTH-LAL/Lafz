@@ -185,10 +185,14 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
   ]);
   const derived_status =
     translationInspection.kind === "missing"
-      ? "pending"
+      ? aiDraftInspection.exists && aiDraftInspection.mode === "synced"
+        ? "translated"
+        : "pending"
       : translationInspection.kind === "translated"
         ? "translated"
-        : "stub";
+        : aiDraftInspection.exists && aiDraftInspection.mode === "synced"
+          ? "translated"
+          : "stub";
 
   return {
     spotify_track_id: seed.spotify_track_id,
@@ -202,7 +206,8 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
     derived_status,
     translation_file_exists: translationInspection.exists,
     translation_file_path: translationInspection.filePath,
-    translation_line_count: translationInspection.lineCount,
+    translation_line_count:
+      translationInspection.lineCount > 0 ? translationInspection.lineCount : aiDraftInspection.mode === "synced" ? aiDraftInspection.lineCount : 0,
     translation_last_modified_at: translationInspection.lastModifiedAt,
     translation_parse_error: translationInspection.parseError,
     ai_draft_exists: aiDraftInspection.exists,

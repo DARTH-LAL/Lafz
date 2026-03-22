@@ -247,7 +247,7 @@ export function AiDraftWorkspace({
           <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current AI behavior</p>
           <p className="mt-2">
             {lyricsKind === "synced"
-              ? "This track has synced original lyrics, so Lafz can generate a draft and write a playback-ready translation file."
+              ? "This track has synced original lyrics, so Lafz can generate a draft and automatically use those timings for playback."
               : lyricsKind === "plain"
                 ? "This track only has plain original lyrics right now, so Lafz will save an untimed draft and keep playback in reading mode."
               : "Fetch official lyrics or import a local lyrics fallback first, then generate a draft from that cache."}

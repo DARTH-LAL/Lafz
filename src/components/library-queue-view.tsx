@@ -217,6 +217,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                       {!record.translation_file_exists && record.ai_draft_exists ? (
                         <p className="mt-3 max-w-[16rem] text-xs leading-6 text-cyan-200">
                           AI draft ready: {record.ai_draft_line_count} line{record.ai_draft_line_count === 1 ? "" : "s"} ({record.ai_draft_mode})
+                          {record.ai_draft_mode === "synced" ? " and ready for synced playback." : " in plain reading mode."}
                         </p>
                       ) : null}
                       {record.translation_file_exists && record.translation_line_count === 0 && record.ai_draft_exists ? (
@@ -244,6 +245,9 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                         <p className="mt-2 text-xs text-slate-400">
                           Draft: {record.ai_draft_line_count} line{record.ai_draft_line_count === 1 ? "" : "s"} via {record.ai_draft_model ?? "AI"}
                         </p>
+                      ) : null}
+                      {!record.translation_file_exists && record.ai_draft_mode === "synced" ? (
+                        <p className="mt-2 text-xs text-cyan-300">Playback can fall back to the synced AI draft.</p>
                       ) : null}
                     </td>
                     <td className="px-5 py-5 text-slate-400">{formatUpdatedAt(record.translation_last_modified_at)}</td>

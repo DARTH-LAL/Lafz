@@ -7,6 +7,7 @@ import type {
   AiTranslationDraftFile,
   AiTranslationDraftInspection
 } from "@/features/ai/types";
+import type { TrackTranslation } from "@/features/translations/types";
 
 const aiTranslationDraftsRoot = path.join(process.cwd(), "data", "translations", "drafts");
 
@@ -203,4 +204,35 @@ export async function getAiTranslationDraftByTrackId(spotifyTrackId: string) {
 
     throw error;
   }
+}
+
+export function buildTrackTranslationFromAiDraft(draft: AiTranslationDraftFile): TrackTranslation | null {
+  if (draft.mode !== "synced") {
+    return null;
+  }
+
+  const syncedLines = draft.lines.filter(
+    (line): line is typeof line & { startMs: number; endMs: number } =>
+      typeof line.startMs === "number" && typeof line.endMs === "number"
+  );
+
+  if (syncedLines.length === 0) {
+    return null;
+  }
+
+  return {
+    spotifyTrackId: draft.spotifyTrackId,
+    title: draft.title,
+    artist: draft.artist,
+    sourceLanguage: draft.sourceLanguage,
+    targetLanguage: draft.targetLanguage,
+    lines: syncedLines.map((line) => ({
+      startMs: line.startMs,
+      endMs: line.endMs,
+      original: line.original,
+      translated: line.chosen,
+      transliteration: line.transliteration ?? undefined,
+      note: line.note ?? undefined
+    }))
+  };
 }
