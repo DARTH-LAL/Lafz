@@ -1,0 +1,255 @@
+{
+  "spotifyTrackId": "3ZGJhN4unVspOqpwGvUL2W",
+  "title": "Lemonade",
+  "artist": "Diljit Dosanjh",
+  "sourceLanguage": "Punjabi (romanized)",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 12150,
+      "endMs": 15679,
+      "original": "Ho munda hunda dhuppa vich tan kudiye",
+      "translated": "I get tanned running after you in the sun, girl",
+      "note": "Matches glossary preferred rendering; literal and lyrical."
+    },
+    {
+      "startMs": 15680,
+      "endMs": 19029,
+      "original": "Ni tu kade laaye nahiyon ankhiyan ton shade",
+      "translated": "but you never even take your glasses off to look at me"
+    },
+    {
+      "startMs": 19030,
+      "endMs": 22329,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 22330,
+      "endMs": 25469,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 25470,
+      "endMs": 29049,
+      "original": "Ho munda hunda dhuppa vich tan kudiye",
+      "translated": "I get tanned running after you in the sun, girl",
+      "note": "Matches glossary preferred rendering; literal and lyrical."
+    },
+    {
+      "startMs": 29050,
+      "endMs": 32329,
+      "original": "Ni tu kade laaye nahiyon ankhiyan ton shade",
+      "translated": "but you never even take your glasses off to look at me"
+    },
+    {
+      "startMs": 32330,
+      "endMs": 35689,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 35690,
+      "endMs": 53229,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 53230,
+      "endMs": 56539,
+      "original": "Kudi jivein nikali ae kise romantic gaane cho",
+      "translated": "You look like you stepped out of a romantic song",
+      "note": "Complimentary, cinematic image; literal and natural."
+    },
+    {
+      "startMs": 56540,
+      "endMs": 59849,
+      "original": "Tu labhdi ae Snapchat te munda labhe thaane cho",
+      "translated": "You can be found on Snapchat, but I am only found at the police station",
+      "note": "Follows glossary preferred rendering even though original is idiomatic/ambiguous."
+    },
+    {
+      "startMs": 59850,
+      "endMs": 63229,
+      "original": "Main te kara avoid kudi nu oh mangdi mera phone ae",
+      "translated": "I avoid the girl; she asks for my phone",
+      "note": "Literal and conservative rendering of the interaction."
+    },
+    {
+      "startMs": 63230,
+      "endMs": 67129,
+      "original": "Sadde puthe kam sohniye 24 ghante on ae",
+      "translated": "Our boys are working 24 hours",
+      "note": "Conservative rendering of the bragging line about constant activity."
+    },
+    {
+      "startMs": 67130,
+      "endMs": 70709,
+      "original": "Oh jaadon dekhe jattan de subha athre",
+      "translated": "When she sees the jatt's morning look",
+      "note": "Original phrase is dialectal/uncertain; this is a conservative, literal guess."
+    },
+    {
+      "startMs": 70710,
+      "endMs": 74059,
+      "original": "Tere love shove sare ho jane aa fade",
+      "translated": "All your love shows will fade",
+      "note": "Conservative, idiomatic English keeping the intended meaning (love displays losing value)."
+    },
+    {
+      "startMs": 74060,
+      "endMs": 77329,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 77330,
+      "endMs": 80509,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 80510,
+      "endMs": 84009,
+      "original": "Ho munda hunda dhuppa vich tan kudiye",
+      "translated": "I get tanned running after you in the sun, girl",
+      "note": "Matches glossary preferred rendering; literal and lyrical."
+    },
+    {
+      "startMs": 84010,
+      "endMs": 87409,
+      "original": "Ni tu kade laaye nahiyon ankhiyan ton shade",
+      "translated": "but you never even take your glasses off to look at me"
+    },
+    {
+      "startMs": 87410,
+      "endMs": 90669,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 90670,
+      "endMs": 95299,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 95300,
+      "endMs": 98529,
+      "original": "Turi jaandi nu main aawaaz maar ke saddh leya",
+      "translated": "As you started to walk away, I called out and made you stop",
+      "note": "'saddh leya' can mean 'stopped', 'made sit', or 'pulled back'—kept neutral."
+    },
+    {
+      "startMs": 98530,
+      "endMs": 101799,
+      "original": "Betha leya vich gaddi de puchheya kithe chhad deyan",
+      "translated": "I put you in the car and asked where to drop you off"
+    },
+    {
+      "startMs": 101800,
+      "endMs": 105269,
+      "original": "Sangdi sangdi ne ohne haathan naal muh khajj leya",
+      "translated": "Acting shy, she covered her mouth with her hands",
+      "note": "'sangdi sangdi' = shyly/coyly."
+    },
+    {
+      "startMs": 105270,
+      "endMs": 108809,
+      "original": "Main keha chalde aa ni yacht private aaj leya",
+      "translated": "I said while we were driving that I got a private yacht today",
+      "note": "'chalde aa ni' is colloquial filler meaning 'while moving/driving'."
+    },
+    {
+      "startMs": 108810,
+      "endMs": 112379,
+      "original": "Oh kade billo seaside kaade jet te",
+      "translated": "Sometimes, girl, she's at the seaside on a jet",
+      "note": "'billo' = affectionate 'babe' or 'girl'."
+    },
+    {
+      "startMs": 112380,
+      "endMs": 115729,
+      "original": "Kithe ni tu samjhengi jattan de trade",
+      "translated": "You won't understand the jatts' trade.",
+      "note": "‘trade’ here means ways/ways of life of the jatt (see glossary)."
+    },
+    {
+      "startMs": 115730,
+      "endMs": 118989,
+      "original": "Aithe jatt paani vi ni paaunda sohniye",
+      "translated": "Here, a jatt wouldn't even add water, darling",
+      "note": "jatt = tough Punjabi man/bro; 'sohniye' = darling."
+    },
+    {
+      "startMs": 118990,
+      "endMs": 122179,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 122180,
+      "endMs": 125679,
+      "original": "Ho munda hunda dhuppa vich tan kudiye",
+      "translated": "I get tanned running after you in the sun, girl",
+      "note": "Matches glossary preferred rendering; literal and lyrical."
+    },
+    {
+      "startMs": 125680,
+      "endMs": 129039,
+      "original": "Ni tu kade laaye nahiyon ankhiyan ton shade",
+      "translated": "but you never even take your glasses off to look at me"
+    },
+    {
+      "startMs": 129040,
+      "endMs": 132389,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 132390,
+      "endMs": 135489,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    },
+    {
+      "startMs": 135490,
+      "endMs": 139039,
+      "original": "Ho munda hunda dhuppa vich tan kudiye",
+      "translated": "I get tanned running after you in the sun, girl",
+      "note": "Matches glossary preferred rendering; literal and lyrical."
+    },
+    {
+      "startMs": 139040,
+      "endMs": 142339,
+      "original": "Ni tu kade laaye nahiyon ankhiyan ton shade",
+      "translated": "but you never even take your glasses off to look at me"
+    },
+    {
+      "startMs": 142340,
+      "endMs": 145719,
+      "original": "Aithe jatt paani vi ni paunda sohniye",
+      "translated": "Here a jatt wouldn't even add water, darling",
+      "note": "Conservative, literal rendering of boastful line about not diluting a drink; 'sohniye' rendered as 'darling'."
+    },
+    {
+      "startMs": 145720,
+      "endMs": 166665,
+      "original": "Tainu teri daaru ch pasand ae lemonade",
+      "translated": "You like lemonade in your drink",
+      "note": "Kept neutral rather than slangy; matches song's repeated line about lemonade."
+    }
+  ]
+}
