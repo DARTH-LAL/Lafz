@@ -60,7 +60,7 @@ export function LibraryTrackDetail({
         >
           <Link
             href="/library/queue"
-            className="inline-flex items-center justify-center rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+            className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Back to queue
           </Link>
@@ -73,7 +73,7 @@ export function LibraryTrackDetail({
     <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-8 lg:px-10">
       <header className="mb-8 flex flex-col gap-4 border-b border-white/8 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Lafz track detail</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz track detail</p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
             {record.title}
           </h1>
@@ -87,7 +87,7 @@ export function LibraryTrackDetail({
               href={record.spotify_track_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] px-5 py-3 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
             >
               Open on Spotify
             </a>
@@ -106,7 +106,7 @@ export function LibraryTrackDetail({
           className={`mb-6 rounded-[24px] px-5 py-4 text-sm ${
             stubStatus === "error"
               ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-              : "border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
+              : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
           }`}
         >
           {stubMessage}
@@ -118,7 +118,7 @@ export function LibraryTrackDetail({
           className={`mb-6 rounded-[24px] px-5 py-4 text-sm ${
             lyricsStatus === "local_error"
               ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-              : "border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
+              : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
           }`}
         >
           {lyricsMessage}
@@ -130,7 +130,7 @@ export function LibraryTrackDetail({
           className={`mb-6 rounded-[24px] px-5 py-4 text-sm ${
             aiStatus === "error" || aiStatus === "provider_unavailable" || aiStatus === "model_missing"
               ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-              : "border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
+              : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
           }`}
         >
           {aiMessage}
@@ -195,7 +195,7 @@ export function LibraryTrackDetail({
               <input type="hidden" name="redirectTo" value={`/library/track/${record.spotify_track_id}`} />
               <button
                 type="submit"
-                className="inline-flex w-full items-center justify-center rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 Create missing stub file
               </button>
@@ -204,10 +204,10 @@ export function LibraryTrackDetail({
         </section>
 
         <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Translation JSON preview</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Translation JSON preview</p>
 
           {translationInspection.lineCount === 0 && aiDraftInspection.exists ? (
-            <div className="mt-5 rounded-[22px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm leading-7 text-cyan-100">
+            <div className="mt-5 rounded-[22px] border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] p-4 text-sm leading-7 text-[#fff0f6]">
               {aiDraftInspection.mode === "synced"
                 ? "Lafz found a synced AI draft for this track. Playback can use those timings immediately, and generating the draft again will also recreate the local translation file if it is missing."
                 : "Lafz found an untimed AI draft for this track. Because the lyrics do not have timestamps, playback stays in plain reading mode instead of karaoke-style synced mode."}
@@ -237,7 +237,7 @@ export function LibraryTrackDetail({
       </div>
 
       <section className="mt-6 rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Original lyrics input</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Original lyrics input</p>
         <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
           Paste local LRC, JSON, or plain lyrics.
         </h2>
@@ -264,7 +264,7 @@ export function LibraryTrackDetail({
 or plain lyrics text
 
 or synced JSON`}
-              className="mt-3 w-full rounded-[22px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+              className="mt-3 w-full rounded-[22px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
             />
           </label>
           <button
@@ -277,7 +277,7 @@ or synced JSON`}
       </section>
 
       <section className="mt-6 rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Original lyrics cache</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Original lyrics cache</p>
 
         {lyricsInspection.exists ? (
           <>

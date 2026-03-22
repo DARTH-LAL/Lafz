@@ -71,7 +71,7 @@ function toEditableDraftLine(line: AiTranslationDraftFile["lines"][number]): Edi
 
 function getConfidenceClasses(confidence: EditableDraftLine["confidence"]) {
   if (confidence === "high") {
-    return "border-emerald-300/20 bg-emerald-300/10 text-emerald-100";
+    return "border-[rgba(255,140,66,0.2)] bg-[rgba(255,140,66,0.1)] text-[#ffd9b8]";
   }
 
   if (confidence === "medium") {
@@ -262,7 +262,7 @@ export function AiDraftWorkspace({
   return (
     <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr] xl:items-start">
       <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">AI translation draft</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">AI translation draft</p>
         <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
           Generate a stronger translation draft.
         </h2>
@@ -276,7 +276,7 @@ export function AiDraftWorkspace({
             className={`mt-5 rounded-[22px] p-4 text-sm leading-7 ${
               messageTone === "error"
                 ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-                : "border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"
+                : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
             }`}
           >
             {message}
@@ -307,13 +307,13 @@ export function AiDraftWorkspace({
           </p>
           <p className="mt-2">
             Status:{" "}
-            <span className={aiProviderStatus.available ? "text-cyan-100" : "text-amber-100"}>
+            <span className={aiProviderStatus.available ? "text-[#fff0f6]" : "text-amber-100"}>
               {aiProviderStatus.available ? "reachable" : "not reachable"}
             </span>
           </p>
           <p className="mt-2">
             Model ready:{" "}
-            <span className={aiProviderStatus.modelAvailable ? "text-cyan-100" : "text-amber-100"}>
+            <span className={aiProviderStatus.modelAvailable ? "text-[#fff0f6]" : "text-amber-100"}>
               {aiProviderStatus.modelAvailable ? "yes" : "no"}
             </span>
           </p>
@@ -331,7 +331,7 @@ export function AiDraftWorkspace({
                     setSourceLanguage(event.target.value);
                   }}
                   placeholder="Leave blank to auto-detect from lyrics"
-                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                 />
               </label>
 
@@ -343,7 +343,7 @@ export function AiDraftWorkspace({
                   onChange={(event) => {
                     setTargetLanguage(event.target.value);
                   }}
-                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                 />
               </label>
             </div>
@@ -356,7 +356,7 @@ export function AiDraftWorkspace({
                   onChange={(event) => {
                     setIncludeTransliteration(event.target.checked);
                   }}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
                 />
                 <span>Include transliteration when it helps.</span>
               </label>
@@ -368,7 +368,7 @@ export function AiDraftWorkspace({
                   onChange={(event) => {
                     setIncludeNotes(event.target.checked);
                   }}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
                 />
                 <span>Include slang and cultural notes when needed.</span>
               </label>
@@ -381,7 +381,7 @@ export function AiDraftWorkspace({
                     onChange={(event) => {
                       setOverwriteExistingTranslation(event.target.checked);
                     }}
-                    className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-cyan-300 focus:ring-cyan-300/40"
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
                   />
                   <span>Replace the current synced translation file for this track.</span>
                 </label>
@@ -443,7 +443,7 @@ export function AiDraftWorkspace({
                 void handleGenerate();
               }}
               disabled={isGenerating}
-              className="inline-flex w-full items-center justify-center rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-cyan-300/50"
+              className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isGenerating ? "Generating draft..." : "Generate AI draft"}
             </button>
@@ -460,7 +460,7 @@ export function AiDraftWorkspace({
       <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
         <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Draft review</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Draft review</p>
             <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-white">
               Review only the uncertain lines.
             </h2>
@@ -535,7 +535,7 @@ export function AiDraftWorkspace({
                         onClick={() => {
                           updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: currentLine.natural }));
                         }}
-                        className="mt-4 inline-flex items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+                        className="mt-4 inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-xs font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
                       >
                         Use natural
                       </button>
@@ -565,7 +565,7 @@ export function AiDraftWorkspace({
                         const nextValue = event.target.value;
                         updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: nextValue }));
                       }}
-                      className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+                      className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                     />
                   </label>
 
@@ -582,7 +582,7 @@ export function AiDraftWorkspace({
                             transliteration: nextValue || null
                           }));
                         }}
-                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                       />
                     </label>
 
@@ -595,14 +595,14 @@ export function AiDraftWorkspace({
                           const nextValue = event.target.value;
                           updateDraftLine(line.order, (currentLine) => ({ ...currentLine, note: nextValue || null }));
                         }}
-                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50"
+                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                       />
                     </label>
                   </div>
 
                   {line.selectorReason ? (
-                    <div className="mt-4 rounded-[20px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm leading-7 text-cyan-100">
-                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200/80">Selector reason</p>
+                    <div className="mt-4 rounded-[20px] border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] p-4 text-sm leading-7 text-[#fff0f6]">
+                      <p className="text-xs uppercase tracking-[0.22em] text-[#ffb3d0]/80">Selector reason</p>
                       <p className="mt-2">{line.selectorReason}</p>
                     </div>
                   ) : null}
@@ -624,7 +624,7 @@ export function AiDraftWorkspace({
                   void handleSaveDraft();
                 }}
                 disabled={isSavingDraft}
-                className="inline-flex items-center justify-center rounded-full bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-cyan-300/50"
+                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSavingDraft ? "Saving draft..." : "Save draft review"}
               </button>

@@ -18,7 +18,7 @@ export function StatePanel({ eyebrow, title, description, children, className }:
         className
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">{eyebrow}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">{eyebrow}</p>
       <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">{title}</h2>
       <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">{description}</p>
       {children ? <div className="mt-6">{children}</div> : null}

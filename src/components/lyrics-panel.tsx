@@ -6,15 +6,30 @@ import { findActiveLineIndex } from "@/features/sync/engine";
 import type { TrackTranslation } from "@/features/translations/types";
 import { cx, formatMilliseconds } from "@/lib/utils";
 
+const waveHeights = [5, 13, 8, 11];
+const waveDelays = ["0s", "0.07s", "0.14s", "0.21s"];
+
 type LyricsPanelProps = {
   translation: TrackTranslation;
   progressMs: number;
   isPlaying: boolean;
+  onSeek?: (positionMs: number) => Promise<void> | void;
 };
 
-export function LyricsPanel({ translation, progressMs, isPlaying }: LyricsPanelProps) {
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2">
+      <div className="h-px flex-1 bg-white/8" />
+      <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#50445f]">{label}</div>
+      <div className="h-px flex-1 bg-white/8" />
+    </div>
+  );
+}
+
+export function LyricsPanel({ translation, progressMs, isPlaying, onSeek }: LyricsPanelProps) {
   const [expandedLineIndex, setExpandedLineIndex] = useState<number | null>(null);
-  const lineRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null);
+  const lineRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const activeLineIndex = useMemo(
     () => findActiveLineIndex(translation.lines, progressMs),
@@ -32,109 +47,172 @@ export function LyricsPanel({ translation, progressMs, isPlaying }: LyricsPanelP
       return;
     }
 
-    // Center the active line as playback moves so the lyrics feel live even though updates arrive via polling.
     activeNode.scrollIntoView({
       behavior: "smooth",
       block: "center"
     });
   }, [activeLineIndex]);
 
+  const currentLineNumber = activeLineIndex >= 0 ? activeLineIndex + 1 : 1;
+
+  const handleCopy = async (index: number, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLineIndex(index);
+      window.setTimeout(() => {
+        setCopiedLineIndex((currentValue) => (currentValue === index ? null : currentValue));
+      }, 1400);
+    } catch {
+      setCopiedLineIndex(null);
+    }
+  };
+
   return (
-    <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-      <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex flex-col gap-4 border-b border-white/6 px-5 py-5 sm:flex-row sm:items-end sm:justify-between lg:px-8">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Synced translation</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-white">
-            {translation.title}
-          </h2>
-          <p className="mt-2 text-base text-slate-400">
-            {translation.sourceLanguage}
-            {" -> "}
-            {translation.targetLanguage}
-          </p>
+          <h2 className="text-[24px] font-extrabold tracking-[-0.8px] text-[#fff0f6]">{translation.title}</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#8570a0]">
+            <span>{translation.artist}</span>
+            <span className="h-1 w-1 rounded-full bg-[#50445f]" />
+            <div className="flex items-center gap-2 text-xs">
+              <span className="rounded-md border border-white/12 bg-[#131020] px-2.5 py-1 font-semibold text-[#8570a0]">
+                {translation.sourceLanguage}
+              </span>
+              <span className="text-[#ff2d78] opacity-70">→</span>
+              <span className="rounded-md border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-2.5 py-1 font-semibold text-[#ff6ba8]">
+                {translation.targetLanguage}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.24em] text-slate-400">
-          <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
-            {translation.lines.length} synced lines
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
-            {isPlaying ? "Live follow" : "Paused"}
-          </span>
+        <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
+          <div className="rounded-full border border-white/12 bg-[#131020] px-3 py-2 text-[#8570a0]">
+            Line {currentLineNumber} of {translation.lines.length}
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-3 py-2 text-[#ff6ba8]">
+            <span className="lafz-badge-ring h-1.5 w-1.5 rounded-full border border-[#ff2d78] bg-[#ff2d78]" />
+            {isPlaying ? "Live" : "Paused"}
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 max-h-[72vh] overflow-y-auto pr-2 [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)]">
-        <div className="space-y-3 py-10">
-          {translation.lines.map((line, index) => {
-            const isActive = index === activeLineIndex;
-            const isExpanded = expandedLineIndex === index;
-            const distance = activeLineIndex >= 0 ? Math.abs(index - activeLineIndex) : 3;
-            const subdued = distance > 2 && !isExpanded && !isActive;
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-20 pt-4 lg:px-6 [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)]">
+        {translation.lines.map((line, index) => {
+          const isPast = activeLineIndex >= 0 && index < activeLineIndex;
+          const isActive = index === activeLineIndex;
+          const isUpcoming = activeLineIndex >= 0 ? index > activeLineIndex : true;
+          const isExpanded = isActive || expandedLineIndex === index;
 
-            return (
-              <button
-                key={`${line.startMs}-${index}`}
+          return (
+            <div key={`${line.startMs}-${index}`}>
+              {index === 0 && activeLineIndex > 0 ? <SectionLabel label="Earlier" /> : null}
+              {index === activeLineIndex ? <SectionLabel label="Now playing" /> : null}
+              {activeLineIndex >= 0 && index === activeLineIndex + 1 ? <SectionLabel label="Coming up" /> : null}
+
+              <div
                 ref={(element) => {
                   lineRefs.current[index] = element;
                 }}
-                type="button"
+                className={cx(
+                  "group relative mx-1 my-1 flex cursor-pointer items-start justify-between gap-3 rounded-[16px] border px-4 py-3 transition-all duration-300 ease-out",
+                  isActive
+                    ? "my-3 border-[rgba(255,45,120,0.22)] bg-[#0d0b1a] px-5 py-5 shadow-[0_16px_56px_rgba(255,45,120,0.13)]"
+                    : "border-transparent",
+                  isPast ? "opacity-25 blur-[0.3px] hover:opacity-55 hover:blur-0" : "",
+                  !isActive && isUpcoming ? "opacity-40 blur-[0.2px] hover:opacity-75 hover:blur-0" : ""
+                )}
                 onClick={() => {
+                  if (!isActive && onSeek) {
+                    void onSeek(line.startMs);
+                    setExpandedLineIndex(index);
+                    return;
+                  }
+
                   setExpandedLineIndex((currentIndex) => (currentIndex === index ? null : index));
                 }}
-                className={cx(
-                  "group block w-full rounded-[26px] border px-5 py-5 text-left transition duration-300 ease-out",
-                  isActive
-                    ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_20px_60px_rgba(34,211,238,0.12)]"
-                    : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
-                  subdued ? "opacity-45" : "opacity-100"
-                )}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p
-                      className={cx(
-                        "font-display text-xl leading-8 transition duration-300 sm:text-2xl",
-                        isActive ? "text-white" : "text-slate-200"
-                      )}
-                    >
-                      {line.translated}
+                {isActive ? (
+                  <div className="pointer-events-none absolute left-7 right-7 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,107,168,0.55),transparent)]" />
+                ) : null}
+
+                <div className="min-w-0 flex-1">
+                  {isActive ? (
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="flex h-[13px] items-end gap-[2px]">
+                        {waveHeights.map((height, waveIndex) => (
+                          <span
+                            key={`${height}-${waveIndex}`}
+                            className="lafz-wave-bar block w-[2.5px] rounded-[2px] bg-[linear-gradient(to_top,#ff2d78,#ff8c42)]"
+                            style={{ height: `${height}px`, animationDelay: waveDelays[waveIndex] }}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-[9px] font-extrabold uppercase tracking-[0.25em] text-[#ff2d78]">Playing now</div>
+                    </div>
+                  ) : null}
+
+                  <p
+                    className={cx(
+                      "leading-[1.5] transition-all duration-300",
+                      isActive
+                        ? "lafz-shimmer bg-[linear-gradient(110deg,#ff2d78_0%,#ff8c42_30%,#ffb8d0_50%,#ff8c42_70%,#ff2d78_100%)] bg-[length:250%_100%] bg-clip-text text-[21px] font-bold tracking-[-0.5px] text-transparent"
+                        : "text-[16px] font-semibold tracking-[-0.2px] text-[#fff0f6]"
+                    )}
+                  >
+                    {line.translated}
+                  </p>
+
+                  {!isActive ? (
+                    <p className="mt-1 text-[10px] font-medium tracking-[0.08em] text-[#50445f] opacity-0 transition group-hover:opacity-100">
+                      Click to jump here
                     </p>
-                    <p className="mt-3 text-xs uppercase tracking-[0.24em] text-slate-500">
-                      {isExpanded ? "Tap to hide details" : "Tap to reveal original, transliteration, and note"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                    {formatMilliseconds(line.startMs)}
-                  </span>
+                  ) : null}
+
+                  {isExpanded ? (
+                    <div className={cx("overflow-hidden", isActive ? "mt-4 border-t border-white/8 pt-4" : "mt-4 border-t border-white/8 pt-4")}>
+                      <p className="text-sm leading-[1.55] text-[#8570a0]">{line.original}</p>
+                      {line.transliteration ? (
+                        <p className="mt-1 text-[13px] italic leading-[1.55] text-[#50445f]">{line.transliteration}</p>
+                      ) : null}
+                      {line.note ? <p className="mt-3 text-sm leading-7 text-slate-300">{line.note}</p> : null}
+                    </div>
+                  ) : null}
                 </div>
 
-                {isExpanded ? (
-                  <div className="mt-4 space-y-3 border-t border-white/8 pt-4 text-sm text-slate-300">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Original</p>
-                      <p className="mt-1 text-base text-white/90">{line.original}</p>
-                    </div>
-
-                    {line.transliteration ? (
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Transliteration</p>
-                        <p className="mt-1 text-base">{line.transliteration}</p>
-                      </div>
-                    ) : null}
-
-                    {line.note ? (
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Note</p>
-                        <p className="mt-1 text-base leading-7 text-slate-300">{line.note}</p>
-                      </div>
-                    ) : null}
+                <div className="flex min-w-[40px] flex-col items-end gap-3 pt-1">
+                  <div
+                    className={cx(
+                      "text-right text-[11px] font-medium tabular-nums text-[#50445f]",
+                      isActive ? "bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] bg-clip-text pt-0 font-bold text-transparent" : ""
+                    )}
+                  >
+                    {formatMilliseconds(line.startMs)}
                   </div>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleCopy(index, line.translated);
+                    }}
+                    className={cx(
+                      "inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-white/12 bg-[#131020] text-[#8570a0] opacity-0 transition hover:border-[rgba(255,45,120,0.22)] hover:bg-[rgba(255,45,120,0.09)] hover:text-[#ff6ba8] group-hover:opacity-100",
+                      isActive ? "opacity-70" : "",
+                      copiedLineIndex === index ? "border-[rgba(255,140,66,0.3)] bg-[rgba(255,140,66,0.12)] text-[#ff8c42] opacity-100" : ""
+                    )}
+                    aria-label="Copy translation"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
