@@ -10,3 +10,5 @@ data/translations/local/
 data/translations/drafts/
 data/translations/backups/
 data/ai/glossaries/local/
+data/ai/memory/artists/*
+!data/ai/memory/artists/.gitkeep

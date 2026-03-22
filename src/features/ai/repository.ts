@@ -3,9 +3,11 @@ import path from "node:path";
 
 import type {
   AiDraftLine,
+  AiArtistMemory,
   AiTranslationConfidence,
   AiTranslationDraftFile,
-  AiTranslationDraftInspection
+  AiTranslationDraftInspection,
+  AiSongContext
 } from "@/features/ai/types";
 import type { TrackTranslation } from "@/features/translations/types";
 
@@ -37,6 +39,7 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
   const legacyTranslated = asString(value.translated);
   const literal = asString(value.literal) ?? legacyTranslated;
   const natural = asString(value.natural) ?? legacyTranslated;
+  const slangAware = asString(value.slangAware) ?? natural ?? literal ?? legacyTranslated;
   const chosen = asString(value.chosen) ?? natural ?? literal ?? legacyTranslated;
   const transliteration =
     value.transliteration === null ? null : typeof value.transliteration === "string" ? value.transliteration.trim() || null : null;
@@ -44,6 +47,8 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
   const ambiguity =
     value.ambiguity === null ? null : typeof value.ambiguity === "string" ? value.ambiguity.trim() || null : null;
   const confidence = asConfidence(value.confidence) ?? "medium";
+  const selectorReason =
+    value.selectorReason === null ? null : typeof value.selectorReason === "string" ? value.selectorReason.trim() || null : null;
   const startMs = value.startMs === null ? null : asNumber(value.startMs);
   const endMs = value.endMs === null ? null : asNumber(value.endMs);
 
@@ -51,19 +56,81 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
     throw new Error(`AI draft line ${index} is missing required Lafz AI fields.`);
   }
 
+  const finalSlangAware = slangAware ?? natural ?? literal;
+
   return {
     order,
     original,
     literal,
     natural,
+    slangAware: finalSlangAware,
     chosen,
     translated: chosen,
     transliteration,
     note,
     ambiguity,
     confidence,
+    selectorReason,
     startMs,
     endMs
+  };
+}
+
+function parseSongContext(value: unknown): AiSongContext | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const summary = asString(value.summary);
+  const themes = Array.isArray(value.themes) ? value.themes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry)) : [];
+  const tone = asString(value.tone);
+  const notablePhrases = Array.isArray(value.notablePhrases)
+    ? value.notablePhrases.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+
+  if (!summary || !tone) {
+    return null;
+  }
+
+  return {
+    summary,
+    themes,
+    tone,
+    notablePhrases
+  };
+}
+
+function parseArtistMemory(value: unknown): AiArtistMemory | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const artistKey = asString(value.artistKey);
+  const displayName = asString(value.displayName);
+  const translationPreferences = Array.isArray(value.translationPreferences)
+    ? value.translationPreferences.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const recurringThemes = Array.isArray(value.recurringThemes)
+    ? value.recurringThemes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const toneNotes = Array.isArray(value.toneNotes)
+    ? value.toneNotes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const notes = Array.isArray(value.notes)
+    ? value.notes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+
+  if (!artistKey || !displayName) {
+    return null;
+  }
+
+  return {
+    artistKey,
+    displayName,
+    translationPreferences,
+    recurringThemes,
+    toneNotes,
+    notes
   };
 }
 
@@ -83,6 +150,8 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   const mode = value.mode === "synced" || value.mode === "plain" ? value.mode : null;
   const sourceLyricsKind =
     value.sourceLyricsKind === "synced" || value.sourceLyricsKind === "plain" ? value.sourceLyricsKind : null;
+  const songContext = parseSongContext(value.songContext);
+  const artistMemory = parseArtistMemory(value.artistMemory);
   const generator = isRecord(value.generator) ? value.generator : null;
   const provider = generator?.provider === "openai" || generator?.provider === "ollama" ? generator.provider : null;
   const model = asString(generator?.model);
@@ -121,6 +190,8 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
       provider,
       model
     },
+    songContext,
+    artistMemory,
     lines
   };
 }

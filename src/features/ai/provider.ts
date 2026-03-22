@@ -1,8 +1,11 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import type { AiArtistMemory, AiSongContext } from "@/features/ai/types";
 import {
   getOllamaModel,
   inspectOllamaStatus,
   isOllamaConfigured,
+  requestAiSongContext,
+  requestAiTranslationSelection,
   requestAiTranslationDraft,
   requestAiTranslationRefinement
 } from "@/features/ai/ollama";
@@ -10,6 +13,8 @@ import {
   getOpenAiModel,
   inspectOpenAiStatus,
   isOpenAiConfigured,
+  requestOpenAiSongContext,
+  requestOpenAiTranslationSelection,
   requestOpenAiTranslationDraft,
   requestOpenAiTranslationRefinement
 } from "@/features/ai/openai";
@@ -24,11 +29,15 @@ type RequestAiTranslationDraftOptions = {
   includeTransliteration: boolean;
   includeNotes: boolean;
   glossaryEntries: AiGlossaryEntry[];
+  songContext: AiSongContext | null;
+  artistMemory: AiArtistMemory | null;
   lines: Array<{
     index: number;
     original: string;
     contextBefore?: string[];
     contextAfter?: string[];
+    groupIndex?: number;
+    groupText?: string;
   }>;
 };
 
@@ -41,12 +50,60 @@ type RequestAiTranslationRefinementOptions = {
   includeTransliteration: boolean;
   includeNotes: boolean;
   glossaryEntries: AiGlossaryEntry[];
+  songContext: AiSongContext | null;
+  artistMemory: AiArtistMemory | null;
   lines: Array<{
     index: number;
     original: string;
     literal: string;
     natural: string;
+    slangAware: string;
     chosen: string;
+    ambiguity: string | null;
+    confidence: "low" | "medium" | "high";
+    contextBefore?: Array<{
+      original: string;
+      chosen: string;
+    }>;
+    contextAfter?: Array<{
+      original: string;
+      chosen: string;
+    }>;
+  }>;
+};
+
+type RequestAiSongContextOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string | null;
+  glossaryEntries: AiGlossaryEntry[];
+  artistMemory: AiArtistMemory | null;
+  lines: Array<{
+    index: number;
+    original: string;
+  }>;
+};
+
+type RequestAiTranslationSelectionOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  includeTransliteration: boolean;
+  includeNotes: boolean;
+  glossaryEntries: AiGlossaryEntry[];
+  songContext: AiSongContext | null;
+  artistMemory: AiArtistMemory | null;
+  lines: Array<{
+    index: number;
+    original: string;
+    literal: string;
+    natural: string;
+    slangAware: string;
+    currentChosen: string;
+    note: string | null;
     ambiguity: string | null;
     confidence: "low" | "medium" | "high";
     contextBefore?: Array<{
@@ -88,4 +145,28 @@ export async function requestProviderTranslationRefinement(
   return getActiveAiProvider() === "openai"
     ? requestOpenAiTranslationRefinement(options)
     : requestAiTranslationRefinement(options);
+}
+
+export async function requestProviderSongContext(
+  options: RequestAiSongContextOptions
+): Promise<{ model: string; sourceLanguage: string; songContext: AiSongContext }> {
+  return getActiveAiProvider() === "openai" ? requestOpenAiSongContext(options) : requestAiSongContext(options);
+}
+
+export async function requestProviderTranslationSelection(
+  options: RequestAiTranslationSelectionOptions
+): Promise<{
+  model: string;
+  sourceLanguage: string;
+  lines: Array<{
+    chosen: string;
+    confidence: "low" | "medium" | "high";
+    ambiguity: string | null;
+    note: string | null;
+    selectorReason: string | null;
+  }>;
+}> {
+  return getActiveAiProvider() === "openai"
+    ? requestOpenAiTranslationSelection(options)
+    : requestAiTranslationSelection(options);
 }

@@ -5,6 +5,7 @@ export type AiGlossaryEntry = {
   term: string;
   meaning: string;
   note?: string;
+  category?: "entry" | "slang" | "idiom" | "phrase" | "reference" | "preferred_rendering";
 };
 
 const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries");
@@ -37,18 +38,12 @@ function asString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function parseGlossaryEntries(value: unknown) {
-  const candidateEntries = Array.isArray(value)
-    ? value
-    : isRecord(value) && Array.isArray(value.entries)
-      ? value.entries
-      : null;
-
-  if (!candidateEntries) {
+function parseGlossaryArray(value: unknown, category: AiGlossaryEntry["category"]) {
+  if (!Array.isArray(value)) {
     return [] satisfies AiGlossaryEntry[];
   }
 
-  return candidateEntries
+  return value
     .map((entry) => {
       if (!isRecord(entry)) {
         return null;
@@ -64,7 +59,8 @@ function parseGlossaryEntries(value: unknown) {
 
       const normalizedEntry: AiGlossaryEntry = {
         term,
-        meaning
+        meaning,
+        category
       };
 
       if (note) {
@@ -74,6 +70,35 @@ function parseGlossaryEntries(value: unknown) {
       return normalizedEntry;
     })
     .filter((entry): entry is AiGlossaryEntry => Boolean(entry));
+}
+
+function parseGlossaryEntries(value: unknown) {
+  const candidateEntries = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.entries)
+      ? value.entries
+      : null;
+
+  const categorizedEntries = isRecord(value)
+    ? [
+        ...parseGlossaryArray(value.entries, "entry"),
+        ...parseGlossaryArray(value.slang, "slang"),
+        ...parseGlossaryArray(value.idioms, "idiom"),
+        ...parseGlossaryArray(value.phrases, "phrase"),
+        ...parseGlossaryArray(value.references, "reference"),
+        ...parseGlossaryArray(value.preferredRenderings, "preferred_rendering")
+      ]
+    : [];
+
+  if (categorizedEntries.length > 0) {
+    return categorizedEntries;
+  }
+
+  if (!candidateEntries) {
+    return [] satisfies AiGlossaryEntry[];
+  }
+
+  return parseGlossaryArray(candidateEntries, "entry");
 }
 
 async function readGlossaryFile(filePath: string) {

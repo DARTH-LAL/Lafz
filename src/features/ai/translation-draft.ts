@@ -1,11 +1,19 @@
-import { getAiGlossaryEntries } from "@/features/ai/glossary";
+import { getAiArtistMemory } from "@/features/ai/artist-memory";
+import { getAiGlossaryEntries, type AiGlossaryEntry } from "@/features/ai/glossary";
 import {
   getActiveAiProvider,
+  requestProviderSongContext,
   requestProviderTranslationDraft,
-  requestProviderTranslationRefinement
+  requestProviderTranslationRefinement,
+  requestProviderTranslationSelection
 } from "@/features/ai/provider";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
-import type { AiDraftLine, GenerateAiTranslationOptions, GenerateAiTranslationResult } from "@/features/ai/types";
+import type {
+  AiDraftLine,
+  AiSongContext,
+  GenerateAiTranslationOptions,
+  GenerateAiTranslationResult
+} from "@/features/ai/types";
 import { getLyricsCacheByTrackId } from "@/features/lyrics/repository";
 import type { LyricsCacheFile } from "@/features/lyrics/types";
 import { inspectTranslationFile } from "@/features/translations/inspection";
@@ -14,6 +22,9 @@ import type { TrackTranslation } from "@/features/translations/types";
 
 const CONTEXT_WINDOW_LINES = 2;
 const REFINEMENT_CONTEXT_WINDOW_LINES = 2;
+const SONG_CONTEXT_MAX_LINES = 24;
+const MAX_GROUP_LINES = 4;
+const SYNCED_GROUP_BREAK_GAP_MS = 12_000;
 
 function getInitialBatchSize(sourceLyricsKind: "synced" | "plain") {
   if (getActiveAiProvider() === "openai") {
@@ -31,11 +42,25 @@ function getRefinementBatchSize(sourceLyricsKind: "synced" | "plain") {
   return sourceLyricsKind === "plain" ? 4 : 8;
 }
 
+function getSelectionBatchSize(sourceLyricsKind: "synced" | "plain") {
+  if (getActiveAiProvider() === "openai") {
+    return sourceLyricsKind === "plain" ? 10 : 20;
+  }
+
+  return sourceLyricsKind === "plain" ? 4 : 8;
+}
+
 type SourceDraftLine = {
   order: number;
   original: string;
   startMs: number | null;
   endMs: number | null;
+};
+
+type SourceLineGroup = {
+  index: number;
+  lineOrders: number[];
+  text: string;
 };
 
 function normalizeLanguage(value: string) {
@@ -75,6 +100,55 @@ function buildSourceLines(cacheFile: LyricsCacheFile) {
   return cacheFile.kind === "synced" ? buildSyncedSourceLines(cacheFile) : buildPlainSourceLines(cacheFile);
 }
 
+function buildSourceLineGroups(lines: SourceDraftLine[], sourceLyricsKind: "synced" | "plain") {
+  const groups: SourceLineGroup[] = [];
+  let currentGroupLines: SourceDraftLine[] = [];
+
+  const pushGroup = () => {
+    if (currentGroupLines.length === 0) {
+      return;
+    }
+
+    groups.push({
+      index: groups.length,
+      lineOrders: currentGroupLines.map((line) => line.order),
+      text: currentGroupLines.map((line) => line.original).join("\n")
+    });
+    currentGroupLines = [];
+  };
+
+  for (const line of lines) {
+    const previousLine = currentGroupLines[currentGroupLines.length - 1] ?? null;
+    const shouldBreakByGap =
+      sourceLyricsKind === "synced" &&
+      previousLine?.startMs !== null &&
+      line.startMs !== null &&
+      line.startMs - previousLine.startMs >= SYNCED_GROUP_BREAK_GAP_MS;
+    const shouldBreakBySize = currentGroupLines.length >= MAX_GROUP_LINES;
+
+    if (currentGroupLines.length > 0 && (shouldBreakByGap || shouldBreakBySize)) {
+      pushGroup();
+    }
+
+    currentGroupLines.push(line);
+  }
+
+  pushGroup();
+  return groups;
+}
+
+function buildLineGroupLookup(groups: SourceLineGroup[]) {
+  const lookup = new Map<number, SourceLineGroup>();
+
+  for (const group of groups) {
+    for (const lineOrder of group.lineOrders) {
+      lookup.set(lineOrder, group);
+    }
+  }
+
+  return lookup;
+}
+
 function chunkSourceLines(lines: SourceDraftLine[], chunkSize: number) {
   const chunks: SourceDraftLine[][] = [];
 
@@ -94,18 +168,84 @@ function normalizeLineKey(value: string) {
     .trim();
 }
 
-function filterRelevantGlossaryEntries(
-  glossaryEntries: Awaited<ReturnType<typeof getAiGlossaryEntries>>,
-  lineTexts: string[]
-) {
-  if (glossaryEntries.length <= 12) {
+function normalizeRequestedSourceLanguage(value: string | null) {
+  return value && value.trim().length > 0 ? value.trim() : null;
+}
+
+function mergeGlossaryEntries(glossaryLists: AiGlossaryEntry[][]) {
+  const merged = new Map<string, AiGlossaryEntry>();
+
+  for (const glossaryList of glossaryLists) {
+    for (const entry of glossaryList) {
+      const key = normalizeLineKey(entry.term);
+      if (!key) {
+        continue;
+      }
+
+      merged.set(key, entry);
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
+function getGlossaryCategoryWeight(category: AiGlossaryEntry["category"]) {
+  switch (category) {
+    case "preferred_rendering":
+      return 8;
+    case "phrase":
+      return 7;
+    case "idiom":
+      return 6;
+    case "slang":
+      return 5;
+    case "reference":
+      return 4;
+    default:
+      return 2;
+  }
+}
+
+function filterRelevantGlossaryEntries(glossaryEntries: AiGlossaryEntry[], lineTexts: string[]) {
+  if (glossaryEntries.length <= 16) {
     return glossaryEntries;
   }
 
   const normalizedText = lineTexts.map(normalizeLineKey).join(" ");
-  const relevantEntries = glossaryEntries.filter((entry) => normalizedText.includes(normalizeLineKey(entry.term)));
 
-  return relevantEntries.length > 0 ? relevantEntries : glossaryEntries.slice(0, 12);
+  const scoredEntries = glossaryEntries.map((entry) => {
+    const normalizedTerm = normalizeLineKey(entry.term);
+    const termWords = normalizedTerm.split(" ").filter(Boolean);
+    const hasExactMatch = normalizedTerm.length > 0 && normalizedText.includes(normalizedTerm);
+    const partialMatchCount = termWords.filter((word) => normalizedText.includes(word)).length;
+    const score =
+      (hasExactMatch ? 100 : 0) +
+      partialMatchCount * 10 +
+      getGlossaryCategoryWeight(entry.category) +
+      Math.min(termWords.length, 4);
+
+    return {
+      entry,
+      score,
+      hasExactMatch
+    };
+  });
+
+  const matchedEntries = scoredEntries
+    .filter((item) => item.hasExactMatch || item.score >= 15)
+    .sort((left, right) => right.score - left.score)
+    .map((item) => item.entry);
+
+  if (matchedEntries.length >= 12) {
+    return matchedEntries.slice(0, 18);
+  }
+
+  const fallbackEntries = scoredEntries
+    .sort((left, right) => right.score - left.score)
+    .map((item) => item.entry)
+    .slice(0, 12);
+
+  return mergeGlossaryEntries([matchedEntries, fallbackEntries]).slice(0, 18);
 }
 
 function buildContextLines(lines: SourceDraftLine[], centerIndex: number, startOffset: number, endOffset: number) {
@@ -150,10 +290,6 @@ function buildRefinementContext(lines: AiDraftLine[], centerIndex: number, start
   return context;
 }
 
-function normalizeRequestedSourceLanguage(value: string | null) {
-  return value && value.trim().length > 0 ? value.trim() : null;
-}
-
 function normalizeGeneratedTransliteration(original: string, value: string | null) {
   if (!value) {
     return null;
@@ -171,12 +307,14 @@ function alignDraftLinesToSource(sourceLines: SourceDraftLine[], draftLines: AiD
       original: sourceLine.original,
       literal: draftLine?.literal ?? "",
       natural: draftLine?.natural ?? "",
+      slangAware: draftLine?.slangAware ?? draftLine?.natural ?? draftLine?.literal ?? "",
       chosen: draftLine?.chosen ?? draftLine?.translated ?? "",
       translated: draftLine?.chosen ?? draftLine?.translated ?? "",
       transliteration: normalizeGeneratedTransliteration(sourceLine.original, draftLine?.transliteration ?? null),
       note: draftLine?.note ?? null,
       ambiguity: draftLine?.ambiguity ?? null,
       confidence: draftLine?.confidence ?? "medium",
+      selectorReason: draftLine?.selectorReason ?? null,
       startMs: sourceLine.startMs,
       endMs: sourceLine.endMs
     } satisfies AiDraftLine;
@@ -204,41 +342,122 @@ function applyDuplicateLineReuse(lines: AiDraftLine[]) {
       ...line,
       literal: firstSeen.literal,
       natural: firstSeen.natural,
+      slangAware: firstSeen.slangAware,
       chosen: firstSeen.chosen,
       translated: firstSeen.chosen,
       transliteration: firstSeen.transliteration,
       note: firstSeen.note,
       ambiguity: firstSeen.ambiguity,
-      confidence: firstSeen.confidence
+      confidence: firstSeen.confidence,
+      selectorReason: firstSeen.selectorReason
     } satisfies AiDraftLine;
   });
+}
+
+async function loadRelevantGlossaryEntries(options: {
+  sourceLanguage: string | null;
+  artist: string;
+  spotifyTrackId: string;
+  candidateTexts: string[];
+  preferredRenderings: AiGlossaryEntry[];
+}) {
+  const loadedGlossaryEntries = await getAiGlossaryEntries({
+    language: options.sourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId
+  });
+
+  return filterRelevantGlossaryEntries(
+    mergeGlossaryEntries([loadedGlossaryEntries, options.preferredRenderings]),
+    options.candidateTexts
+  );
+}
+
+function sampleSongContextLines(sourceLines: SourceDraftLine[], maxLines = SONG_CONTEXT_MAX_LINES) {
+  if (sourceLines.length <= maxLines) {
+    return sourceLines;
+  }
+
+  const sampledIndexes = new Set<number>();
+
+  for (let index = 0; index < maxLines; index += 1) {
+    const scaledIndex = Math.round((index * (sourceLines.length - 1)) / Math.max(maxLines - 1, 1));
+    sampledIndexes.add(scaledIndex);
+  }
+
+  return Array.from(sampledIndexes)
+    .sort((left, right) => left - right)
+    .map((index) => sourceLines[index])
+    .filter((line): line is SourceDraftLine => Boolean(line));
+}
+
+async function generateSongContext(options: GenerateAiTranslationOptions, sourceLines: SourceDraftLine[]) {
+  const requestedSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
+  const { memory: artistMemory, preferredRenderings } = await getAiArtistMemory(options.artist);
+  const sampledLines = sampleSongContextLines(sourceLines);
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage: requestedSourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sampledLines.map((line) => line.original),
+    preferredRenderings
+  });
+
+  const response = await requestProviderSongContext({
+    title: options.title,
+    artist: options.artist,
+    album: options.album,
+    sourceLanguage: requestedSourceLanguage,
+    glossaryEntries,
+    artistMemory,
+    lines: sampledLines.map((line) => ({
+      index: line.order + 1,
+      original: line.original
+    }))
+  }).catch(() => null);
+
+  return {
+    artistMemory,
+    preferredRenderings,
+    sourceLanguage: normalizeRequestedSourceLanguage(response?.sourceLanguage ?? requestedSourceLanguage),
+    songContext: response?.songContext ?? null
+  };
 }
 
 async function generateDraftLinesInBatches(
   options: GenerateAiTranslationOptions,
   sourceLines: SourceDraftLine[],
-  sourceLyricsKind: "synced" | "plain"
+  sourceLyricsKind: "synced" | "plain",
+  requestedSourceLanguage: string | null,
+  songContext: AiSongContext | null,
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
+  preferredRenderings: AiGlossaryEntry[]
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
+  const sourceGroups = buildSourceLineGroups(sourceLines, sourceLyricsKind);
+  const groupLookup = buildLineGroupLookup(sourceGroups);
   const generatedLines: AiDraftLine[] = [];
-  let inferredSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
+  let inferredSourceLanguage = normalizeRequestedSourceLanguage(requestedSourceLanguage);
   let model = "";
 
   for (const batch of batches) {
-    const loadedGlossaryEntries = await getAiGlossaryEntries({
-      language: inferredSourceLanguage,
+    const glossaryEntries = await loadRelevantGlossaryEntries({
+      sourceLanguage: inferredSourceLanguage,
       artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId
+      spotifyTrackId: options.spotifyTrackId,
+      candidateTexts: batch.flatMap((line) => {
+        const group = groupLookup.get(line.order);
+
+        return [
+          line.original,
+          ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
+          ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
+          group?.text ?? ""
+        ];
+      }),
+      preferredRenderings
     });
-    const glossaryEntries = filterRelevantGlossaryEntries(
-      loadedGlossaryEntries,
-      batch.flatMap((line) => [
-        line.original,
-        ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-        ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES)
-      ])
-    );
 
     const aiResponse = await requestProviderTranslationDraft({
       title: options.title,
@@ -249,12 +468,20 @@ async function generateDraftLinesInBatches(
       includeTransliteration: options.includeTransliteration,
       includeNotes: options.includeNotes,
       glossaryEntries,
-      lines: batch.map((line) => ({
-        index: line.order + 1,
-        original: line.original,
-        contextBefore: buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES)
-      }))
+      songContext,
+      artistMemory,
+      lines: batch.map((line) => {
+        const group = groupLookup.get(line.order);
+
+        return {
+          index: line.order + 1,
+          original: line.original,
+          contextBefore: buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
+          contextAfter: buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
+          groupIndex: group?.index,
+          groupText: group?.text
+        };
+      })
     });
 
     model = aiResponse.model;
@@ -269,12 +496,18 @@ async function generateDraftLinesInBatches(
         original: line.original,
         literal: aiResponse.lines[index]?.literal ?? aiResponse.lines[index]?.translated ?? "",
         natural: aiResponse.lines[index]?.natural ?? aiResponse.lines[index]?.translated ?? "",
+        slangAware:
+          aiResponse.lines[index]?.slangAware ??
+          aiResponse.lines[index]?.natural ??
+          aiResponse.lines[index]?.translated ??
+          "",
         chosen: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
         translated: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
         transliteration: normalizeGeneratedTransliteration(line.original, aiResponse.lines[index]?.transliteration ?? null),
         note: aiResponse.lines[index]?.note ?? null,
         ambiguity: aiResponse.lines[index]?.ambiguity ?? null,
         confidence: aiResponse.lines[index]?.confidence ?? "medium",
+        selectorReason: aiResponse.lines[index]?.selectorReason ?? null,
         startMs: line.startMs,
         endMs: line.endMs
       }))
@@ -293,7 +526,10 @@ async function refineDraftLinesInBatches(
   sourceLines: SourceDraftLine[],
   draftLines: AiDraftLine[],
   sourceLyricsKind: "synced" | "plain",
-  sourceLanguage: string
+  sourceLanguage: string,
+  songContext: AiSongContext | null,
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
+  preferredRenderings: AiGlossaryEntry[]
 ) {
   const batchSize = getRefinementBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -302,23 +538,21 @@ async function refineDraftLinesInBatches(
 
   for (const batch of batches) {
     const batchDraftLines = batch.map((line) => draftLines[line.order]).filter((line): line is AiDraftLine => Boolean(line));
-
-    const loadedGlossaryEntries = await getAiGlossaryEntries({
-      language: sourceLanguage,
+    const glossaryEntries = await loadRelevantGlossaryEntries({
+      sourceLanguage,
       artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId
-    });
-    const glossaryEntries = filterRelevantGlossaryEntries(
-      loadedGlossaryEntries,
-      batch.flatMap((line) => [
+      spotifyTrackId: options.spotifyTrackId,
+      candidateTexts: batch.flatMap((line) => [
         line.original,
         ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
         ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
-        draftLines[line.order]?.chosen ?? "",
         draftLines[line.order]?.literal ?? "",
-        draftLines[line.order]?.natural ?? ""
-      ])
-    );
+        draftLines[line.order]?.natural ?? "",
+        draftLines[line.order]?.slangAware ?? "",
+        draftLines[line.order]?.chosen ?? ""
+      ]),
+      preferredRenderings
+    });
 
     const aiResponse = await requestProviderTranslationRefinement({
       title: options.title,
@@ -329,11 +563,14 @@ async function refineDraftLinesInBatches(
       includeTransliteration: options.includeTransliteration,
       includeNotes: options.includeNotes,
       glossaryEntries,
+      songContext,
+      artistMemory,
       lines: batchDraftLines.map((line) => ({
         index: line.order + 1,
         original: line.original,
         literal: line.literal,
         natural: line.natural,
+        slangAware: line.slangAware,
         chosen: line.chosen,
         ambiguity: line.ambiguity,
         confidence: line.confidence,
@@ -350,6 +587,7 @@ async function refineDraftLinesInBatches(
         original: line.original,
         literal: aiResponse.lines[index]?.literal ?? draftLines[line.order]?.literal ?? "",
         natural: aiResponse.lines[index]?.natural ?? draftLines[line.order]?.natural ?? "",
+        slangAware: aiResponse.lines[index]?.slangAware ?? draftLines[line.order]?.slangAware ?? "",
         chosen:
           aiResponse.lines[index]?.chosen ??
           aiResponse.lines[index]?.translated ??
@@ -367,6 +605,7 @@ async function refineDraftLinesInBatches(
         note: aiResponse.lines[index]?.note ?? draftLines[line.order]?.note ?? null,
         ambiguity: aiResponse.lines[index]?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
         confidence: aiResponse.lines[index]?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
+        selectorReason: aiResponse.lines[index]?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
         startMs: line.startMs,
         endMs: line.endMs
       }))
@@ -376,6 +615,87 @@ async function refineDraftLinesInBatches(
   return {
     model,
     lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(refinedLines))
+  };
+}
+
+async function selectDraftLinesInBatches(
+  options: GenerateAiTranslationOptions,
+  sourceLines: SourceDraftLine[],
+  draftLines: AiDraftLine[],
+  sourceLyricsKind: "synced" | "plain",
+  sourceLanguage: string,
+  songContext: AiSongContext | null,
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
+  preferredRenderings: AiGlossaryEntry[]
+) {
+  const batchSize = getSelectionBatchSize(sourceLyricsKind);
+  const batches = chunkSourceLines(sourceLines, batchSize);
+  const selectedLines: AiDraftLine[] = [];
+  let model = "";
+
+  for (const batch of batches) {
+    const glossaryEntries = await loadRelevantGlossaryEntries({
+      sourceLanguage,
+      artist: options.artist,
+      spotifyTrackId: options.spotifyTrackId,
+      candidateTexts: batch.flatMap((line) => [
+        line.original,
+        draftLines[line.order]?.literal ?? "",
+        draftLines[line.order]?.natural ?? "",
+        draftLines[line.order]?.slangAware ?? "",
+        draftLines[line.order]?.chosen ?? "",
+        ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+        ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+      ]),
+      preferredRenderings
+    });
+
+    const aiResponse = await requestProviderTranslationSelection({
+      title: options.title,
+      artist: options.artist,
+      album: options.album,
+      sourceLanguage,
+      targetLanguage: normalizeLanguage(options.targetLanguage),
+      includeTransliteration: options.includeTransliteration,
+      includeNotes: options.includeNotes,
+      glossaryEntries,
+      songContext,
+      artistMemory,
+      lines: batch.map((line) => ({
+        index: line.order + 1,
+        original: line.original,
+        literal: draftLines[line.order]?.literal ?? "",
+        natural: draftLines[line.order]?.natural ?? "",
+        slangAware: draftLines[line.order]?.slangAware ?? "",
+        currentChosen: draftLines[line.order]?.chosen ?? "",
+        note: draftLines[line.order]?.note ?? null,
+        ambiguity: draftLines[line.order]?.ambiguity ?? null,
+        confidence: draftLines[line.order]?.confidence ?? "medium",
+        contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+      }))
+    });
+
+    model = aiResponse.model || model;
+
+    selectedLines.push(
+      ...batch.map((line, index) => ({
+        ...draftLines[line.order],
+        chosen: aiResponse.lines[index]?.chosen ?? draftLines[line.order]?.chosen ?? "",
+        translated: aiResponse.lines[index]?.chosen ?? draftLines[line.order]?.chosen ?? "",
+        note: aiResponse.lines[index]?.note ?? draftLines[line.order]?.note ?? null,
+        ambiguity: aiResponse.lines[index]?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
+        confidence: aiResponse.lines[index]?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
+        selectorReason: aiResponse.lines[index]?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
+        startMs: line.startMs,
+        endMs: line.endMs
+      }))
+    );
+  }
+
+  return {
+    model,
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(selectedLines))
   };
 }
 
@@ -407,18 +727,41 @@ export async function generateAiTranslationDraft(
   }
 
   const targetLanguage = normalizeLanguage(options.targetLanguage);
-  const initialDraft = await generateDraftLinesInBatches(options, sourceLines, lyricsCache.kind);
+  const contextResponse = await generateSongContext(options, sourceLines);
+  const initialDraft = await generateDraftLinesInBatches(
+    options,
+    sourceLines,
+    lyricsCache.kind,
+    contextResponse.sourceLanguage,
+    contextResponse.songContext,
+    contextResponse.artistMemory,
+    contextResponse.preferredRenderings
+  );
   const refinedDraft = await refineDraftLinesInBatches(
     options,
     sourceLines,
     initialDraft.lines,
     lyricsCache.kind,
-    initialDraft.sourceLanguage
+    initialDraft.sourceLanguage,
+    contextResponse.songContext,
+    contextResponse.artistMemory,
+    contextResponse.preferredRenderings
   ).catch(() => null);
+  const selectedDraft = await selectDraftLinesInBatches(
+    options,
+    sourceLines,
+    refinedDraft?.lines ?? initialDraft.lines,
+    lyricsCache.kind,
+    initialDraft.sourceLanguage,
+    contextResponse.songContext,
+    contextResponse.artistMemory,
+    contextResponse.preferredRenderings
+  ).catch(() => null);
+
   const aiResponse = {
-    model: refinedDraft?.model || initialDraft.model,
+    model: selectedDraft?.model || refinedDraft?.model || initialDraft.model,
     sourceLanguage: initialDraft.sourceLanguage,
-    lines: refinedDraft?.lines ?? initialDraft.lines
+    lines: selectedDraft?.lines ?? refinedDraft?.lines ?? initialDraft.lines
   };
 
   const draftFile = {
@@ -436,6 +779,8 @@ export async function generateAiTranslationDraft(
       provider: getActiveAiProvider(),
       model: aiResponse.model
     },
+    songContext: contextResponse.songContext,
+    artistMemory: contextResponse.artistMemory,
     lines: aiResponse.lines
   };
 

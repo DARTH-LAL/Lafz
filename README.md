@@ -29,7 +29,7 @@ This repository is intentionally scoped as a personal prototype:
 - Official lyrics fetch scaffold with local cache
 - Local fallback import for `.lrc`, synced JSON, or plain lyrics text
 - AI-assisted translation drafts from cached original lyrics
-- Two-pass AI translation review for stronger consistency and slang accuracy
+- Multi-pass AI translation pipeline with song context, artist memory, selector pass, and low-confidence review
 - Automatic synced playback when timed lyrics are available
 - Plain reading mode when only untimed lyrics are available
 - Clean loading, empty, and error states
@@ -46,7 +46,8 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   ├── library/
 │   │   └── playlists/            # imported playlist JSON files, ignored by git
 │   ├── ai/
-│   │   └── glossaries/           # local glossary overrides + committed starter glossary samples
+│   │   ├── glossaries/           # local glossary overrides + committed starter glossary samples
+│   │   └── memory/               # optional artist-memory JSON for recurring tone/slang
 │   ├── lyrics/
 │   │   └── cache/                # provider-fetched or locally imported lyrics cache, ignored by git
 │   └── translations/
@@ -94,9 +95,11 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/spotify/playlist-import.ts`: validates playlist input, fetches playlist data, normalizes tracks, deduplicates, and writes local playlist JSON files
 - `src/features/spotify/track-import.ts`: validates single-track input, fetches track metadata, and writes local single-song library JSON files
 - `src/features/spotify/server-session.ts`: refreshes Spotify sessions for server routes
-- `src/features/ai/ollama.ts`: calls your local Ollama server, checks model availability, and asks for strict line-by-line JSON output
-- `src/features/ai/glossary.ts`: loads starter glossary hints plus your own local term overrides for romanized lyric slang
-- `src/features/ai/translation-draft.ts`: turns cached original lyrics into AI drafts and optionally writes synced translation JSON files
+- `src/features/ai/openai.ts`: cloud-provider adapter for song-context generation, candidate drafting, refinement, and selector passes
+- `src/features/ai/ollama.ts`: local-provider adapter for song-context generation, candidate drafting, refinement, and selector passes
+- `src/features/ai/glossary.ts`: loads categorized glossary hints plus your own overrides for slang, idioms, phrases, and references
+- `src/features/ai/artist-memory.ts`: loads optional artist-level translation memory for recurring tone and preferred renderings
+- `src/features/ai/translation-draft.ts`: builds song context, grouped verse batches, refinement passes, and final selector output before writing synced or untimed draft files
 - `src/features/ai/repository.ts`: stores and inspects local AI draft files
 - `src/features/library/queue.ts`: reads imported playlist JSON files, deduplicates tracks, inspects translation files, and derives queue-ready status records
 - `src/features/lyrics/musixmatch.ts`: official-provider adapter for fetching synced or plain lyrics when a Musixmatch API key is configured
@@ -368,14 +371,18 @@ Once a track has original lyrics cached, the track detail page can generate an A
 1. Lafz reads the cached original lyrics from `data/lyrics/cache/<spotifyTrackId>.json`.
 2. Lafz loads any matching glossary hints for the detected language from `data/ai/glossaries`.
 3. If `OPENAI_API_KEY` is set, Lafz sends the lyric lines to OpenAI first. Otherwise it falls back to your local Ollama server.
-4. Lafz generates a first-pass draft, then runs a second-pass consistency review across the lyric lines to improve repeated slang, tone, and line-to-line accuracy.
-5. Lafz saves the generated result locally to:
+4. Lafz builds a song-level context summary first so later passes can stay consistent about tone, themes, and recurring phrases.
+5. Lafz loads any matching artist memory from `data/ai/memory/artists`.
+6. Lafz generates a grouped first-pass draft so nearby verse lines can help disambiguate each other.
+7. Lafz runs a refinement pass for consistency and slang accuracy across the lyric candidates.
+8. Lafz runs a selector pass that chooses the safest final display line from the literal, natural, and slang-aware candidates.
+9. Lafz saves the generated result locally to:
    - `data/translations/drafts/<spotifyTrackId>.json`
    - the draft is reviewed on the same track page; Lafz does not bounce you back to now-playing after a successful generation
-6. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
+10. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
    - `data/translations/local/<spotifyTrackId>.json`
-7. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
-8. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
+11. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
+12. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
 
 ### Local glossary hints
 
@@ -388,7 +395,7 @@ Lafz includes a small starter glossary for common romanized Punjabi lyric terms,
 - `data/ai/glossaries/local/artists/<artist-name>.json`
 - `data/ai/glossaries/local/tracks/<spotifyTrackId>.json`
 
-Each file can be either an array of entries or an object with an `entries` array:
+Each file can be either a simple array of entries or a categorized object:
 
 ```json
 [
@@ -400,7 +407,61 @@ Each file can be either an array of entries or an object with an `entries` array
 ]
 ```
 
+```json
+{
+  "slang": [
+    {
+      "term": "jatta",
+      "meaning": "used to address a Jatt man; often carries swagger or pride",
+      "note": "Usually better treated as a vocative than translated literally."
+    }
+  ],
+  "idioms": [
+    {
+      "term": "teri meri da ni hunda",
+      "meaning": "there is no yours and mine",
+      "note": "Used to express non-possessive loyalty or friendship."
+    }
+  ],
+  "preferredRenderings": [
+    {
+      "term": "yaari",
+      "meaning": "loyal friendship"
+    }
+  ]
+}
+```
+
 Local glossary files are git-ignored so you can keep refining them as the AI learns your preferred interpretations for slang, idioms, and recurring artist vocabulary.
+
+### Artist memory
+
+If an artist keeps using the same tone, references, or preferred English renderings, you can add an optional memory file at:
+
+- `data/ai/memory/artists/<artist-name>.json`
+
+Example:
+
+```json
+{
+  "displayName": "Karan Aujla",
+  "translationPreferences": [
+    "Keep flex lines sharp and restrained instead of over-poetic.",
+    "Prefer conservative translations when a threat or boast could be read two ways."
+  ],
+  "recurringThemes": ["status", "loyalty", "swagger", "competition"],
+  "toneNotes": ["cool confidence", "dry flex", "less melodrama"],
+  "notes": ["Do not over-explain references unless the line is genuinely unclear."],
+  "preferredRenderings": [
+    {
+      "term": "yaari",
+      "meaning": "loyal friendship"
+    }
+  ]
+}
+```
+
+Lafz blends this memory into the song-context, refinement, and selector passes so line choices stay more consistent across the same artist.
 
 ### AI draft overwrite rules
 
@@ -614,6 +675,11 @@ Open:
    - `data/translations/drafts/<spotifyTrackId>.json`
 11. If the original lyrics cache was synced, confirm Lafz also updates:
    - `data/translations/local/<spotifyTrackId>.json`
+12. Confirm the track page now shows:
+   - song context
+   - low-confidence lines first
+   - literal, natural, and slang-aware candidates
+13. Save any review edits directly on the same page.
 
 ## How the sync logic works
 
