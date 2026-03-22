@@ -22,6 +22,7 @@ This repository is intentionally scoped as a personal prototype:
 - Smooth auto-scroll to the active line
 - Tap-to-expand line details for original text, transliteration, and notes
 - Local Spotify playlist importer for building a translation work queue
+- Single-song Spotify importer for pulling one track into the queue quickly
 - Optional translation stub generation for imported tracks
 - Local translation queue aggregated across imported playlists
 - Track detail view with translation JSON preview and one-click stub creation
@@ -57,12 +58,13 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   │   ├── api/
 │   │   │   ├── library/
 │   │   │   │   ├── create-stub/
-│   │   │   │   └── import-playlist/
+│   │   │   │   ├── import-playlist/
+│   │   │   │   └── import-track/
 │   │   │   ├── lyrics/
 │   │   │   ├── playback/
 │   │   │   └── spotify/
 │   │   ├── library/
-│   │   │   ├── import/           # protected manual playlist import page
+│   │   │   ├── import/           # protected manual playlist + single-song import page
 │   │   │   ├── queue/            # protected aggregated translation work queue
 │   │   │   └── track/[spotifyTrackId]/
 │   │   ├── login/
@@ -89,6 +91,7 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/spotify/session.ts`: stores tokens in secure HTTP-only cookies
 - `src/features/spotify/playback.ts`: fetches and normalizes `/me/player`
 - `src/features/spotify/playlist-import.ts`: validates playlist input, fetches playlist data, normalizes tracks, deduplicates, and writes local playlist JSON files
+- `src/features/spotify/track-import.ts`: validates single-track input, fetches track metadata, and writes local single-song library JSON files
 - `src/features/spotify/server-session.ts`: refreshes Spotify sessions for server routes
 - `src/features/ai/ollama.ts`: calls your local Ollama server, checks model availability, and asks for strict line-by-line JSON output
 - `src/features/ai/glossary.ts`: loads starter glossary hints plus your own local term overrides for romanized lyric slang
@@ -105,11 +108,12 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/sync/use-playback-clock.ts`: keeps a lightweight client-side progress clock between polls
 - `src/app/api/playback/route.ts`: returns the current playback snapshot plus matching local translation
 - `src/app/api/library/import-playlist/route.ts`: runs the protected local playlist import
+- `src/app/api/library/import-track/route.ts`: runs the protected local single-song import
 - `src/app/api/library/create-stub/route.ts`: creates a missing local translation stub for a specific track
 - `src/app/api/ai/generate-translation/route.ts`: generates an AI translation draft from the cached original lyrics for a track
 - `src/app/api/lyrics/fetch/route.ts`: fetches official lyrics for a track and caches them locally
 - `src/app/api/lyrics/import/route.ts`: imports local lyrics text as a fallback cache file for a track
-- `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist imports
+- `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist and single-song imports
 - `src/app/library/queue/page.tsx`: protected aggregated queue for translation work
 - `src/app/library/track/[spotifyTrackId]/page.tsx`: protected track detail view with JSON preview
 
@@ -132,11 +136,13 @@ The current MVP uses polling.
 - The response is normalized into a small playback object the UI can render.
 - Between polls, the browser advances a lightweight local clock so active lyric highlighting feels live.
 
-## Playlist importer
+## Library importer
 
 Lafz includes a protected manual import page at:
 
 - `http://127.0.0.1:3000/library/import`
+
+### Playlist import
 
 You can paste either:
 
@@ -144,7 +150,7 @@ You can paste either:
 - a raw Spotify playlist ID
 - a Spotify URI such as `spotify:playlist:...`
 
-The importer will:
+The playlist importer will:
 
 1. extract the playlist ID
 2. fetch playlist metadata from Spotify
@@ -155,6 +161,24 @@ The importer will:
 7. optionally create translation stub files in `data/translations/local/<spotifyTrackId>.json`
 
 Important: for newly created Spotify Development Mode apps, playlist item access is currently limited. In Spotify's February 11, 2026 Development Mode update and migration guide, playlist item access is described as available only for playlists the user owns or collaborates on. If a public playlist from another account returns `403 Forbidden`, copy it into one of your own playlists first, then import that copy.
+
+### Single-song import
+
+You can also paste:
+
+- a full Spotify track URL such as `https://open.spotify.com/track/...`
+- a raw Spotify track ID
+- a Spotify URI such as `spotify:track:...`
+
+The single-song importer will:
+
+1. extract the Spotify track ID
+2. fetch the track metadata from Spotify
+3. normalize that track into a Lafz library record
+4. write a small local JSON file to `data/library/playlists/single-track-<spotifyTrackId>.json`
+5. optionally create `data/translations/local/<spotifyTrackId>.json`
+
+This keeps the queue logic unchanged because single-song imports still land in the same local library folder.
 
 ## Translation queue
 
@@ -290,7 +314,7 @@ A committed placeholder example lives here:
 
 ### Translation stub JSON shape
 
-If you enable stub creation during playlist import, Lafz writes minimal stub files like this:
+If you enable stub creation during playlist or single-song import, Lafz writes minimal stub files like this:
 
 ```json
 {
@@ -528,10 +552,12 @@ Open:
 
 - login: [http://127.0.0.1:3000/login](http://127.0.0.1:3000/login)
 - now playing: [http://127.0.0.1:3000/](http://127.0.0.1:3000/)
-- playlist importer: [http://127.0.0.1:3000/library/import](http://127.0.0.1:3000/library/import)
+- library importer: [http://127.0.0.1:3000/library/import](http://127.0.0.1:3000/library/import)
 - translation queue: [http://127.0.0.1:3000/library/queue](http://127.0.0.1:3000/library/queue)
 
-## Testing the playlist importer with a real playlist
+## Testing the importer with real Spotify data
+
+### Playlist test
 
 1. Start Lafz locally with `npm run dev`.
 2. Sign into Spotify at `/login`.
@@ -545,6 +571,17 @@ Open:
    - `data/library/playlists/<playlistId>.json`
    - optional `data/translations/local/<spotifyTrackId>.json` stub files
 10. Open one of the generated files and begin filling in your own translation data.
+
+### Single-song test
+
+1. Open `/library/import`.
+2. Paste a Spotify track URL or track ID into the single-song import form.
+3. Choose whether to create a translation stub for that song.
+4. Submit the import.
+5. Confirm that Lafz creates:
+   - `data/library/playlists/single-track-<spotifyTrackId>.json`
+   - optional `data/translations/local/<spotifyTrackId>.json`
+6. Open `/library/queue` and confirm the song appears there immediately.
 
 ## Testing the translation queue
 
@@ -596,7 +633,7 @@ Open:
 
 ## Assumptions in the current importer
 
-- The importer targets Spotify playlist tracks only.
+- The importer supports Spotify playlists plus single-track imports.
 - Local playlist files and unavailable tracks are skipped instead of being forced into the library.
 - Duplicate Spotify track IDs are deduplicated within a playlist import.
 - Duplicate Spotify track IDs are deduplicated again across all imported playlist files when building the queue.
