@@ -7,6 +7,10 @@ import {
   writeAiTranslationDraftFile
 } from "@/features/ai/repository";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
+import {
+  getChosenLineEditOrdersFromDraft,
+  rerunDraftAfterManualCorrections
+} from "@/features/ai/translation-draft";
 import { writeTrackTranslationFile } from "@/features/translations/repository";
 
 export const dynamic = "force-dynamic";
@@ -90,9 +94,13 @@ export async function POST(request: NextRequest) {
     })
   };
 
-  await writeAiTranslationDraftFile(nextDraft);
+  const chosenLineEditOrders = getChosenLineEditOrdersFromDraft(existingDraft, nextDraft);
   const learnedCorrections = await learnFromDraftCorrections(existingDraft, nextDraft);
-  const playbackTranslation = buildTrackTranslationFromAiDraft(nextDraft);
+  const rerunDraft =
+    chosenLineEditOrders.length > 0 ? await rerunDraftAfterManualCorrections(nextDraft, chosenLineEditOrders) : nextDraft;
+
+  await writeAiTranslationDraftFile(rerunDraft);
+  const playbackTranslation = buildTrackTranslationFromAiDraft(rerunDraft);
 
   if (playbackTranslation) {
     await writeTrackTranslationFile(playbackTranslation);
@@ -102,6 +110,10 @@ export async function POST(request: NextRequest) {
 
   if (playbackTranslation) {
     messageParts.push("Lafz also refreshed the synced playback translation file.");
+  }
+
+  if (chosenLineEditOrders.length > 0) {
+    messageParts.push("Lafz re-ran the remaining lines with your corrected context while keeping your manual edits locked.");
   }
 
   if (learnedCorrections.count > 0) {

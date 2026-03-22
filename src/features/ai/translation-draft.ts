@@ -11,6 +11,7 @@ import { writeAiTranslationDraftFile } from "@/features/ai/repository";
 import type {
   AiDraftLine,
   AiSongContext,
+  AiTranslationDraftFile,
   GenerateAiTranslationOptions,
   GenerateAiTranslationResult
 } from "@/features/ai/types";
@@ -157,6 +158,17 @@ function chunkSourceLines(lines: SourceDraftLine[], chunkSize: number) {
   }
 
   return chunks;
+}
+
+function buildSourceLinesFromDraft(draft: AiTranslationDraftFile) {
+  return [...draft.lines]
+    .sort((left, right) => left.order - right.order)
+    .map((line) => ({
+      order: line.order,
+      original: line.original,
+      startMs: line.startMs,
+      endMs: line.endMs
+    }));
 }
 
 function normalizeLineKey(value: string) {
@@ -354,6 +366,71 @@ function applyDuplicateLineReuse(lines: AiDraftLine[]) {
   });
 }
 
+function getChosenLineEditOrders(previousDraft: AiTranslationDraftFile, nextDraft: AiTranslationDraftFile) {
+  const previousByOrder = new Map(previousDraft.lines.map((line) => [line.order, line]));
+
+  return nextDraft.lines
+    .filter((line) => {
+      const previousLine = previousByOrder.get(line.order);
+
+      if (!previousLine) {
+        return false;
+      }
+
+      return previousLine.chosen.trim() !== line.chosen.trim();
+    })
+    .map((line) => line.order);
+}
+
+function propagateLockedDuplicateLines(draftLines: AiDraftLine[], initialLockedOrders: Set<number>) {
+  const lockedByKey = new Map<string, AiDraftLine>();
+
+  for (const line of draftLines) {
+    if (!initialLockedOrders.has(line.order)) {
+      continue;
+    }
+
+    const key = normalizeLineKey(line.original);
+
+    if (!key) {
+      continue;
+    }
+
+    lockedByKey.set(key, line);
+  }
+
+  const expandedLockedOrders = new Set(initialLockedOrders);
+  const propagatedLines = draftLines.map((line) => {
+    const key = normalizeLineKey(line.original);
+    const lockedLine = key ? lockedByKey.get(key) : null;
+
+    if (!lockedLine || lockedLine.order === line.order) {
+      return line;
+    }
+
+    expandedLockedOrders.add(line.order);
+
+    return {
+      ...line,
+      literal: lockedLine.literal,
+      natural: lockedLine.natural,
+      slangAware: lockedLine.slangAware,
+      chosen: lockedLine.chosen,
+      translated: lockedLine.chosen,
+      transliteration: lockedLine.transliteration,
+      note: lockedLine.note,
+      ambiguity: lockedLine.ambiguity,
+      confidence: lockedLine.confidence,
+      selectorReason: "Matched a repeated line you already corrected."
+    } satisfies AiDraftLine;
+  });
+
+  return {
+    lockedOrders: expandedLockedOrders,
+    lines: propagatedLines
+  };
+}
+
 async function loadRelevantGlossaryEntries(options: {
   sourceLanguage: string | null;
   artist: string;
@@ -529,7 +606,8 @@ async function refineDraftLinesInBatches(
   sourceLanguage: string,
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
-  preferredRenderings: AiGlossaryEntry[]
+  preferredRenderings: AiGlossaryEntry[],
+  lockedOrders?: Set<number>
 ) {
   const batchSize = getRefinementBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -537,12 +615,27 @@ async function refineDraftLinesInBatches(
   let model = "";
 
   for (const batch of batches) {
-    const batchDraftLines = batch.map((line) => draftLines[line.order]).filter((line): line is AiDraftLine => Boolean(line));
+    const unlockedBatch = batch.filter((line) => !lockedOrders?.has(line.order));
+
+    if (unlockedBatch.length === 0) {
+      refinedLines.push(
+        ...batch.map((line) => ({
+          ...draftLines[line.order],
+          startMs: line.startMs,
+          endMs: line.endMs
+        }))
+      );
+      continue;
+    }
+
+    const batchDraftLines = unlockedBatch
+      .map((line) => draftLines[line.order])
+      .filter((line): line is AiDraftLine => Boolean(line));
     const glossaryEntries = await loadRelevantGlossaryEntries({
       sourceLanguage,
       artist: options.artist,
       spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: batch.flatMap((line) => [
+      candidateTexts: unlockedBatch.flatMap((line) => [
         line.original,
         ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
         ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
@@ -580,35 +673,44 @@ async function refineDraftLinesInBatches(
     });
 
     model = aiResponse.model || model;
+    const unlockedByOrder = new Map(unlockedBatch.map((line) => [line.order, line]));
+    let unlockedIndex = 0;
 
     refinedLines.push(
-      ...batch.map((line, index) => ({
-        order: line.order,
-        original: line.original,
-        literal: aiResponse.lines[index]?.literal ?? draftLines[line.order]?.literal ?? "",
-        natural: aiResponse.lines[index]?.natural ?? draftLines[line.order]?.natural ?? "",
-        slangAware: aiResponse.lines[index]?.slangAware ?? draftLines[line.order]?.slangAware ?? "",
-        chosen:
-          aiResponse.lines[index]?.chosen ??
-          aiResponse.lines[index]?.translated ??
-          draftLines[line.order]?.chosen ??
-          "",
-        translated:
-          aiResponse.lines[index]?.chosen ??
-          aiResponse.lines[index]?.translated ??
-          draftLines[line.order]?.chosen ??
-          "",
-        transliteration: normalizeGeneratedTransliteration(
-          line.original,
-          aiResponse.lines[index]?.transliteration ?? draftLines[line.order]?.transliteration ?? null
-        ),
-        note: aiResponse.lines[index]?.note ?? draftLines[line.order]?.note ?? null,
-        ambiguity: aiResponse.lines[index]?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
-        confidence: aiResponse.lines[index]?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
-        selectorReason: aiResponse.lines[index]?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
-        startMs: line.startMs,
-        endMs: line.endMs
-      }))
+      ...batch.map((line) => {
+        const existingLine = draftLines[line.order];
+
+        if (!unlockedByOrder.has(line.order)) {
+          return {
+            ...existingLine,
+            startMs: line.startMs,
+            endMs: line.endMs
+          };
+        }
+
+        const responseLine = aiResponse.lines[unlockedIndex];
+        unlockedIndex += 1;
+
+        return {
+          order: line.order,
+          original: line.original,
+          literal: responseLine?.literal ?? existingLine?.literal ?? "",
+          natural: responseLine?.natural ?? existingLine?.natural ?? "",
+          slangAware: responseLine?.slangAware ?? existingLine?.slangAware ?? "",
+          chosen: responseLine?.chosen ?? responseLine?.translated ?? existingLine?.chosen ?? "",
+          translated: responseLine?.chosen ?? responseLine?.translated ?? existingLine?.chosen ?? "",
+          transliteration: normalizeGeneratedTransliteration(
+            line.original,
+            responseLine?.transliteration ?? existingLine?.transliteration ?? null
+          ),
+          note: responseLine?.note ?? existingLine?.note ?? null,
+          ambiguity: responseLine?.ambiguity ?? existingLine?.ambiguity ?? null,
+          confidence: responseLine?.confidence ?? existingLine?.confidence ?? "medium",
+          selectorReason: responseLine?.selectorReason ?? existingLine?.selectorReason ?? null,
+          startMs: line.startMs,
+          endMs: line.endMs
+        };
+      })
     );
   }
 
@@ -626,7 +728,8 @@ async function selectDraftLinesInBatches(
   sourceLanguage: string,
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
-  preferredRenderings: AiGlossaryEntry[]
+  preferredRenderings: AiGlossaryEntry[],
+  lockedOrders?: Set<number>
 ) {
   const batchSize = getSelectionBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -634,11 +737,24 @@ async function selectDraftLinesInBatches(
   let model = "";
 
   for (const batch of batches) {
+    const unlockedBatch = batch.filter((line) => !lockedOrders?.has(line.order));
+
+    if (unlockedBatch.length === 0) {
+      selectedLines.push(
+        ...batch.map((line) => ({
+          ...draftLines[line.order],
+          startMs: line.startMs,
+          endMs: line.endMs
+        }))
+      );
+      continue;
+    }
+
     const glossaryEntries = await loadRelevantGlossaryEntries({
       sourceLanguage,
       artist: options.artist,
       spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: batch.flatMap((line) => [
+      candidateTexts: unlockedBatch.flatMap((line) => [
         line.original,
         draftLines[line.order]?.literal ?? "",
         draftLines[line.order]?.natural ?? "",
@@ -661,7 +777,7 @@ async function selectDraftLinesInBatches(
       glossaryEntries,
       songContext,
       artistMemory,
-      lines: batch.map((line) => ({
+      lines: unlockedBatch.map((line) => ({
         index: line.order + 1,
         original: line.original,
         literal: draftLines[line.order]?.literal ?? "",
@@ -677,19 +793,34 @@ async function selectDraftLinesInBatches(
     });
 
     model = aiResponse.model || model;
+    const unlockedByOrder = new Map(unlockedBatch.map((line) => [line.order, line]));
+    let unlockedIndex = 0;
 
     selectedLines.push(
-      ...batch.map((line, index) => ({
-        ...draftLines[line.order],
-        chosen: aiResponse.lines[index]?.chosen ?? draftLines[line.order]?.chosen ?? "",
-        translated: aiResponse.lines[index]?.chosen ?? draftLines[line.order]?.chosen ?? "",
-        note: aiResponse.lines[index]?.note ?? draftLines[line.order]?.note ?? null,
-        ambiguity: aiResponse.lines[index]?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
-        confidence: aiResponse.lines[index]?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
-        selectorReason: aiResponse.lines[index]?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
-        startMs: line.startMs,
-        endMs: line.endMs
-      }))
+      ...batch.map((line) => {
+        if (!unlockedByOrder.has(line.order)) {
+          return {
+            ...draftLines[line.order],
+            startMs: line.startMs,
+            endMs: line.endMs
+          };
+        }
+
+        const responseLine = aiResponse.lines[unlockedIndex];
+        unlockedIndex += 1;
+
+        return {
+          ...draftLines[line.order],
+          chosen: responseLine?.chosen ?? draftLines[line.order]?.chosen ?? "",
+          translated: responseLine?.chosen ?? draftLines[line.order]?.chosen ?? "",
+          note: responseLine?.note ?? draftLines[line.order]?.note ?? null,
+          ambiguity: responseLine?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
+          confidence: responseLine?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
+          selectorReason: responseLine?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
+          startMs: line.startMs,
+          endMs: line.endMs
+        };
+      })
     );
   }
 
@@ -705,6 +836,72 @@ function shouldPreserveExistingTranslationFile(kind: "missing" | "stub" | "trans
   }
 
   return !overwrite;
+}
+
+export async function rerunDraftAfterManualCorrections(
+  draft: AiTranslationDraftFile,
+  editedOrders: number[]
+) {
+  if (editedOrders.length === 0 || draft.lines.length === 0) {
+    return draft;
+  }
+
+  const sourceLines = buildSourceLinesFromDraft(draft);
+  const includeTransliteration = draft.lines.some((line) => line.transliteration !== null);
+  const includeNotes = draft.lines.some((line) => line.note !== null);
+  const { memory: artistMemory, preferredRenderings } = await getAiArtistMemory(draft.artist);
+  const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
+  const baseOptions: GenerateAiTranslationOptions = {
+    spotifyTrackId: draft.spotifyTrackId,
+    title: draft.title,
+    artist: draft.artist,
+    album: draft.album,
+    durationMs: draft.durationMs,
+    sourceLanguage: draft.sourceLanguage,
+    targetLanguage: draft.targetLanguage,
+    includeTransliteration,
+    includeNotes,
+    overwriteExistingTranslation: true
+  };
+
+  const refinedDraft = await refineDraftLinesInBatches(
+    baseOptions,
+    sourceLines,
+    propagatedDraft.lines,
+    draft.mode,
+    draft.sourceLanguage,
+    draft.songContext,
+    artistMemory,
+    preferredRenderings,
+    propagatedDraft.lockedOrders
+  ).catch(() => null);
+
+  const selectedDraft = await selectDraftLinesInBatches(
+    baseOptions,
+    sourceLines,
+    refinedDraft?.lines ?? propagatedDraft.lines,
+    draft.mode,
+    draft.sourceLanguage,
+    draft.songContext,
+    artistMemory,
+    preferredRenderings,
+    propagatedDraft.lockedOrders
+  ).catch(() => null);
+
+  return {
+    ...draft,
+    generatedAt: new Date().toISOString(),
+    generator: {
+      ...draft.generator,
+      model: selectedDraft?.model || refinedDraft?.model || draft.generator.model
+    },
+    artistMemory: artistMemory ?? draft.artistMemory,
+    lines: selectedDraft?.lines ?? refinedDraft?.lines ?? propagatedDraft.lines
+  } satisfies AiTranslationDraftFile;
+}
+
+export function getChosenLineEditOrdersFromDraft(previousDraft: AiTranslationDraftFile, nextDraft: AiTranslationDraftFile) {
+  return getChosenLineEditOrders(previousDraft, nextDraft);
 }
 
 export async function generateAiTranslationDraft(

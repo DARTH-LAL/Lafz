@@ -465,7 +465,7 @@ export function AiDraftWorkspace({
               Review only the uncertain lines.
             </h2>
             <p className="mt-2 text-base text-slate-400">
-              Lafz keeps literal, natural, and slang-aware versions side by side, then bubbles low-confidence lines to the top so you can fix the risky ones first. Saving your edits also teaches Lafz track-level and artist-level preferred renderings for future drafts.
+              Lafz keeps literal, natural, and slang-aware versions side by side, then bubbles low-confidence lines to the top so you can fix the risky ones first. Saving your edits also teaches Lafz track-level and artist-level preferred renderings for future drafts and re-runs the remaining lines with your corrected context.
             </p>
           </div>
 
