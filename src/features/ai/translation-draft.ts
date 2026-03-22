@@ -121,8 +121,8 @@ function buildSourceLineGroups(lines: SourceDraftLine[], sourceLyricsKind: "sync
     const previousLine = currentGroupLines[currentGroupLines.length - 1] ?? null;
     const shouldBreakByGap =
       sourceLyricsKind === "synced" &&
-      previousLine?.startMs !== null &&
-      line.startMs !== null &&
+      typeof previousLine?.startMs === "number" &&
+      typeof line.startMs === "number" &&
       line.startMs - previousLine.startMs >= SYNCED_GROUP_BREAK_GAP_MS;
     const shouldBreakBySize = currentGroupLines.length >= MAX_GROUP_LINES;
 
