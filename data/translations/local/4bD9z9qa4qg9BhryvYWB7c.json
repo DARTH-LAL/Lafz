@@ -1,0 +1,249 @@
+{
+  "spotifyTrackId": "4bD9z9qa4qg9BhryvYWB7c",
+  "title": "Kabira",
+  "artist": "Pritam, Tochi Raina, Rekha Bhardwaj, Amitabh Bhattacharya",
+  "sourceLanguage": "Hindi",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 16100,
+      "endMs": 19599,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "What kind of selfishness is yours?"
+    },
+    {
+      "startMs": 19600,
+      "endMs": 22199,
+      "original": "Na dhoop chune na chhaaon",
+      "translated": "You choose neither sunlight nor shade."
+    },
+    {
+      "startMs": 22200,
+      "endMs": 25099,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "What kind of selfishness is yours?"
+    },
+    {
+      "startMs": 25100,
+      "endMs": 27699,
+      "original": "Kisi thor tike na paaon",
+      "translated": "I can't settle anywhere."
+    },
+    {
+      "startMs": 27700,
+      "endMs": 30899,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "What kind of selfishness is yours?"
+    },
+    {
+      "startMs": 30900,
+      "endMs": 33599,
+      "original": "Na dhoop chune na chhaaon",
+      "translated": "You choose neither sunlight nor shade."
+    },
+    {
+      "startMs": 33600,
+      "endMs": 36599,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "What kind of selfishness is yours?"
+    },
+    {
+      "startMs": 36600,
+      "endMs": 40199,
+      "original": "Kisi thor tike na paaon",
+      "translated": "I can't settle anywhere."
+    },
+    {
+      "startMs": 40200,
+      "endMs": 42999,
+      "original": "Ban liya apna paigambar",
+      "translated": "You made your own prophet.",
+      "note": "paigambar = 'prophet' (literal). The possessor 'apna' is ambiguous in isolation (can be 'my/your/one's own'); translated conservatively as 'your'."
+    },
+    {
+      "startMs": 43000,
+      "endMs": 45799,
+      "original": "Tar liya tu saat samandar",
+      "translated": "You crossed seven seas."
+    },
+    {
+      "startMs": 45800,
+      "endMs": 48499,
+      "original": "Phir bhi sookha mann ke andar",
+      "translated": "Yet still a dryness inside the heart."
+    },
+    {
+      "startMs": 48500,
+      "endMs": 50999,
+      "original": "Kyun reh gaya",
+      "translated": "Why did it remain?"
+    },
+    {
+      "startMs": 51000,
+      "endMs": 56199,
+      "original": "Re Kabira maan jaa",
+      "translated": "Kabira, please accept.",
+      "note": "'Re' is a vocative particle used to call someone in song; 'Kabira' is the vocative of Kabir (the saint/poet)."
+    },
+    {
+      "startMs": 56200,
+      "endMs": 61499,
+      "original": "Re Faqeera maan jaa",
+      "translated": "O faqeer, please accept.",
+      "note": "Faqeera/faqeer = an ascetic or mendicant (Sufi/holy man); used here as an address."
+    },
+    {
+      "startMs": 61500,
+      "endMs": 67999,
+      "original": "Aaja tujhko pukaare teri parchhaaiyan",
+      "translated": "Come, your shadows are calling you.",
+      "note": "'parchhaaiyan' literally means 'shadows' but can also suggest memories or echoes; translation keeps the literal sense."
+    },
+    {
+      "startMs": 68000,
+      "endMs": 72999,
+      "original": "Re Kabira maan ja",
+      "translated": "Kabira, please accept."
+    },
+    {
+      "startMs": 73000,
+      "endMs": 79499,
+      "original": "Re Faqeera maan ja",
+      "translated": "Oh fakir, please accept",
+      "note": "‘Faqeera’ (faqir/fakir) is a mendicant/ascetic; a cultural/religious address."
+    },
+    {
+      "startMs": 79500,
+      "endMs": 97299,
+      "original": "Kaisa tu hai nirmohi kaisa harjaaiya",
+      "translated": "What kind of person are you—so unfeeling, so faithless",
+      "note": "‘Nirmohi’ = indifferent/unfeeling. ‘Harjaaiya’ (harjaiyā) likely means a faithless/betraying person."
+    },
+    {
+      "startMs": 97300,
+      "endMs": 100599,
+      "original": "Tooti chaarpaai wohi",
+      "translated": "The same broken charpoy"
+    },
+    {
+      "startMs": 100600,
+      "endMs": 108699,
+      "original": "Thandi purvaai rasta dekhe",
+      "translated": "A cool easterly breeze watches the road",
+      "note": "‘Purvaai’ = an easterly breeze (regional word). The line personifies the breeze."
+    },
+    {
+      "startMs": 108700,
+      "endMs": 111699,
+      "original": "Doodhon ki malaai wohi",
+      "translated": "The same milk cream"
+    },
+    {
+      "startMs": 111700,
+      "endMs": 119199,
+      "original": "Mitti ki suraahi rasta dekhe..",
+      "translated": "The clay pitcher watches the road",
+      "note": "‘Suraahi’ is a clay/earthen water pitcher; the line personifies the object."
+    },
+    {
+      "startMs": 119200,
+      "endMs": 122399,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "How selfish you are",
+      "note": "‘Khudgarzi’ = selfishness/self-centeredness."
+    },
+    {
+      "startMs": 122400,
+      "endMs": 124999,
+      "original": ".Lab namak rame na misri",
+      "translated": "Your lips hold salt, not sugar",
+      "note": "Likely contrasts salt (tears/bitterness) with sugar (sweetness)."
+    },
+    {
+      "startMs": 125000,
+      "endMs": 128299,
+      "original": "Kaisi teri khudgarzi",
+      "translated": "How selfish you are",
+      "transliteration": "कैसी तेरी खुदगरज़ी"
+    },
+    {
+      "startMs": 128300,
+      "endMs": 131599,
+      "original": "Tujhe preet purani bisri..",
+      "translated": "You've forgotten an old love.",
+      "transliteration": "तुझे प्रीत पुरानी बिसरी.."
+    },
+    {
+      "startMs": 131600,
+      "endMs": 134399,
+      "original": "Mast Maula, mast Kalander",
+      "translated": "Mast Maula, mast Qalandar",
+      "transliteration": "मस्त मौला, मस्त कलन्दर",
+      "note": "Both are Sufi honorifics/titles: 'mast' implies ecstatic/intoxicated; 'Maula' and 'Qalandar/Kalander' refer to saintly or dervish figures."
+    },
+    {
+      "startMs": 134400,
+      "endMs": 137199,
+      "original": "Tu hawa ka ek bavandar",
+      "translated": "You're a whirlwind",
+      "transliteration": "तू हवा का एक बवंदर"
+    },
+    {
+      "startMs": 137200,
+      "endMs": 139999,
+      "original": "Bujh ke yun andar hi andar",
+      "translated": "Extinguished like this, deep inside",
+      "transliteration": "बुझ के यूँ अंदर ही अंदर"
+    },
+    {
+      "startMs": 140000,
+      "endMs": 142499,
+      "original": "Kyun reh gaya..",
+      "translated": "Why did you stay?",
+      "transliteration": "क्यों रह गया.."
+    },
+    {
+      "startMs": 142500,
+      "endMs": 147699,
+      "original": "Re Kabira maan jaa",
+      "translated": "Kabira, accept it",
+      "transliteration": "रे कबीरा मान जा",
+      "note": "Kabira refers to Kabir, the poet-saint; speaker addresses someone as 'Kabira'."
+    },
+    {
+      "startMs": 147700,
+      "endMs": 153299,
+      "original": "Re Faqeera maan jaa",
+      "translated": "O faqir, accept it",
+      "transliteration": "रे फकीरा मान जा",
+      "note": "'Faqeer' (faqir) means a mendicant or ascetic Sufi; used here as a vocative address."
+    },
+    {
+      "startMs": 153300,
+      "endMs": 159299,
+      "original": "Aaja tujhko pukaare teri parchhaaiyan",
+      "translated": "Come, your shadows are calling you."
+    },
+    {
+      "startMs": 159300,
+      "endMs": 164899,
+      "original": "Re Kabira maan ja",
+      "translated": "Kabira, accept it.",
+      "note": "Re is a vocative/exclamation addressing the named person; Kabira is the vocative form of the name Kabir."
+    },
+    {
+      "startMs": 164900,
+      "endMs": 170599,
+      "original": "Re Faqeera maan ja",
+      "translated": "Faqeera, accept it.",
+      "note": "Faqeera (faqir/fakir) = an ascetic or mendicant; Re is a vocative/exclamation."
+    },
+    {
+      "startMs": 170600,
+      "endMs": 223458,
+      "original": "Kaisa tu hai nirmohi kaisa harjaaiya...",
+      "translated": "How are you so heartless, how are you so lost/defeated...",
+      "note": "nirmohi = without attachment / heartless / detached. The word 'harjaaiya' is uncertain in meaning (see ambiguity)."
+    }
+  ]
+}

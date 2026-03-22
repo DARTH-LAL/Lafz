@@ -1,0 +1,376 @@
+{
+  "spotifyTrackId": "5nIrIdLPPXeRMl8WXnnDv1",
+  "title": "Knife Brows",
+  "artist": "Dhanda Nyoliwala",
+  "sourceLanguage": "Punjabi/Hindi (Romanized Latin script)",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 4060,
+      "endMs": 10469,
+      "original": "Romeo",
+      "translated": "Romeo",
+      "note": "Transliteration: Romeo. Persona/label for a charming/romantic man; literal transfer."
+    },
+    {
+      "startMs": 10470,
+      "endMs": 13019,
+      "original": "Chaali bhar ke naina mein chhori maut ka samaan",
+      "translated": "The girl's eyes are loaded with the stuff of death.",
+      "note": "Transliteration: Chaali bhar ke naina mein chhori maut ka samaan. 'chhori' = girl. Conservative reading kept ('loaded with the stuff of death')."
+    },
+    {
+      "startMs": 13020,
+      "endMs": 15969,
+      "original": "Kare kabje dilaan pe, bani phire Taliban",
+      "translated": "He seizes hearts — roaming around like a Taliban.",
+      "note": "Transliteration: Kare kabje dilaan pe, bani phire Taliban. 'dilaan' = hearts. Kept literal metaphor of fear/dominance."
+    },
+    {
+      "startMs": 15970,
+      "endMs": 18719,
+      "original": "Bole haulihauli, bina goli maare kheeche jaan",
+      "translated": "They whisper softly — they take lives without firing a bullet.",
+      "note": "Transliteration: Bole haulihauli, bina goli maare kheeche jaan. Could be literal threat or figurative (charm); translated conservatively as killing without shooting."
+    },
+    {
+      "startMs": 18720,
+      "endMs": 21449,
+      "original": "Chhore zinda laash bane, shehar banya shamshaan",
+      "translated": "The guys became living corpses; the city turned into a crematorium.",
+      "note": "Transliteration: Chhore zinda laash bane, shehar banya shamshaan. 'zinda laash' = living corpse; literal metaphor kept."
+    },
+    {
+      "startMs": 21450,
+      "endMs": 24009,
+      "original": "Chaali bhar ke naina mein chhori maut ka samaan",
+      "translated": "The girl's eyes are loaded with the stuff of death.",
+      "note": "Transliteration: Chaali bhar ke naina mein chhori maut ka samaan. 'chhori' = girl. Conservative reading kept ('loaded with the stuff of death')."
+    },
+    {
+      "startMs": 24010,
+      "endMs": 26989,
+      "original": "Kare kabje dilaan pe, bani phire Taliban",
+      "translated": "He seizes hearts — roaming around like a Taliban.",
+      "note": "Transliteration: Kare kabje dilaan pe, bani phire Taliban. 'dilaan' = hearts. Kept literal metaphor of fear/dominance."
+    },
+    {
+      "startMs": 26990,
+      "endMs": 29699,
+      "original": "Bole haulihauli, bina goli maare kheeche jaan",
+      "translated": "They whisper softly — they take lives without firing a bullet.",
+      "note": "Transliteration: Bole haulihauli, bina goli maare kheeche jaan. Could be literal threat or figurative (charm); translated conservatively as killing without shooting."
+    },
+    {
+      "startMs": 29700,
+      "endMs": 32369,
+      "original": "Chhore zinda laash bane, shehar banya shamshaan",
+      "translated": "The guys became living corpses; the city turned into a crematorium.",
+      "note": "Transliteration: Chhore zinda laash bane, shehar banya shamshaan. 'zinda laash' = living corpse; literal metaphor kept."
+    },
+    {
+      "startMs": 32370,
+      "endMs": 35099,
+      "original": "Saara jagg liya thug, phaink husan ka jaala",
+      "translated": "I took the whole world — I threw a net of beauty.",
+      "transliteration": "Tera chehra nasha maaf kare Mexico aala",
+      "note": "Transliteration: Saara jagg liya thug, phaink husan ka jaala. 'phaink ... jaala' = cast a net; translated conservatively."
+    },
+    {
+      "startMs": 35100,
+      "endMs": 37739,
+      "original": "Tera chehra nasha maaf kare Mexico aala",
+      "translated": "Your face's intoxication — even Mexico would forgive.",
+      "transliteration": "Dil cheer ke gaye hain, teer tikkhe eyebrow",
+      "note": "Transliteration: Tera chehra nasha maaf kare Mexico aala. Conservative literal rendering used despite cultural ambiguity."
+    },
+    {
+      "startMs": 37740,
+      "endMs": 40439,
+      "original": "Dil cheer ke gaye hain, teer tikkhe eyebrow",
+      "translated": "They ripped hearts apart — eyebrows sharp as arrows.",
+      "transliteration": "Beauty natural teri, poora face pe glow",
+      "note": "Transliteration: Dil cheer ke gaye hain, teer tikkhe eyebrow. 'teer tikkhe' = sharp like arrows; kept imagery intact."
+    },
+    {
+      "startMs": 40440,
+      "endMs": 43109,
+      "original": "Beauty natural teri, poora face pe glow",
+      "translated": "Your beauty's natural, your whole face is glowing.",
+      "note": "Transliteration: Beauty natural teri, poora face pe glow. Straightforward, literal-modern mixing of English words handled directly."
+    },
+    {
+      "startMs": 43110,
+      "endMs": 45959,
+      "original": "Reel dekhdekh teri main muka di saari GB",
+      "translated": "Watching your reels, I burned through all my GB.",
+      "note": "Transliteration: Reel dekhdekh teri main muka di saari GB. 'muka di saari GB' interpreted as using up data while watching reels."
+    },
+    {
+      "startMs": 45960,
+      "endMs": 48779,
+      "original": "Dil ban ya trophy, re, tu bani RCB",
+      "translated": "Be it my heart or my trophy — you turned into RCB.",
+      "note": "Transliteration: Dil ban ya trophy, re, tu bani RCB. Kept literal RCB reference rather than inventing metaphor."
+    },
+    {
+      "startMs": 48780,
+      "endMs": 51499,
+      "original": "Aankh shiny, step chhori kar rahi ae katt",
+      "translated": "Her eyes are shining, the girl’s got a killer step.",
+      "note": "Transliteration: Aankh shiny, step chhori kar rahi ae katt. 'katt' rendered as 'killer' for lyrical flow and likely meaning."
+    },
+    {
+      "startMs": 51500,
+      "endMs": 54089,
+      "original": "Meri groza mein barood, dekh baahar aa reya butt",
+      "translated": "There's gunpowder in my Groza — look, the butt's sticking out.",
+      "note": "Transliteration: Meri groza mein barood, dekh baahar aa reya butt. 'Groza' = gun model; rendered accordingly."
+    },
+    {
+      "startMs": 54090,
+      "endMs": 56969,
+      "original": "Note itne ke shehar tere peedan pe ni patte",
+      "translated": "So many banknotes that your city's trees don't have leaves.",
+      "note": "Transliteration: Note itne ke shehar tere peedan pe ni patte. Preserves metaphor of abundance of cash."
+    },
+    {
+      "startMs": 56970,
+      "endMs": 59549,
+      "original": "Pehrun aaj bhi main yaaran gera maange hoye latte",
+      "translated": "Even today I still wear the pair my friends begged me for.",
+      "note": "Transliteration: Pehrun aaj bhi main yaaran gera maange hoye latte. 'latte' rendered conservatively as 'pair' (shoes/kicks)."
+    },
+    {
+      "startMs": 59550,
+      "endMs": 62279,
+      "original": "Age athaara te dhare hain sir maamle sangeen",
+      "translated": "Past eighteen, there are cases on heads; the matters are serious.",
+      "note": "Transliteration: Age athaara te dhare hain sir maamle sangeen. Refers to age 18 and legal/trouble cases (dhare = charges/records)."
+    },
+    {
+      "startMs": 62280,
+      "endMs": 64939,
+      "original": "Raakhan aise hathiyar, gale dodo magazine",
+      "translated": "We carry weapons like that — two magazines hanging round the neck.",
+      "note": "Magazine = ammunition clip; visible extra magazines around the neck."
+    },
+    {
+      "startMs": 64940,
+      "endMs": 67999,
+      "original": "Road baap ka maan ke lyaanva sadkaan pe gaadi",
+      "translated": "Proud like the boss of the road, we bring our car out on the streets.",
+      "note": "'baap' used as 'boss/king'; 'lyaanva' rendered conservatively as 'bring/bring out'."
+    },
+    {
+      "startMs": 68000,
+      "endMs": 70619,
+      "original": "Bahar karaan kaam jinki ni ghar mein ajaadi",
+      "translated": "We do outside work for those whose homes aren't free.",
+      "note": "Conservative reading: performing 'outside' work on behalf of people lacking freedom at home."
+    },
+    {
+      "startMs": 70620,
+      "endMs": 73279,
+      "original": "Leke chaale bade daale, gear marji ke ghale",
+      "translated": "We move with big stacks, shifting gears however we want.",
+      "note": "'bade daale' = large sums/stacks; 'gear' likely literal or metaphor for tempo/control."
+    },
+    {
+      "startMs": 73280,
+      "endMs": 75969,
+      "original": "Aage bamhana ka chhora, paachhe baithe hain do laale",
+      "translated": "There's a 'bamhana' boy up front, two lads sitting behind him.",
+      "note": "Kept 'bamhana' as-is because meaning isn't clear from context."
+    },
+    {
+      "startMs": 75970,
+      "endMs": 78139,
+      "original": "Jutti jhaad ke rakhein hain, bairi saad ke",
+      "translated": "We've kicked off their shoes, to humiliate the enemy.",
+      "note": "Interprets the action as an insult/humiliation performed on enemies."
+    },
+    {
+      "startMs": 78140,
+      "endMs": 81059,
+      "original": "Hala dyan jote naadke re beecho beech paad ke",
+      "translated": "We tie up Hala's shoes and put them right in the middle.",
+      "note": "High uncertainty; translation kept literal pieces rather than inventing meaning."
+    },
+    {
+      "startMs": 81060,
+      "endMs": 84049,
+      "original": "Raakhe do numberi aa sandh, mora kar dena band",
+      "translated": "He keeps two shady ones with him — stop the show.",
+      "note": "'do-numberi' = two-faced/shady people; 'mora' read as 'act/show' to fit tone."
+    },
+    {
+      "startMs": 84050,
+      "endMs": 86739,
+      "original": "Bore batti raakhe khet ke main gaad ke",
+      "translated": "I plant the fuse/light in the field.",
+      "note": "Possible violent implication kept but wording conservative due to ambiguity."
+    },
+    {
+      "startMs": 86740,
+      "endMs": 89599,
+      "original": "Khaanvaana churma, re, jama desi baane mein milenge",
+      "translated": "We'll eat churma — we'll meet up in our desi way.",
+      "note": "Churma = Punjabi sweet; 'jama desi baane' = meeting in a traditional/desi manner."
+    },
+    {
+      "startMs": 89600,
+      "endMs": 92359,
+      "original": "Dand maarde akhaade mein, na to thaane mein milenge",
+      "translated": "We beat folks in the akhada; otherwise you'll run into us at the police station.",
+      "note": "'akhada' = fighting ring/wrestling arena; also implies physical confrontation leading to police."
+    },
+    {
+      "startMs": 92360,
+      "endMs": 95009,
+      "original": "Tanne jitni quality ginaayi ae main, chhori",
+      "translated": "Girl, you've counted how much quality I have.",
+      "note": "Chhori = affectionate address to a girl."
+    },
+    {
+      "startMs": 95010,
+      "endMs": 97769,
+      "original": "Tanne aise chhore bas Haryane mein milenge",
+      "translated": "You'll only find boys like this in Haryana.",
+      "note": "Regional identity (Haryana) emphasized as source of the speaker's type."
+    },
+    {
+      "startMs": 97770,
+      "endMs": 100529,
+      "original": "Maal baba ki daya te, nyu ae chaalenge sapaate",
+      "translated": "By Maal Baba's grace, we'll walk like this.",
+      "note": "Conservative rendering avoids speculating on the exact identity of 'Maal Baba'."
+    },
+    {
+      "startMs": 100530,
+      "endMs": 103179,
+      "original": "Set kare ve trend jyon ni kise pe bhi paate",
+      "translated": "They set trends like nobody else can.",
+      "note": "Clear boast about trendsetting."
+    },
+    {
+      "startMs": 103180,
+      "endMs": 105999,
+      "original": "Arey, bas kar tai aale dukhaan ki na puchhe",
+      "translated": "Hey, stop it — don't ask about those shops.",
+      "note": "'dukhaan' = shops/joints; tone is dismissive/censoring curiosity."
+    },
+    {
+      "startMs": 106000,
+      "endMs": 108639,
+      "original": "Log phaansi kha jya karein seh reya jitne main ghaate",
+      "translated": "People would be hanged for the losses I suffered.",
+      "note": "Figurative expression implying extreme hardship/penalty tied to speaker's losses."
+    },
+    {
+      "startMs": 108640,
+      "endMs": 111319,
+      "original": "Tere naam chadhwa dyun, billo, AK santaali",
+      "translated": "I'll put an AK in your name, babe.",
+      "note": "'billo' = affectionate address to a woman; the line implies gifting/registering a weapon under her name."
+    },
+    {
+      "startMs": 111320,
+      "endMs": 114149,
+      "original": "Tanne goliyan ki kholan ki bana ke de doon baali",
+      "translated": "I'll make you a box of bullets and give it to you, girl.",
+      "note": "Maintains violent/braggadocious offer; phrasing chosen for naturalness."
+    },
+    {
+      "startMs": 114150,
+      "endMs": 116919,
+      "original": "Tanne apni bana leyan, tere gel ki ne saali",
+      "translated": "I'll make you mine — your girl will be my 'saali'.",
+      "note": "Kept 'saali' untranslated with brief parenthetical in previous drafts; here preserved in quotes to flag cultural meaning."
+    },
+    {
+      "startMs": 116920,
+      "endMs": 119559,
+      "original": "Taur itni bana dyaan, kade jaani ni sambhaali",
+      "translated": "I'll put on such an attitude that no one has ever managed it.",
+      "note": "transliteration: Taur itni bana dyaan, kade jaani ni sambhaali. 'taur' = attitude/stance."
+    },
+    {
+      "startMs": 119560,
+      "endMs": 122349,
+      "original": "Ke ke karoon main bayaan, uthe dil mein toofan",
+      "translated": "How can I describe it — there's a storm in my heart.",
+      "note": "transliteration: Ke ke karoon main bayaan, uthe dil mein toofan."
+    },
+    {
+      "startMs": 122350,
+      "endMs": 125039,
+      "original": "Reh wah chup bhi ni ho rahi, meri khule na zubaan",
+      "translated": "I can't stay quiet — my mouth won't keep shut.",
+      "note": "transliteration: Reh wah chup bhi ni ho rahi, meri khule na zubaan."
+    },
+    {
+      "startMs": 125040,
+      "endMs": 127869,
+      "original": "Chaali bhar ke naina mein chhori maut ka samaan",
+      "translated": "The girl's eyes are loaded with the stuff of death.",
+      "note": "Transliteration: Chaali bhar ke naina mein chhori maut ka samaan. 'chhori' = girl. Conservative reading kept ('loaded with the stuff of death')."
+    },
+    {
+      "startMs": 127870,
+      "endMs": 130519,
+      "original": "Kare kabje dilaan pe, bani phire Taliban",
+      "translated": "He seizes hearts — roaming around like a Taliban.",
+      "note": "Transliteration: Kare kabje dilaan pe, bani phire Taliban. 'dilaan' = hearts. Kept literal metaphor of fear/dominance."
+    },
+    {
+      "startMs": 130520,
+      "endMs": 133199,
+      "original": "Bole haulihauli, bina goli maare kheeche jaan",
+      "translated": "They whisper softly — they take lives without firing a bullet.",
+      "note": "Transliteration: Bole haulihauli, bina goli maare kheeche jaan. Could be literal threat or figurative (charm); translated conservatively as killing without shooting."
+    },
+    {
+      "startMs": 133200,
+      "endMs": 136199,
+      "original": "Chhore zinda laash bane, shehar banya shamshaan",
+      "translated": "The guys became living corpses; the city turned into a crematorium.",
+      "note": "Transliteration: Chhore zinda laash bane, shehar banya shamshaan. 'zinda laash' = living corpse; literal metaphor kept."
+    },
+    {
+      "startMs": 136200,
+      "endMs": 138619,
+      "original": "Chaali bhar ke naina mein chhori maut ka samaan",
+      "translated": "The girl's eyes are loaded with the stuff of death.",
+      "note": "Transliteration: Chaali bhar ke naina mein chhori maut ka samaan. 'chhori' = girl. Conservative reading kept ('loaded with the stuff of death')."
+    },
+    {
+      "startMs": 138620,
+      "endMs": 141369,
+      "original": "Kare kabje dilaan pe, bani phire Taliban",
+      "translated": "He seizes hearts — roaming around like a Taliban.",
+      "note": "Transliteration: Kare kabje dilaan pe, bani phire Taliban. 'dilaan' = hearts. Kept literal metaphor of fear/dominance."
+    },
+    {
+      "startMs": 141370,
+      "endMs": 144089,
+      "original": "Bole haulihauli, bina goli maare kheeche jaan",
+      "translated": "They whisper softly — they take lives without firing a bullet.",
+      "note": "Transliteration: Bole haulihauli, bina goli maare kheeche jaan. Could be literal threat or figurative (charm); translated conservatively as killing without shooting."
+    },
+    {
+      "startMs": 144090,
+      "endMs": 149499,
+      "original": "Chhore zinda laash bane, shehar banya shamshaan",
+      "translated": "The guys became living corpses; the city turned into a crematorium.",
+      "note": "Transliteration: Chhore zinda laash bane, shehar banya shamshaan. 'zinda laash' = living corpse; literal metaphor kept."
+    },
+    {
+      "startMs": 149500,
+      "endMs": 175908,
+      "original": "Nyoliwala this side, baby",
+      "translated": "Nyoliwala's on this side, baby.",
+      "note": "transliteration: Nyoliwala this side, baby. 'this side' = present/claiming presence."
+    }
+  ]
+}
