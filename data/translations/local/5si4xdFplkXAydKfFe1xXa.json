@@ -1,0 +1,547 @@
+{
+  "spotifyTrackId": "5si4xdFplkXAydKfFe1xXa",
+  "title": "Take It Easy",
+  "artist": "Karan Aujla, Ikky",
+  "sourceLanguage": "Punjabi (Romanized) with English phrases",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 28770,
+      "endMs": 31359,
+      "original": "Eni jyada rude kaahto tone krdi",
+      "translated": "You use such a rude tone.",
+      "note": "Transliteration: Eni jyada rude kaahto tone krdi. Conservatively rendered as a statement about using a rude tone."
+    },
+    {
+      "startMs": 31360,
+      "endMs": 34619,
+      "original": "Tu tan ae kare jive mainu own krdi",
+      "translated": "You act like you own me.",
+      "note": "Transliteration: Tu tan ae kare jive mainu own krdi. Clear colloquial claim of possessiveness; natural, idiomatic English chosen."
+    },
+    {
+      "startMs": 34620,
+      "endMs": 37049,
+      "original": "Thoda jeha karla behave goriye",
+      "translated": "Behave a little, girl.",
+      "note": "Transliteration: Thoda jeha karla behave goriye. Conservative, direct admonition retained."
+    },
+    {
+      "startMs": 37050,
+      "endMs": 40359,
+      "original": "Enne bebe vi na kre jinne phone krdi",
+      "translated": "Don't act like those who call all the time.",
+      "note": "Transliteration: Enne bebe vi na kre jinne phone krdi. Preserves intended reproach towards people who call repeatedly."
+    },
+    {
+      "startMs": 40360,
+      "endMs": 42759,
+      "original": "Paisa fira kuttda ni time kitthe aa",
+      "translated": "Money's running around — where's the time?",
+      "note": "Transliteration: Paisa fira kuttda ni time kitthe aa. Rendered conservatively to reflect the elliptical/slangy original without over-interpreting."
+    },
+    {
+      "startMs": 42760,
+      "endMs": 43609,
+      "original": "Main bahla busy",
+      "translated": "I'm really busy.",
+      "note": "Transliteration: Main bahla busy. Straightforward statement of being busy."
+    },
+    {
+      "startMs": 43610,
+      "endMs": 44289,
+      "original": "Busy busy",
+      "translated": "Busy, busy.",
+      "note": "Transliteration: Busy busy. Kept repetition and rhythm."
+    },
+    {
+      "startMs": 44290,
+      "endMs": 45129,
+      "original": "Main bahla busy",
+      "translated": "I'm really busy.",
+      "note": "Transliteration: Main bahla busy. Straightforward statement of being busy."
+    },
+    {
+      "startMs": 45130,
+      "endMs": 45809,
+      "original": "Busy busy",
+      "translated": "Busy, busy.",
+      "note": "Transliteration: Busy busy. Kept repetition and rhythm."
+    },
+    {
+      "startMs": 45810,
+      "endMs": 47249,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 47250,
+      "endMs": 49479,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 49480,
+      "endMs": 50109,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 50110,
+      "endMs": 50919,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 50920,
+      "endMs": 51599,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 51600,
+      "endMs": 53019,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 53020,
+      "endMs": 55249,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 55250,
+      "endMs": 55909,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 55910,
+      "endMs": 56699,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 56700,
+      "endMs": 57349,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 57350,
+      "endMs": 60289,
+      "original": "Main keha fer vi tu time kahto mangdi rehni aa",
+      "translated": "I said it, but you still keep asking for time",
+      "note": "Transliteration: Main keha fer vi tu time kahto mangdi rehni aa. Conservative, idiomatic English chosen."
+    },
+    {
+      "startMs": 60290,
+      "endMs": 63129,
+      "original": "Jadon pata ki rakane sada time aa",
+      "translated": "When you know it's our time",
+      "note": "Transliteration: Jadon pata ki rakane sada time aa. Rendered to match preceding line's meaning of opportunity/ownership."
+    },
+    {
+      "startMs": 63130,
+      "endMs": 66079,
+      "original": "Haan value tan pata kira kar jatt di ni",
+      "translated": "Yeah, the value is known; don't mess with the jatt",
+      "note": "Transliteration: Haan value tan pata kira kar jatt di ni. 'Jatt' kept literal per glossary."
+    },
+    {
+      "startMs": 66080,
+      "endMs": 69219,
+      "original": "Tere naal di toh puch meri fan aa",
+      "translated": "Ask about being with you; I'm a fan",
+      "note": "Transliteration: Tere naal di toh puch meri fan aa. Retains English loan 'fan' as in original."
+    },
+    {
+      "startMs": 69220,
+      "endMs": 72629,
+      "original": "Vajde salute jatt jitho langda ni jive DC",
+      "translated": "Salutes play where the jatt passes, like DC",
+      "note": "Transliteration: Vajde salute jatt jitho langda ni jive DC. Kept literal mention of 'DC' per source."
+    },
+    {
+      "startMs": 72630,
+      "endMs": 73139,
+      "original": "DC DC",
+      "translated": "DC DC",
+      "note": "Transliteration: 'DC DC' (refrain)."
+    },
+    {
+      "startMs": 73140,
+      "endMs": 74079,
+      "original": "Ni jive DC",
+      "translated": "Not like DC",
+      "note": "Transliteration: 'Ni jive DC' → 'Not like DC'."
+    },
+    {
+      "startMs": 74080,
+      "endMs": 74759,
+      "original": "DC DC",
+      "translated": "DC DC",
+      "note": "Transliteration: 'DC DC' (refrain)."
+    },
+    {
+      "startMs": 74760,
+      "endMs": 76149,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 76150,
+      "endMs": 78379,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 78380,
+      "endMs": 79039,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 79040,
+      "endMs": 79859,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 79860,
+      "endMs": 80479,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 80480,
+      "endMs": 81959,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 81960,
+      "endMs": 84169,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 84170,
+      "endMs": 84819,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 84820,
+      "endMs": 85619,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 85620,
+      "endMs": 86069,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 86070,
+      "endMs": 89209,
+      "original": "Oh kam roj da rakane mainu parkhe",
+      "translated": "They keep testing me by giving me daily work.",
+      "note": "Transliteration: 'Oh kam roj da rakane mainu parkhe'."
+    },
+    {
+      "startMs": 89210,
+      "endMs": 92169,
+      "original": "Main vi folan nu fol lava varhke",
+      "translated": "I'll also fold 'folan' by layering them.",
+      "note": "Transliteration: 'Main vi folan nu fol lava varhke' — preserved 'folan' in quotes."
+    },
+    {
+      "startMs": 92170,
+      "endMs": 94939,
+      "original": "Das ajegi ghdhe de utte tarke",
+      "translated": "Ten will come on the donkey's back.",
+      "note": "Transliteration: 'Das ajegi ghdhe de utte tarke'."
+    },
+    {
+      "startMs": 94940,
+      "endMs": 97889,
+      "original": "Das sikhlegi kattne charkhe",
+      "translated": "Ten will learn the cutting spindles.",
+      "note": "Transliteration: 'Das sikhlegi kattne charkhe'."
+    },
+    {
+      "startMs": 97890,
+      "endMs": 100639,
+      "original": "Mera dil vi ni karda ravaun nu",
+      "translated": "My heart doesn't want to leave either.",
+      "note": "Transliteration: 'Mera dil vi ni karda ravaun nu'."
+    },
+    {
+      "startMs": 100640,
+      "endMs": 103659,
+      "original": "Ni tainu tatto kine keha si banaun nu",
+      "translated": "I told you many times to get it tattooed.",
+      "note": "Transliteration: 'Ni tainu tatto kine keha si banaun nu'."
+    },
+    {
+      "startMs": 103660,
+      "endMs": 106569,
+      "original": "Tainu kehnda kehda supne ch aun nu",
+      "translated": "Which dream do I tell you to come into?",
+      "note": "Transliteration: 'Tainu kehnda kehda supne ch aun nu'."
+    },
+    {
+      "startMs": 106570,
+      "endMs": 109739,
+      "original": "Mainu tu thodi chahidi savaun nu",
+      "translated": "I need you a little to 'savaun'.",
+      "note": "Transliteration: 'Mainu tu thodi chahidi savaun nu' — verb left untranslated in quotes."
+    },
+    {
+      "startMs": 109740,
+      "endMs": 112359,
+      "original": "Aujle da ikko aa thikana goriye ni",
+      "translated": "Aujla's is the only place, girl.",
+      "note": "Transliteration: 'Aujle da ikko aa thikana goriye ni'."
+    },
+    {
+      "startMs": 112360,
+      "endMs": 113079,
+      "original": "Surrey BC",
+      "translated": "Surrey, BC.",
+      "note": "Transliteration: 'Surrey BC' — likely Surrey, British Columbia."
+    },
+    {
+      "startMs": 113080,
+      "endMs": 113779,
+      "original": "BC BC",
+      "translated": "BC BC.",
+      "note": "Transliteration: 'BC BC' — left literal due to dual possible readings."
+    },
+    {
+      "startMs": 113780,
+      "endMs": 114509,
+      "original": "Surrey BC",
+      "translated": "Surrey, BC.",
+      "note": "Transliteration: 'Surrey BC' — likely Surrey, British Columbia."
+    },
+    {
+      "startMs": 114510,
+      "endMs": 115199,
+      "original": "BC BC",
+      "translated": "BC BC.",
+      "note": "Transliteration: 'BC BC' — left literal due to dual possible readings."
+    },
+    {
+      "startMs": 115200,
+      "endMs": 116679,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 116680,
+      "endMs": 118809,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 118810,
+      "endMs": 119509,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 119510,
+      "endMs": 120319,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 120320,
+      "endMs": 120999,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 121000,
+      "endMs": 122449,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 122450,
+      "endMs": 124629,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 124630,
+      "endMs": 125329,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 125330,
+      "endMs": 126079,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 126080,
+      "endMs": 126749,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 126750,
+      "endMs": 129729,
+      "original": "Biba akkeya peya main tere shak te",
+      "translated": "Girl, I'm stuck because of your doubt.",
+      "note": "Transliteration: 'Biba akkeya peya main tere shak te'. 'biba' = affectionate address to a woman; 'shak' = suspicion/doubt."
+    },
+    {
+      "startMs": 129730,
+      "endMs": 132579,
+      "original": "Main tan sohniye heraan teri akh te",
+      "translated": "I'm amazed by your eyes, beautiful.",
+      "note": "Transliteration: 'Main tan sohniye heraan teri akh te'. 'sohniye' = 'beautiful'."
+    },
+    {
+      "startMs": 132580,
+      "endMs": 135499,
+      "original": "Kade kare tu sawal lagge takk te",
+      "translated": "Sometimes you ask questions, pushing it to the limit.",
+      "note": "Transliteration: 'Kade kare tu sawal lagge takk te'."
+    },
+    {
+      "startMs": 135500,
+      "endMs": 138649,
+      "original": "Kade puchdi ki banneya ae lak te",
+      "translated": "Sometimes you ask what I've become because of my style.",
+      "note": "Transliteration: 'Kade puchdi ki banneya ae lak te'. Chosen conservative 'style' reading."
+    },
+    {
+      "startMs": 138650,
+      "endMs": 141989,
+      "original": "Mainu ni pasand jadon rehndi balliye ni khiji khiji",
+      "translated": "I don't like it when you stay like that, girl — khiji khiji",
+      "note": "Transliteration: 'Mainu ni pasand jadon rehndi balliye ni khiji khiji'. 'balliye' = affectionate 'girl/babe'."
+    },
+    {
+      "startMs": 141990,
+      "endMs": 142589,
+      "original": "Khiji khiji",
+      "translated": "Khiji khiji",
+      "note": "Transliteration: 'Khiji khiji'. Kept as-is to maintain chant-like sound."
+    },
+    {
+      "startMs": 142590,
+      "endMs": 143499,
+      "original": "Ni khiji khiji",
+      "translated": "No — khiji khiji",
+      "note": "Transliteration: 'Ni khiji khiji'."
+    },
+    {
+      "startMs": 143500,
+      "endMs": 144149,
+      "original": "Khiji khiji",
+      "translated": "Khiji khiji",
+      "note": "Transliteration: 'Khiji khiji'. Kept as-is to maintain chant-like sound."
+    },
+    {
+      "startMs": 144150,
+      "endMs": 145599,
+      "original": "Oh yaari oh layi ae",
+      "translated": "That friendship is for her.",
+      "note": "Transliteration: Oh yaari oh layi ae. 'Yaari' rendered conservatively per glossary."
+    },
+    {
+      "startMs": 145600,
+      "endMs": 147799,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 147800,
+      "endMs": 148429,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 148430,
+      "endMs": 149229,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 149230,
+      "endMs": 150269,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 150270,
+      "endMs": 151359,
+      "original": "Yaari oh layi ae",
+      "translated": "That friendship is for them",
+      "note": "Transliteration: 'Yaari oh layi ae'. 'Yaari' = friendship/loyalty (glossary). Conservative rendering avoids specifying who 'oh' refers to."
+    },
+    {
+      "startMs": 151360,
+      "endMs": 153559,
+      "original": "Kehda mull lai leya ni thoda easy",
+      "translated": "What price did you pay? Take it a little easy.",
+      "note": "Transliteration: Kehda mull lai leya ni thoda easy. Mixed Punjabi/English phrase preserved; conservative, literal reading chosen."
+    },
+    {
+      "startMs": 153560,
+      "endMs": 154209,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    },
+    {
+      "startMs": 154210,
+      "endMs": 155029,
+      "original": "Take it easy",
+      "translated": "Take it easy."
+    },
+    {
+      "startMs": 155030,
+      "endMs": 210360,
+      "original": "Easy easy",
+      "translated": "Easy, easy.",
+      "note": "Transliteration: Easy easy. Simple repetition retained."
+    }
+  ]
+}
