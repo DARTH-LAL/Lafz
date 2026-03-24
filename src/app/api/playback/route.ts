@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { buildTrackTranslationFromAiDraft, getAiTranslationDraftByTrackId } from "@/features/ai/repository";
+import {
+  buildTrackTranslationFromAiDraft,
+  findAiTranslationDraftByMetadata,
+  getAiTranslationDraftByTrackId
+} from "@/features/ai/repository";
 import { fetchCurrentSpotifyPlayback, SpotifyUnauthorizedError } from "@/features/spotify/playback";
 import { refreshSpotifySession } from "@/features/spotify/server-session";
 import {
@@ -10,7 +14,7 @@ import {
   writeSpotifySession
 } from "@/features/spotify/session";
 import type { PlaybackApiResponse } from "@/features/spotify/types";
-import { getTranslationByTrackId, getTranslationFileHint } from "@/features/translations/repository";
+import { findTranslationByMetadata, getTranslationByTrackId, getTranslationFileHint } from "@/features/translations/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -33,16 +37,33 @@ export async function GET(request: NextRequest) {
     let playback = await fetchCurrentSpotifyPlayback(session.accessToken);
 
     if (playback.track) {
-      const [translation, aiDraft] = await Promise.all([
+      const [exactTranslation, exactAiDraft] = await Promise.all([
         getTranslationByTrackId(playback.track.spotifyTrackId),
         getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
       ]);
+      const [fallbackTranslation, fallbackAiDraft] =
+        exactTranslation || exactAiDraft
+          ? [null, null]
+          : await Promise.all([
+              findTranslationByMetadata({
+                title: playback.track.title,
+                artist: playback.track.artist
+              }),
+              findAiTranslationDraftByMetadata({
+                title: playback.track.title,
+                artist: playback.track.artist,
+                album: playback.track.album
+              })
+            ]);
+      const translation = exactTranslation ?? fallbackTranslation;
+      const aiDraft = exactAiDraft ?? fallbackAiDraft;
       const resolvedTranslation = translation ?? (aiDraft ? buildTrackTranslationFromAiDraft(aiDraft) : null);
       const response = NextResponse.json({
         playback,
         translation: resolvedTranslation,
         aiDraft: aiDraft
           ? {
+              spotifyTrackId: aiDraft.spotifyTrackId,
               exists: true,
               lineCount: aiDraft.lines.length,
               mode: aiDraft.mode,
@@ -86,18 +107,35 @@ export async function GET(request: NextRequest) {
         session = await refreshSpotifySession(session);
         sessionWasRefreshed = true;
         const playback = await fetchCurrentSpotifyPlayback(session.accessToken);
-        const [translation, aiDraft] = playback.track
+        const [exactTranslation, exactAiDraft] = playback.track
           ? await Promise.all([
               getTranslationByTrackId(playback.track.spotifyTrackId),
               getAiTranslationDraftByTrackId(playback.track.spotifyTrackId)
             ])
           : [null, null];
+        const [fallbackTranslation, fallbackAiDraft] =
+          playback.track && !(exactTranslation || exactAiDraft)
+            ? await Promise.all([
+                findTranslationByMetadata({
+                  title: playback.track.title,
+                  artist: playback.track.artist
+                }),
+                findAiTranslationDraftByMetadata({
+                  title: playback.track.title,
+                  artist: playback.track.artist,
+                  album: playback.track.album
+                })
+              ])
+            : [null, null];
+        const translation = exactTranslation ?? fallbackTranslation;
+        const aiDraft = exactAiDraft ?? fallbackAiDraft;
         const resolvedTranslation = translation ?? (aiDraft ? buildTrackTranslationFromAiDraft(aiDraft) : null);
         const response = NextResponse.json({
           playback,
           translation: resolvedTranslation,
           aiDraft: aiDraft
             ? {
+                spotifyTrackId: aiDraft.spotifyTrackId,
                 exists: true,
                 lineCount: aiDraft.lines.length,
                 mode: aiDraft.mode,

@@ -89,7 +89,9 @@ export async function POST(request: NextRequest) {
         chosen: update.chosen,
         translated: update.chosen,
         note: update.note,
-        transliteration: update.transliteration
+        transliteration: update.transliteration,
+        confidence: "high" as const,
+        selectorReason: "Manually reviewed in Lafz."
       };
     })
   };

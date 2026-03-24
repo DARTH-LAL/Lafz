@@ -1,13 +1,15 @@
 import { getAiArtistMemory } from "@/features/ai/artist-memory";
 import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
-import { getAiGlossaryEntries, type AiGlossaryEntry } from "@/features/ai/glossary";
+import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import {
   getActiveAiProvider,
+  requestProviderMeaningAnalysis,
   requestProviderSongContext,
   requestProviderTranslationDraft,
   requestProviderTranslationRefinement,
   requestProviderTranslationSelection
 } from "@/features/ai/provider";
+import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
 import type {
   AiDraftLine,
@@ -16,7 +18,8 @@ import type {
   AiSongContext,
   AiTranslationDraftFile,
   GenerateAiTranslationOptions,
-  GenerateAiTranslationResult
+  GenerateAiTranslationResult,
+  MeaningAnalysisLine
 } from "@/features/ai/types";
 import { getLyricsCacheByTrackId } from "@/features/lyrics/repository";
 import type { LyricsCacheFile } from "@/features/lyrics/types";
@@ -29,29 +32,99 @@ const REFINEMENT_CONTEXT_WINDOW_LINES = 2;
 const SONG_CONTEXT_MAX_LINES = 24;
 const MAX_GROUP_LINES = 4;
 const SYNCED_GROUP_BREAK_GAP_MS = 12_000;
+const LARGE_TRACK_LINE_COUNT = 56;
+const VERY_LARGE_TRACK_LINE_COUNT = 84;
 
-function getInitialBatchSize(sourceLyricsKind: "synced" | "plain") {
+function getInitialBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   if (getActiveAiProvider() === "openai") {
-    return sourceLyricsKind === "plain" ? 4 : 12;
+    if (sourceLyricsKind === "plain") {
+      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 8 : 4;
+    }
+
+    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
+      return 18;
+    }
+
+    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
+      return 16;
+    }
+
+    return 12;
   }
 
-  return sourceLyricsKind === "plain" ? 1 : 6;
+  if (sourceLyricsKind === "plain") {
+    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 2 : 1;
+  }
+
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 10 : 6;
 }
 
-function getRefinementBatchSize(sourceLyricsKind: "synced" | "plain") {
+function getRefinementBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   if (getActiveAiProvider() === "openai") {
-    return sourceLyricsKind === "plain" ? 8 : 18;
+    if (sourceLyricsKind === "plain") {
+      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 16 : 8;
+    }
+
+    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
+      return 40;
+    }
+
+    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
+      return 30;
+    }
+
+    return 18;
   }
 
-  return sourceLyricsKind === "plain" ? 4 : 8;
+  if (sourceLyricsKind === "plain") {
+    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 6 : 4;
+  }
+
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 12 : 8;
 }
 
-function getSelectionBatchSize(sourceLyricsKind: "synced" | "plain") {
+function getSelectionBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   if (getActiveAiProvider() === "openai") {
-    return sourceLyricsKind === "plain" ? 10 : 20;
+    if (sourceLyricsKind === "plain") {
+      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 18 : 10;
+    }
+
+    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
+      return 28;
+    }
+
+    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
+      return 24;
+    }
+
+    return 20;
   }
 
-  return sourceLyricsKind === "plain" ? 4 : 8;
+  if (sourceLyricsKind === "plain") {
+    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 6 : 4;
+  }
+
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 12 : 8;
+}
+
+function shouldSkipRefinement(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
+  if (getActiveAiProvider() === "openai") {
+    return sourceLyricsKind === "synced" && totalLineCount >= LARGE_TRACK_LINE_COUNT;
+  }
+
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT;
+}
+
+function getDraftContextWindowLines(totalLineCount: number) {
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 1 : CONTEXT_WINDOW_LINES;
+}
+
+function getRefinementContextWindowLines(totalLineCount: number) {
+  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 1 : REFINEMENT_CONTEXT_WINDOW_LINES;
+}
+
+function shouldIncludeGroupText(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
+  return sourceLyricsKind === "plain" || totalLineCount < LARGE_TRACK_LINE_COUNT;
 }
 
 type SourceDraftLine = {
@@ -59,6 +132,11 @@ type SourceDraftLine = {
   original: string;
   startMs: number | null;
   endMs: number | null;
+};
+
+type NormalizedSourceLine = {
+  canonical: string;
+  notes: string[];
 };
 
 type SourceLineGroup = {
@@ -70,6 +148,22 @@ type SourceLineGroup = {
 type CorrectionExampleWithSource = AiCorrectionExample & {
   source: AiCorrectionHint["source"];
 };
+
+function buildNormalizedSourceLineLookup(lines: SourceDraftLine[]) {
+  return new Map<number, NormalizedSourceLine>(
+    lines.map((line) => {
+      const normalized = normalizeRomanizedText(line.original);
+
+      return [
+        line.order,
+        {
+          canonical: normalized.canonical,
+          notes: normalized.notes
+        }
+      ] satisfies [number, NormalizedSourceLine];
+    })
+  );
+}
 
 function normalizeLanguage(value: string) {
   const trimmed = value.trim();
@@ -179,19 +273,11 @@ function buildSourceLinesFromDraft(draft: AiTranslationDraftFile) {
 }
 
 function normalizeLineKey(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[\u2018\u2019']/g, "")
-    .replace(/[^a-z0-9\s]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeLookupText(value);
 }
 
 function tokenizeNormalizedLine(value: string) {
-  return normalizeLineKey(value)
-    .split(" ")
-    .map((token) => token.trim())
-    .filter(Boolean);
+  return tokenizeNormalizedRomanizedText(value);
 }
 
 function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: string) {
@@ -211,6 +297,16 @@ function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: st
 
   const candidateTokens = new Set(tokenizeNormalizedLine(candidateText));
   const correctionTokens = new Set(tokenizeNormalizedLine(correctionOriginal));
+  const candidateBigrams = new Set(
+    Array.from(candidateTokens)
+      .map((token, index, tokens) => (index < tokens.length - 1 ? `${tokens[index]} ${tokens[index + 1]}` : null))
+      .filter((token): token is string => Boolean(token))
+  );
+  const correctionBigrams = new Set(
+    Array.from(correctionTokens)
+      .map((token, index, tokens) => (index < tokens.length - 1 ? `${tokens[index]} ${tokens[index + 1]}` : null))
+      .filter((token): token is string => Boolean(token))
+  );
 
   if (candidateTokens.size === 0 || correctionTokens.size === 0) {
     return null;
@@ -218,6 +314,7 @@ function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: st
 
   const sharedTokens = Array.from(correctionTokens).filter((token) => candidateTokens.has(token));
   const sharedCount = sharedTokens.length;
+  const sharedBigrams = Array.from(correctionBigrams).filter((token) => candidateBigrams.has(token)).length;
 
   if (sharedCount === 0) {
     return null;
@@ -235,6 +332,7 @@ function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: st
     Math.round(correctionCoverage * 100) +
     Math.round(candidateCoverage * 60) +
     Math.round(jaccard * 50) +
+    Math.min(sharedBigrams * 18, 54) +
     phraseLengthBonus;
 
   if (containsOther && correctionCoverage >= 0.75) {
@@ -244,7 +342,12 @@ function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: st
     };
   }
 
-  if (correctionCoverage >= 0.75 || jaccard >= 0.6 || (correctionCoverage >= 0.6 && candidateCoverage >= 0.6)) {
+  if (
+    correctionCoverage >= 0.75 ||
+    jaccard >= 0.6 ||
+    sharedBigrams >= 1 ||
+    (correctionCoverage >= 0.6 && candidateCoverage >= 0.6)
+  ) {
     return {
       score,
       similarity: "high" as const
@@ -387,15 +490,15 @@ function filterRelevantGlossaryEntries(glossaryEntries: AiGlossaryEntry[], lineT
   const normalizedText = lineTexts.map(normalizeLineKey).join(" ");
 
   const scoredEntries = glossaryEntries.map((entry) => {
-    const normalizedTerm = normalizeLineKey(entry.term);
-    const termWords = normalizedTerm.split(" ").filter(Boolean);
-    const hasExactMatch = normalizedTerm.length > 0 && normalizedText.includes(normalizedTerm);
-    const partialMatchCount = termWords.filter((word) => normalizedText.includes(word)).length;
+    const normalizedTerms = getGlossarySearchTerms(entry);
+    const allTermWords = normalizedTerms.flatMap((term) => term.split(" ").filter(Boolean));
+    const hasExactMatch = normalizedTerms.some((term) => term.length > 0 && normalizedText.includes(term));
+    const partialMatchCount = allTermWords.filter((word) => normalizedText.includes(word)).length;
     const score =
       (hasExactMatch ? 100 : 0) +
       partialMatchCount * 10 +
       getGlossaryCategoryWeight(entry.category) +
-      Math.min(termWords.length, 4);
+      Math.min(allTermWords.length, 4);
 
     return {
       entry,
@@ -471,13 +574,23 @@ function normalizeGeneratedTransliteration(original: string, value: string | nul
   return value.trim().toLowerCase() === original.trim().toLowerCase() ? null : value;
 }
 
-function alignDraftLinesToSource(sourceLines: SourceDraftLine[], draftLines: AiDraftLine[]) {
+function alignDraftLinesToSource(
+  sourceLines: SourceDraftLine[],
+  draftLines: AiDraftLine[],
+  normalizedSourceLookup?: Map<number, NormalizedSourceLine>
+) {
   return sourceLines.map((sourceLine, index) => {
     const draftLine = draftLines[index];
+    const normalizedLine = normalizedSourceLookup?.get(sourceLine.order) ?? normalizeRomanizedText(sourceLine.original);
 
     return {
       order: sourceLine.order,
       original: sourceLine.original,
+      normalizedOriginal: draftLine?.normalizedOriginal ?? normalizedLine.canonical,
+      normalizationNotes: draftLine?.normalizationNotes ?? normalizedLine.notes,
+      meaning: draftLine?.meaning ?? draftLine?.literal ?? "",
+      impliedMeaning: draftLine?.impliedMeaning ?? null,
+      register: draftLine?.register ?? null,
       literal: draftLine?.literal ?? "",
       natural: draftLine?.natural ?? "",
       slangAware: draftLine?.slangAware ?? draftLine?.natural ?? draftLine?.literal ?? "",
@@ -513,6 +626,11 @@ function applyDuplicateLineReuse(lines: AiDraftLine[]) {
 
     return {
       ...line,
+      normalizedOriginal: firstSeen.normalizedOriginal,
+      normalizationNotes: firstSeen.normalizationNotes,
+      meaning: firstSeen.meaning,
+      impliedMeaning: firstSeen.impliedMeaning,
+      register: firstSeen.register,
       literal: firstSeen.literal,
       natural: firstSeen.natural,
       slangAware: firstSeen.slangAware,
@@ -573,6 +691,11 @@ function propagateLockedDuplicateLines(draftLines: AiDraftLine[], initialLockedO
 
     return {
       ...line,
+      normalizedOriginal: lockedLine.normalizedOriginal,
+      normalizationNotes: lockedLine.normalizationNotes,
+      meaning: lockedLine.meaning,
+      impliedMeaning: lockedLine.impliedMeaning,
+      register: lockedLine.register,
       literal: lockedLine.literal,
       natural: lockedLine.natural,
       slangAware: lockedLine.slangAware,
@@ -664,7 +787,10 @@ async function generateSongContext(options: GenerateAiTranslationOptions, source
   const { memory: artistMemory, preferredRenderings, correctionExamples: artistCorrectionExamples } =
     await getAiArtistMemory(options.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(options.spotifyTrackId).catch(() => []);
-  const sampledLines = sampleSongContextLines(sourceLines);
+  const sampledLines = sampleSongContextLines(
+    sourceLines,
+    sourceLines.length >= LARGE_TRACK_LINE_COUNT ? 14 : SONG_CONTEXT_MAX_LINES
+  );
   const glossaryEntries = await loadRelevantGlossaryEntries({
     sourceLanguage: requestedSourceLanguage,
     artist: options.artist,
@@ -696,6 +822,106 @@ async function generateSongContext(options: GenerateAiTranslationOptions, source
   };
 }
 
+async function generateMeaningLinesInBatches(
+  options: GenerateAiTranslationOptions,
+  sourceLines: SourceDraftLine[],
+  sourceLyricsKind: "synced" | "plain",
+  requestedSourceLanguage: string | null,
+  songContext: AiSongContext | null,
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
+  preferredRenderings: AiGlossaryEntry[],
+  artistCorrectionExamples: AiCorrectionExample[],
+  trackCorrectionExamples: AiCorrectionExample[],
+  normalizedSourceLookup: Map<number, NormalizedSourceLine>
+) {
+  const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
+  const batches = chunkSourceLines(sourceLines, batchSize);
+  const sourceGroups = buildSourceLineGroups(sourceLines, sourceLyricsKind);
+  const groupLookup = buildLineGroupLookup(sourceGroups);
+  const contextWindowLines = getDraftContextWindowLines(sourceLines.length);
+  const includeGroupText = shouldIncludeGroupText(sourceLyricsKind, sourceLines.length);
+  const meaningLines: MeaningAnalysisLine[] = [];
+  let inferredSourceLanguage = normalizeRequestedSourceLanguage(requestedSourceLanguage);
+  let model = "";
+
+  for (const batch of batches) {
+    const glossaryEntries = await loadRelevantGlossaryEntries({
+      sourceLanguage: inferredSourceLanguage,
+      artist: options.artist,
+      spotifyTrackId: options.spotifyTrackId,
+      candidateTexts: batch.flatMap((line) => {
+        const group = groupLookup.get(line.order);
+        const normalizedLine = normalizedSourceLookup.get(line.order);
+
+        return [
+          line.original,
+          normalizedLine?.canonical ?? "",
+          ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+          ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+          includeGroupText ? group?.text ?? "" : ""
+        ];
+      }),
+      preferredRenderings
+    });
+    const correctionExamples = mergeCorrectionExampleSources([
+      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+    ]);
+
+    const aiResponse = await requestProviderMeaningAnalysis({
+      title: options.title,
+      artist: options.artist,
+      album: options.album,
+      sourceLanguage: inferredSourceLanguage,
+      glossaryEntries,
+      songContext,
+      artistMemory,
+      lines: batch.map((line) => {
+        const group = groupLookup.get(line.order);
+        const normalizedLine = normalizedSourceLookup.get(line.order);
+
+        return {
+          index: line.order + 1,
+          original: line.original,
+          normalizedOriginal: normalizedLine?.canonical ?? null,
+          normalizationNotes: normalizedLine?.notes ?? [],
+          contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+          contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+          groupIndex: group?.index,
+          groupText: includeGroupText ? group?.text : undefined,
+          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+            line.original,
+            normalizedLine?.canonical ?? "",
+            ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+            ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+            includeGroupText ? group?.text ?? "" : ""
+          ])
+        };
+      })
+    });
+
+    model = aiResponse.model;
+
+    if (!inferredSourceLanguage) {
+      inferredSourceLanguage = aiResponse.sourceLanguage;
+    }
+
+    meaningLines.push(
+      ...batch.map((line, index) => ({
+        meaning: aiResponse.lines[index]?.meaning ?? line.original,
+        impliedMeaning: aiResponse.lines[index]?.impliedMeaning ?? null,
+        register: aiResponse.lines[index]?.register ?? null
+      }))
+    );
+  }
+
+  return {
+    model,
+    sourceLanguage: normalizeLanguage(inferredSourceLanguage ?? "Unknown"),
+    lines: meaningLines
+  };
+}
+
 async function generateDraftLinesInBatches(
   options: GenerateAiTranslationOptions,
   sourceLines: SourceDraftLine[],
@@ -705,12 +931,16 @@ async function generateDraftLinesInBatches(
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
   preferredRenderings: AiGlossaryEntry[],
   artistCorrectionExamples: AiCorrectionExample[],
-  trackCorrectionExamples: AiCorrectionExample[]
+  trackCorrectionExamples: AiCorrectionExample[],
+  normalizedSourceLookup: Map<number, NormalizedSourceLine>,
+  meaningLines: MeaningAnalysisLine[]
 ) {
-  const batchSize = getInitialBatchSize(sourceLyricsKind);
+  const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
   const sourceGroups = buildSourceLineGroups(sourceLines, sourceLyricsKind);
   const groupLookup = buildLineGroupLookup(sourceGroups);
+  const contextWindowLines = getDraftContextWindowLines(sourceLines.length);
+  const includeGroupText = shouldIncludeGroupText(sourceLyricsKind, sourceLines.length);
   const generatedLines: AiDraftLine[] = [];
   let inferredSourceLanguage = normalizeRequestedSourceLanguage(requestedSourceLanguage);
   let model = "";
@@ -725,9 +955,9 @@ async function generateDraftLinesInBatches(
 
         return [
           line.original,
-          ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-          ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
-          group?.text ?? ""
+          ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+          ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+          includeGroupText ? group?.text ?? "" : ""
         ];
       }),
       preferredRenderings
@@ -750,19 +980,26 @@ async function generateDraftLinesInBatches(
       artistMemory,
       lines: batch.map((line) => {
         const group = groupLookup.get(line.order);
+        const normalizedLine = normalizedSourceLookup.get(line.order);
+        const meaningLine = meaningLines[line.order];
 
         return {
           index: line.order + 1,
           original: line.original,
-          contextBefore: buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-          contextAfter: buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
+          normalizedOriginal: normalizedLine?.canonical ?? null,
+          normalizationNotes: normalizedLine?.notes ?? [],
+          meaning: meaningLine?.meaning ?? line.original,
+          impliedMeaning: meaningLine?.impliedMeaning ?? null,
+          register: meaningLine?.register ?? null,
+          contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+          contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
           groupIndex: group?.index,
-          groupText: group?.text,
+          groupText: includeGroupText ? group?.text : undefined,
           matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
             line.original,
-            ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-            ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
-            group?.text ?? ""
+            ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+            ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+            includeGroupText ? group?.text ?? "" : ""
           ])
         };
       })
@@ -778,6 +1015,11 @@ async function generateDraftLinesInBatches(
       ...batch.map((line, index) => ({
         order: line.order,
         original: line.original,
+        normalizedOriginal: normalizedSourceLookup.get(line.order)?.canonical ?? null,
+        normalizationNotes: normalizedSourceLookup.get(line.order)?.notes ?? [],
+        meaning: aiResponse.lines[index]?.meaning ?? meaningLines[line.order]?.meaning ?? line.original,
+        impliedMeaning: aiResponse.lines[index]?.impliedMeaning ?? meaningLines[line.order]?.impliedMeaning ?? null,
+        register: aiResponse.lines[index]?.register ?? meaningLines[line.order]?.register ?? null,
         literal: aiResponse.lines[index]?.literal ?? aiResponse.lines[index]?.translated ?? "",
         natural: aiResponse.lines[index]?.natural ?? aiResponse.lines[index]?.translated ?? "",
         slangAware:
@@ -801,7 +1043,7 @@ async function generateDraftLinesInBatches(
   return {
     model,
     sourceLanguage: normalizeLanguage(inferredSourceLanguage ?? "Unknown"),
-    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(generatedLines))
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(generatedLines), normalizedSourceLookup)
   };
 }
 
@@ -817,10 +1059,12 @@ async function refineDraftLinesInBatches(
   artistCorrectionExamples: AiCorrectionExample[],
   trackCorrectionExamples: AiCorrectionExample[],
   lockedOrders?: Set<number>,
-  currentSongCorrectionExamples: CorrectionExampleWithSource[] = []
+  currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
+  normalizedSourceLookup?: Map<number, NormalizedSourceLine>
 ) {
-  const batchSize = getRefinementBatchSize(sourceLyricsKind);
+  const batchSize = getRefinementBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
+  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
   const refinedLines: AiDraftLine[] = [];
   let model = "";
 
@@ -847,8 +1091,8 @@ async function refineDraftLinesInBatches(
       spotifyTrackId: options.spotifyTrackId,
       candidateTexts: unlockedBatch.flatMap((line) => [
         line.original,
-        ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow),
         draftLines[line.order]?.literal ?? "",
         draftLines[line.order]?.natural ?? "",
         draftLines[line.order]?.slangAware ?? "",
@@ -876,18 +1120,22 @@ async function refineDraftLinesInBatches(
       lines: batchDraftLines.map((line) => ({
         index: line.order + 1,
         original: line.original,
+        normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? line.normalizedOriginal ?? null,
+        meaning: line.meaning,
+        impliedMeaning: line.impliedMeaning,
+        register: line.register,
         literal: line.literal,
         natural: line.natural,
         slangAware: line.slangAware,
         chosen: line.chosen,
         ambiguity: line.ambiguity,
         confidence: line.confidence,
-        contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        contextBefore: buildRefinementContext(draftLines, line.order, -refinementContextWindow, -1),
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, refinementContextWindow),
         matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
           line.original,
-          ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-          ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+          ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+          ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow),
           line.literal,
           line.natural,
           line.slangAware,
@@ -918,6 +1166,11 @@ async function refineDraftLinesInBatches(
         return {
           order: line.order,
           original: line.original,
+          normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? existingLine?.normalizedOriginal ?? null,
+          normalizationNotes: normalizedSourceLookup?.get(line.order)?.notes ?? existingLine?.normalizationNotes ?? [],
+          meaning: responseLine?.meaning ?? existingLine?.meaning ?? line.original,
+          impliedMeaning: responseLine?.impliedMeaning ?? existingLine?.impliedMeaning ?? null,
+          register: responseLine?.register ?? existingLine?.register ?? null,
           literal: responseLine?.literal ?? existingLine?.literal ?? "",
           natural: responseLine?.natural ?? existingLine?.natural ?? "",
           slangAware: responseLine?.slangAware ?? existingLine?.slangAware ?? "",
@@ -940,7 +1193,7 @@ async function refineDraftLinesInBatches(
 
   return {
     model,
-    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(refinedLines))
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(refinedLines), normalizedSourceLookup)
   };
 }
 
@@ -956,15 +1209,19 @@ async function selectDraftLinesInBatches(
   artistCorrectionExamples: AiCorrectionExample[],
   trackCorrectionExamples: AiCorrectionExample[],
   lockedOrders?: Set<number>,
-  currentSongCorrectionExamples: CorrectionExampleWithSource[] = []
+  currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
+  normalizedSourceLookup?: Map<number, NormalizedSourceLine>
 ) {
-  const batchSize = getSelectionBatchSize(sourceLyricsKind);
+  const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
+  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
   const selectedLines: AiDraftLine[] = [];
   let model = "";
 
   for (const batch of batches) {
-    const unlockedBatch = batch.filter((line) => !lockedOrders?.has(line.order));
+    const unlockedBatch = batch.filter(
+      (line) => !lockedOrders?.has(line.order) && shouldRunSelectionForLine(draftLines[line.order])
+    );
 
     if (unlockedBatch.length === 0) {
       selectedLines.push(
@@ -987,8 +1244,8 @@ async function selectDraftLinesInBatches(
         draftLines[line.order]?.natural ?? "",
         draftLines[line.order]?.slangAware ?? "",
         draftLines[line.order]?.chosen ?? "",
-        ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
       ]),
       preferredRenderings
     });
@@ -1012,6 +1269,10 @@ async function selectDraftLinesInBatches(
       lines: unlockedBatch.map((line) => ({
         index: line.order + 1,
         original: line.original,
+        normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? draftLines[line.order]?.normalizedOriginal ?? null,
+        meaning: draftLines[line.order]?.meaning ?? line.original,
+        impliedMeaning: draftLines[line.order]?.impliedMeaning ?? null,
+        register: draftLines[line.order]?.register ?? null,
         literal: draftLines[line.order]?.literal ?? "",
         natural: draftLines[line.order]?.natural ?? "",
         slangAware: draftLines[line.order]?.slangAware ?? "",
@@ -1019,16 +1280,16 @@ async function selectDraftLinesInBatches(
         note: draftLines[line.order]?.note ?? null,
         ambiguity: draftLines[line.order]?.ambiguity ?? null,
         confidence: draftLines[line.order]?.confidence ?? "medium",
-        contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        contextBefore: buildRefinementContext(draftLines, line.order, -refinementContextWindow, -1),
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, refinementContextWindow),
         matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
           line.original,
           draftLines[line.order]?.literal ?? "",
           draftLines[line.order]?.natural ?? "",
           draftLines[line.order]?.slangAware ?? "",
           draftLines[line.order]?.chosen ?? "",
-          ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-          ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+          ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+          ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
         ])
       }))
     });
@@ -1067,7 +1328,7 @@ async function selectDraftLinesInBatches(
 
   return {
     model,
-    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(selectedLines))
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(selectedLines), normalizedSourceLookup)
   };
 }
 
@@ -1079,6 +1340,26 @@ function shouldPreserveExistingTranslationFile(kind: "missing" | "stub" | "trans
   return !overwrite;
 }
 
+function shouldRunSelectionForLine(line: AiDraftLine | undefined) {
+  if (!line) {
+    return false;
+  }
+
+  if (line.confidence !== "high") {
+    return true;
+  }
+
+  if (line.ambiguity) {
+    return true;
+  }
+
+  const distinctCandidates = new Set(
+    [line.literal, line.natural, line.slangAware, line.chosen].map((value) => value.trim()).filter(Boolean)
+  );
+
+  return distinctCandidates.size > 1;
+}
+
 export async function rerunDraftAfterManualCorrections(
   draft: AiTranslationDraftFile,
   editedOrders: number[]
@@ -1088,6 +1369,7 @@ export async function rerunDraftAfterManualCorrections(
   }
 
   const sourceLines = buildSourceLinesFromDraft(draft);
+  const normalizedSourceLookup = buildNormalizedSourceLineLookup(sourceLines);
   const includeTransliteration = draft.lines.some((line) => line.transliteration !== null);
   const includeNotes = draft.lines.some((line) => line.note !== null);
   const {
@@ -1114,21 +1396,25 @@ export async function rerunDraftAfterManualCorrections(
     includeNotes,
     overwriteExistingTranslation: true
   };
+  const skipRefinement = shouldSkipRefinement(draft.mode, sourceLines.length);
 
-  const refinedDraft = await refineDraftLinesInBatches(
-    baseOptions,
-    sourceLines,
-    propagatedDraft.lines,
-    draft.mode,
-    draft.sourceLanguage,
-    draft.songContext,
-    artistMemory,
-    preferredRenderings,
-    artistCorrectionExamples,
-    trackCorrectionExamples,
-    propagatedDraft.lockedOrders,
-    currentSongCorrectionExamples
-  ).catch(() => null);
+  const refinedDraft = skipRefinement
+    ? null
+    : await refineDraftLinesInBatches(
+        baseOptions,
+        sourceLines,
+        propagatedDraft.lines,
+        draft.mode,
+        draft.sourceLanguage,
+        draft.songContext,
+        artistMemory,
+        preferredRenderings,
+        artistCorrectionExamples,
+        trackCorrectionExamples,
+        propagatedDraft.lockedOrders,
+        currentSongCorrectionExamples,
+        normalizedSourceLookup
+      ).catch(() => null);
 
   const selectedDraft = await selectDraftLinesInBatches(
     baseOptions,
@@ -1142,7 +1428,8 @@ export async function rerunDraftAfterManualCorrections(
     artistCorrectionExamples,
     trackCorrectionExamples,
     propagatedDraft.lockedOrders,
-    currentSongCorrectionExamples
+    currentSongCorrectionExamples,
+    normalizedSourceLookup
   ).catch(() => null);
 
   return {
@@ -1230,6 +1517,7 @@ export async function generateAiTranslationDraft(
   }
 
   const sourceLines = buildSourceLines(lyricsCache);
+  const normalizedSourceLookup = buildNormalizedSourceLineLookup(sourceLines);
 
   if (sourceLines.length === 0) {
     return {
@@ -1239,7 +1527,7 @@ export async function generateAiTranslationDraft(
 
   const targetLanguage = normalizeLanguage(options.targetLanguage);
   const contextResponse = await generateSongContext(options, sourceLines);
-  const initialDraft = await generateDraftLinesInBatches(
+  const meaningResponse = await generateMeaningLinesInBatches(
     options,
     sourceLines,
     lyricsCache.kind,
@@ -1248,20 +1536,40 @@ export async function generateAiTranslationDraft(
     contextResponse.artistMemory,
     contextResponse.preferredRenderings,
     contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples
+    contextResponse.trackCorrectionExamples,
+    normalizedSourceLookup
   );
-  const refinedDraft = await refineDraftLinesInBatches(
+  const skipRefinement = shouldSkipRefinement(lyricsCache.kind, sourceLines.length);
+  const initialDraft = await generateDraftLinesInBatches(
     options,
     sourceLines,
-    initialDraft.lines,
     lyricsCache.kind,
-    initialDraft.sourceLanguage,
+    meaningResponse.sourceLanguage,
     contextResponse.songContext,
     contextResponse.artistMemory,
     contextResponse.preferredRenderings,
     contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples
-  ).catch(() => null);
+    contextResponse.trackCorrectionExamples,
+    normalizedSourceLookup,
+    meaningResponse.lines
+  );
+  const refinedDraft = skipRefinement
+    ? null
+    : await refineDraftLinesInBatches(
+        options,
+        sourceLines,
+        initialDraft.lines,
+        lyricsCache.kind,
+        initialDraft.sourceLanguage,
+        contextResponse.songContext,
+        contextResponse.artistMemory,
+        contextResponse.preferredRenderings,
+        contextResponse.artistCorrectionExamples,
+        contextResponse.trackCorrectionExamples,
+        undefined,
+        [],
+        normalizedSourceLookup
+      ).catch(() => null);
   const selectedDraft = await selectDraftLinesInBatches(
     options,
     sourceLines,
@@ -1272,7 +1580,10 @@ export async function generateAiTranslationDraft(
     contextResponse.artistMemory,
     contextResponse.preferredRenderings,
     contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples
+    contextResponse.trackCorrectionExamples,
+    undefined,
+    [],
+    normalizedSourceLookup
   ).catch(() => null);
 
   const aiResponse = {

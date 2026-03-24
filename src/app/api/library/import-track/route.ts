@@ -15,11 +15,7 @@ function isValidImportOptions(value: unknown): value is TrackImportOptions {
 
   const candidate = value as Record<string, unknown>;
 
-  return (
-    typeof candidate.trackInput === "string" &&
-    typeof candidate.createMissingTranslationStubs === "boolean" &&
-    typeof candidate.overwriteExistingStubs === "boolean"
-  );
+  return typeof candidate.trackInput === "string";
 }
 
 export async function POST(request: NextRequest) {

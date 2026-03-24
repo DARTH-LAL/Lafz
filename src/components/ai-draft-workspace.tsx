@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { FloatingToast } from "@/components/floating-toast";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { TranslationFileKind } from "@/features/translations/types";
 
@@ -95,6 +96,24 @@ function normalizeReviewKey(value: string) {
     .trim();
 }
 
+function sleep(delayMs: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
+}
+
+function applyManualReview(
+  line: EditableDraftLine,
+  overrides: Partial<Pick<EditableDraftLine, "chosen" | "transliteration" | "note">>
+) {
+  return {
+    ...line,
+    ...overrides,
+    confidence: "high" as const,
+    selectorReason: "Manually reviewed in Lafz."
+  };
+}
+
 export function AiDraftWorkspace({
   track,
   lyricsKind,
@@ -115,10 +134,11 @@ export function AiDraftWorkspace({
   const [includeNotes, setIncludeNotes] = useState(true);
   const [overwriteExistingTranslation, setOverwriteExistingTranslation] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [savingReviewKey, setSavingReviewKey] = useState<string | null>(null);
   const [showLowConfidenceFirst, setShowLowConfidenceFirst] = useState(true);
   const [message, setMessage] = useState(initialMessage);
   const [messageTone, setMessageTone] = useState<"success" | "error">(initialStatus === "error" ? "error" : "success");
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [draftLines, setDraftLines] = useState<EditableDraftLine[]>(() => (initialDraft ? initialDraft.lines.map(toEditableDraftLine) : []));
 
   const canGenerate = aiConfigured && (lyricsKind === "synced" || lyricsKind === "plain");
@@ -187,10 +207,39 @@ export function AiDraftWorkspace({
     return dedupeLowConfidenceLines(lines);
   }, [draftLines, showLowConfidenceFirst]);
 
-  const updateDraftLine = (order: number, updater: (line: EditableDraftLine) => EditableDraftLine) => {
-    setDraftLines((currentLines) =>
-      currentLines.map((currentLine) => (currentLine.order === order ? updater(currentLine) : currentLine))
-    );
+  const updateMatchingDraftLines = (order: number, updater: (line: EditableDraftLine) => EditableDraftLine) => {
+    setDraftLines((currentLines) => {
+      const sourceLine = currentLines.find((line) => line.order === order);
+      const reviewKey = sourceLine ? normalizeReviewKey(sourceLine.original) : "";
+
+      return currentLines.map((currentLine) => {
+        if (currentLine.order === order) {
+          return updater(currentLine);
+        }
+
+        if (reviewKey && normalizeReviewKey(currentLine.original) === reviewKey) {
+          return updater(currentLine);
+        }
+
+        return currentLine;
+      });
+    });
+  };
+
+  const getMatchingLines = (order: number) => {
+    const sourceLine = draftLines.find((line) => line.order === order);
+
+    if (!sourceLine) {
+      return [];
+    }
+
+    const reviewKey = normalizeReviewKey(sourceLine.original);
+
+    if (!reviewKey) {
+      return [sourceLine];
+    }
+
+    return draftLines.filter((line) => normalizeReviewKey(line.original) === reviewKey);
   };
 
   useEffect(() => {
@@ -203,6 +252,20 @@ export function AiDraftWorkspace({
       setMessageTone(initialStatus === "error" ? "error" : "success");
     }
   }, [initialMessage, initialStatus]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [toast]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -248,25 +311,86 @@ export function AiDraftWorkspace({
         status: string;
         message: string;
         detail?: string;
+        jobId?: string;
       };
 
       if (!response.ok || !payload.success) {
         throw new Error(payload.detail ?? payload.message ?? "Could not generate the AI draft.");
       }
 
-      setMessage(payload.message);
+      if (!payload.jobId) {
+        throw new Error("Lafz could not start the AI draft job.");
+      }
+
+      setMessage("Lafz is generating the AI draft...");
       setMessageTone("success");
-      router.refresh();
+
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        await sleep(1500);
+
+        const statusResponse = await fetch(`/api/ai/generate-translation/status?jobId=${encodeURIComponent(payload.jobId)}`, {
+          headers: {
+            "x-lafz-response": "json"
+          },
+          cache: "no-store"
+        });
+
+        const statusPayload = (await statusResponse.json()) as {
+          success?: boolean;
+          error?: string;
+          job?: {
+            status: "running" | "succeeded" | "failed";
+            message: string | null;
+            detail: string | null;
+          };
+        };
+
+        if (!statusResponse.ok || !statusPayload.success || !statusPayload.job) {
+          throw new Error(statusPayload.error ?? "Could not read the AI draft job status.");
+        }
+
+        if (statusPayload.job.status === "running") {
+          continue;
+        }
+
+        if (statusPayload.job.status === "failed") {
+          throw new Error(statusPayload.job.detail ?? statusPayload.job.message ?? "Could not generate the AI draft.");
+        }
+
+        const nextMessage = statusPayload.job.message ?? "Lafz generated the AI draft.";
+        setMessage(nextMessage);
+        setMessageTone("success");
+        setToast({
+          message: nextMessage,
+          tone: "success"
+        });
+        router.refresh();
+        return;
+      }
+
+      throw new Error("The AI draft is taking longer than expected. Please check again in a moment.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not generate the AI draft.");
+      const nextMessage = error instanceof Error ? error.message : "Could not generate the AI draft.";
+      setMessage(nextMessage);
       setMessageTone("error");
+      setToast({
+        message: nextMessage,
+        tone: "error"
+      });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    setIsSavingDraft(true);
+  const handleSaveLine = async (order: number) => {
+    const matchingLines = getMatchingLines(order);
+
+    if (matchingLines.length === 0) {
+      return;
+    }
+
+    const reviewKey = normalizeReviewKey(matchingLines[0].original) || `line-${order}`;
+    setSavingReviewKey(reviewKey);
     setMessage(null);
 
     try {
@@ -277,7 +401,7 @@ export function AiDraftWorkspace({
         },
         body: JSON.stringify({
           spotifyTrackId: track.spotifyTrackId,
-          lines: draftLines.map((line) => ({
+          lines: matchingLines.map((line) => ({
             order: line.order,
             chosen: line.chosen,
             note: line.note,
@@ -296,19 +420,31 @@ export function AiDraftWorkspace({
         throw new Error(payload.error ?? "Could not save the AI draft review changes.");
       }
 
-      setMessage(payload.message ?? "Saved the draft review changes.");
+      const nextMessage = payload.message ?? "Saved the draft review changes.";
+      setMessage(nextMessage);
       setMessageTone("success");
+      setToast({
+        message: nextMessage,
+        tone: "success"
+      });
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not save the AI draft review changes.");
+      const nextMessage = error instanceof Error ? error.message : "Could not save the AI draft review changes.";
+      setMessage(nextMessage);
       setMessageTone("error");
+      setToast({
+        message: nextMessage,
+        tone: "error"
+      });
     } finally {
-      setIsSavingDraft(false);
+      setSavingReviewKey(null);
     }
   };
 
   return (
     <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr] xl:items-start">
+      {toast ? <FloatingToast message={toast.message} tone={toast.tone} /> : null}
+
       <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">AI translation draft</p>
         <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
@@ -550,6 +686,12 @@ export function AiDraftWorkspace({
             <div className="mt-6 space-y-4">
               {displayedDraftLines.map(({ line, duplicateCount }) => (
                 <article key={`${track.spotifyTrackId}-${line.order}`} className="rounded-[24px] border border-white/8 bg-black/10 p-5">
+                  {(() => {
+                    const matchingCount = getMatchingLines(line.order).length;
+                    const saveKey = normalizeReviewKey(line.original) || `line-${line.order}`;
+
+                    return (
+                      <>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -574,7 +716,11 @@ export function AiDraftWorkspace({
                       <button
                         type="button"
                         onClick={() => {
-                          updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: currentLine.literal }));
+                          updateMatchingDraftLines(line.order, (currentLine) =>
+                            applyManualReview(currentLine, {
+                              chosen: currentLine.literal
+                            })
+                          );
                         }}
                         className="mt-4 inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/10"
                       >
@@ -588,7 +734,11 @@ export function AiDraftWorkspace({
                       <button
                         type="button"
                         onClick={() => {
-                          updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: currentLine.natural }));
+                          updateMatchingDraftLines(line.order, (currentLine) =>
+                            applyManualReview(currentLine, {
+                              chosen: currentLine.natural
+                            })
+                          );
                         }}
                         className="mt-4 inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-xs font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
                       >
@@ -603,7 +753,11 @@ export function AiDraftWorkspace({
                     <button
                       type="button"
                       onClick={() => {
-                        updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: currentLine.slangAware }));
+                        updateMatchingDraftLines(line.order, (currentLine) =>
+                          applyManualReview(currentLine, {
+                            chosen: currentLine.slangAware
+                          })
+                        );
                       }}
                       className="mt-4 inline-flex items-center justify-center rounded-full border border-fuchsia-300/20 bg-fuchsia-300/10 px-4 py-2 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-300/15"
                     >
@@ -618,7 +772,11 @@ export function AiDraftWorkspace({
                       rows={2}
                       onChange={(event) => {
                         const nextValue = event.target.value;
-                        updateDraftLine(line.order, (currentLine) => ({ ...currentLine, chosen: nextValue }));
+                        updateMatchingDraftLines(line.order, (currentLine) =>
+                          applyManualReview(currentLine, {
+                            chosen: nextValue
+                          })
+                        );
                       }}
                       className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                     />
@@ -632,10 +790,11 @@ export function AiDraftWorkspace({
                         value={line.transliteration ?? ""}
                         onChange={(event) => {
                           const nextValue = event.target.value;
-                          updateDraftLine(line.order, (currentLine) => ({
-                            ...currentLine,
-                            transliteration: nextValue || null
-                          }));
+                          updateMatchingDraftLines(line.order, (currentLine) =>
+                            applyManualReview(currentLine, {
+                              transliteration: nextValue || null
+                            })
+                          );
                         }}
                         className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                       />
@@ -648,7 +807,11 @@ export function AiDraftWorkspace({
                         rows={2}
                         onChange={(event) => {
                           const nextValue = event.target.value;
-                          updateDraftLine(line.order, (currentLine) => ({ ...currentLine, note: nextValue || null }));
+                          updateMatchingDraftLines(line.order, (currentLine) =>
+                            applyManualReview(currentLine, {
+                              note: nextValue || null
+                            })
+                          );
                         }}
                         className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
                       />
@@ -668,21 +831,28 @@ export function AiDraftWorkspace({
                       <p className="mt-2">{line.ambiguity}</p>
                     </div>
                   ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleSaveLine(line.order);
+                      }}
+                      disabled={savingReviewKey === saveKey}
+                      className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingReviewKey === saveKey
+                        ? "Saving line..."
+                        : matchingCount > 1
+                          ? `Save all ${matchingCount} matching lines`
+                          : "Save line"}
+                    </button>
+                  </div>
+                      </>
+                    );
+                  })()}
                 </article>
               ))}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSaveDraft();
-                }}
-                disabled={isSavingDraft}
-                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingDraft ? "Saving draft..." : "Save draft review"}
-              </button>
             </div>
           </>
         ) : (

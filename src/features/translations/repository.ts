@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { TrackTranslation, TranslationLine, TranslationStubFile } from "@/features/translations/types";
@@ -16,6 +16,54 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asOptionalString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizeLookupText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeArtistTokens(value: string) {
+  return value
+    .split(/,|&|\bfeat\.?\b|\bft\.?\b|\bwith\b/gi)
+    .map((entry) => normalizeLookupText(entry))
+    .filter(Boolean);
+}
+
+function scoreTranslationMetadataMatch(
+  translation: TrackTranslation,
+  target: {
+    title: string;
+    artist: string;
+  }
+) {
+  const normalizedTitle = normalizeLookupText(target.title);
+  const normalizedArtist = normalizeLookupText(target.artist);
+
+  if (!normalizedTitle || normalizeLookupText(translation.title) !== normalizedTitle) {
+    return null;
+  }
+
+  const translationArtist = normalizeLookupText(translation.artist);
+
+  if (translationArtist === normalizedArtist) {
+    return 100;
+  }
+
+  const targetTokens = new Set(normalizeArtistTokens(target.artist));
+  const overlap = normalizeArtistTokens(translation.artist).filter((token) => targetTokens.has(token)).length;
+
+  if (overlap === 0) {
+    return null;
+  }
+
+  return overlap * 10;
 }
 
 function isTranslationStubFile(value: unknown): value is TranslationStubFile {
@@ -131,4 +179,50 @@ export async function getTranslationByTrackId(trackId: string) {
   }
 
   return null;
+}
+
+export async function findTranslationByMetadata(target: { title: string; artist: string }) {
+  let bestMatch: {
+    score: number;
+    translation: TrackTranslation;
+  } | null = null;
+
+  for (const directory of translationSearchDirectories) {
+    let fileNames: string[] = [];
+
+    try {
+      fileNames = (await readdir(directory)).filter((fileName) => fileName.endsWith(".json"));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+
+      throw error;
+    }
+
+    for (const fileName of fileNames) {
+      const filePath = path.join(directory, fileName);
+
+      try {
+        const fileContents = await readFile(filePath, "utf8");
+        const parsed = parseTrackTranslation(JSON.parse(fileContents) as unknown, filePath);
+        const score = scoreTranslationMetadataMatch(parsed, target);
+
+        if (score !== null && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = {
+            score,
+            translation: parsed
+          };
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message === TRANSLATION_STUB_SENTINEL) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  return bestMatch?.translation ?? null;
 }

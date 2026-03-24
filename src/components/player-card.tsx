@@ -117,8 +117,8 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
   const nextRepeatMode = playback.repeatMode === "off" ? "context" : playback.repeatMode === "context" ? "track" : "off";
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden px-7 py-6">
-      <div className="relative mb-5 flex-shrink-0">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden px-7 py-5">
+      <div className="relative mb-4 flex-shrink-0">
         <div className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.3)_0%,rgba(255,140,66,0.14)_42%,transparent_72%)] blur-[18px]" />
         <div className="relative aspect-square overflow-hidden rounded-[22px] border border-white/10 bg-[#130f20]">
           {playback.track.albumArtUrl ? (
@@ -146,13 +146,13 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
         </div>
       </div>
 
-      <div className="mb-4 flex-shrink-0">
+      <div className="mb-3 flex-shrink-0">
         <h1 className="text-[24px] font-extrabold leading-[1.1] tracking-[-0.9px] text-[#fff0f6]">{playback.track.title}</h1>
         <p className="mt-1 text-[14px] font-normal text-[#8570a0]">{playback.track.artist}</p>
         <p className="mt-1 text-[12px] font-light text-[#50445f]">{playback.track.album}</p>
       </div>
 
-      <div className="mb-6 flex-shrink-0">
+      <div className="mb-5 flex-shrink-0">
         <ProgressBar
           currentMs={visualProgressMs}
           totalMs={playback.track.durationMs}
@@ -162,14 +162,14 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
         />
       </div>
 
-      <div className="mb-auto flex flex-shrink-0 items-center justify-center gap-4">
+      <div className="mb-auto flex flex-shrink-0 items-center justify-center gap-3">
         <button
           type="button"
           onClick={() => {
             void triggerCommand({ action: "shuffle", enabled: !playback.shuffleEnabled });
           }}
           disabled={pendingAction !== null}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+          className={`inline-flex h-8.5 w-8.5 items-center justify-center rounded-full border transition ${
             playback.shuffleEnabled
               ? "border-[rgba(255,45,120,0.34)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_10px_30px_rgba(255,45,120,0.24)]"
               : "border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)]"
@@ -184,7 +184,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
             void triggerCommand({ action: "previous" });
           }}
           disabled={pendingAction !== null}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
           aria-label="Previous"
         >
           <PrevIcon />
@@ -195,7 +195,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
             void triggerCommand({ action: playback.isPlaying ? "pause" : "play" });
           }}
           disabled={pendingAction !== null}
-          className="inline-flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_4px_24px_rgba(255,45,120,0.3)] transition hover:scale-[1.05] hover:shadow-[0_6px_32px_rgba(255,45,120,0.4)]"
+          className="inline-flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_4px_24px_rgba(255,45,120,0.3)] transition hover:scale-[1.05] hover:shadow-[0_6px_32px_rgba(255,45,120,0.4)]"
           aria-label={playback.isPlaying ? "Pause" : "Play"}
         >
           {playback.isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -206,7 +206,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
             void triggerCommand({ action: "next" });
           }}
           disabled={pendingAction !== null}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
           aria-label="Next"
         >
           <NextIcon />
@@ -217,7 +217,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
             void triggerCommand({ action: "repeat", mode: nextRepeatMode });
           }}
           disabled={pendingAction !== null}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+          className={`inline-flex h-8.5 w-8.5 items-center justify-center rounded-full border transition ${
             playback.repeatMode !== "off"
               ? "border-[rgba(255,45,120,0.34)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_10px_30px_rgba(255,45,120,0.24)]"
               : "border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)]"
@@ -228,18 +228,18 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
         </button>
       </div>
 
-      <div className="mt-6 flex-shrink-0">
-        <div className="mb-4 text-[12px] font-medium text-[#6f607f]">
+      <div className="mt-5 flex-shrink-0">
+        <div className="mb-3 text-[12px] font-medium text-[#6f607f]">
           Playing on <span className="text-[#fff0f6]">{playback.deviceName ?? "Spotify app"}</span>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
           {playback.track.externalUrl ? (
             <a
               href={playback.track.externalUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
             >
               <SpotifyIcon />
               Open in Spotify
@@ -248,7 +248,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
 
           <Link
             href={`/library/track/${playback.track.spotifyTrackId}`}
-            className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
+            className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
           >
             <TrackDetailIcon />
             Track detail
@@ -257,7 +257,7 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
           <form action="/api/spotify/logout" method="post" className="w-full">
             <button
               type="submit"
-              className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
             >
               <DisconnectIcon />
               Disconnect

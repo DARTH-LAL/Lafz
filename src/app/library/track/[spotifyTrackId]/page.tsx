@@ -22,22 +22,6 @@ function getFirstParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function getStubMessage(status: string | undefined) {
-  if (status === "created") {
-    return "Lafz created a new local translation stub file for this track.";
-  }
-
-  if (status === "exists") {
-    return "A local translation file already exists for this track, so Lafz left it unchanged.";
-  }
-
-  if (status === "error") {
-    return "Lafz could not create the stub file for this track. Check the server console and local file permissions.";
-  }
-
-  return null;
-}
-
 function getLyricsMessage(status: string | undefined) {
   if (status === "local_imported") {
     return "Lafz saved your local lyrics import into the local cache for this track.";
@@ -95,7 +79,6 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
 
   const { spotifyTrackId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const stubStatus = getFirstParamValue(resolvedSearchParams.stub);
   const lyricsStatus = getFirstParamValue(resolvedSearchParams.lyrics);
   const aiStatus = getFirstParamValue(resolvedSearchParams.ai);
   const aiDetail = getFirstParamValue(resolvedSearchParams.aiDetail);
@@ -119,8 +102,6 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       aiConfigured={isAiConfigured()}
       aiModel={getActiveAiModel()}
       aiProviderStatus={aiProviderStatus}
-      stubStatus={stubStatus === "created" || stubStatus === "exists" || stubStatus === "error" ? stubStatus : null}
-      stubMessage={getStubMessage(stubStatus)}
       lyricsStatus={lyricsStatus}
       lyricsMessage={getLyricsMessage(lyricsStatus)}
       aiStatus={aiStatus}

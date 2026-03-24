@@ -1,7 +1,7 @@
 {
   "spotifyTrackId": "3FqtduiaqnFYvBgKuc6QWQ",
   "title": "Winning Speech",
-  "artist": "Karan Aujla, Seshnolan",
+  "artist": "Karan Aujla, SeshnoIan",
   "sourceLanguage": "Punjabi",
   "targetLanguage": "English",
   "lines": [
@@ -9,616 +9,632 @@
       "startMs": 8000,
       "endMs": 11099,
       "original": "Show Mxrci on it! he-he-he!",
-      "translated": "Put 'Mxrci' on it! he-he-he!",
-      "note": "Mxrci appears to be a stylized name/brand in the original; left untranslated."
+      "translated": "Show Merc on it! he-he-he!",
+      "note": "Transliteration: 'Show Mxrci on it! he-he-he!' — 'Mxrci' is a stylized spelling of 'Merc' (Mercedes). Kept the show-off exclamation literal."
     },
     {
       "startMs": 11100,
       "endMs": 11799,
       "original": "(Haan)",
-      "translated": "Yes"
+      "translated": "(Yes)",
+      "note": "Transliteration: '(Haan)'. Simple affirmation; 'Yes' is the neutral English equivalent."
     },
     {
       "startMs": 11800,
       "endMs": 13299,
       "original": "Do do ghode Magna ni",
-      "translated": "I don't ask for two horses."
+      "translated": "I ask for two horses",
+      "note": "Transliteration: 'Do do ghode Magna ni'. Could be literal or a metaphor for asking for powerful rides; kept conservative literal rendering."
     },
     {
       "startMs": 13300,
       "endMs": 14599,
       "original": "Char G-Wagon'an ni",
-      "translated": "Four G‑Wagons.",
-      "note": "The particle 'ni' is emphatic here; rendered as a simple statement."
+      "translated": "Four G‑Wagons",
+      "note": "Transliteration: 'Char G-Wagon'an ni'. G‑Wagon = Mercedes G‑Class SUVs; direct numeric phrase."
     },
     {
       "startMs": 14600,
       "endMs": 17399,
       "original": "Utte nu main chhe chhe inch chakkiyan",
       "translated": "On which I have placed six-inch wheels",
-      "note": "'chakkiyan' is unclear in this context — could refer to rims, pipes, or another car part; 'chhe chhe inch' = 'six six-inch' (i.e., six-inch)."
+      "note": "Transliteration: 'Utte nu main chhe chhe inch chakkiyan'. Glossary: conservative rendering; 'chakkiyan' uncertain (rims/pipes/parts)."
     },
     {
       "startMs": 17400,
       "endMs": 18899,
       "original": "Time laggu mitne nu",
-      "translated": "It'll take time to remove them.",
-      "note": "Rendered conservatively as 'remove' to remain neutral across possible senses."
+      "translated": "It will take much time",
+      "note": "Transliteration: 'Time laggu mitne nu'. Kept conservative: implies change/settling will need time."
     },
     {
       "startMs": 18900,
       "endMs": 20199,
       "original": "Sanu thalle sittne nu",
-      "translated": "To bring us down.",
-      "note": "Rendered idiomatically as 'bring us down' to match likely intended meaning in context."
+      "translated": "To make us sit down",
+      "note": "Transliteration: 'Sanu thalle sittne nu'. Could mean 'to humble us' or 'to force us down'; literal phrasing retained for neutrality."
     },
     {
       "startMs": 20200,
       "endMs": 22849,
       "original": "Ikki vaari jor laa lai chhatti'an",
       "translated": "Even if you try 21 times with all your strength",
-      "note": "Words are uncertain: 'Ikki' can mean 'once' or 'twenty-one'; 'chhatti'an' could be 'chests' (chhatiyaan) or 'roofs' (chhattian) depending on pronunciation."
+      "note": "Transliteration: 'Ikki vaari jor laa lai chhatti'an'. Glossary treats 'Ikki' as '21' here but notes uncertainty; rendered to match glossary preference."
     },
     {
       "startMs": 22850,
       "endMs": 24499,
       "original": "Fan ikko naar da main",
-      "translated": "Even if you try 21 times with all your strength",
-      "note": "Followed glossary guidance favoring the '21 times' reading."
+      "translated": "I am a loyal admirer of only one woman",
+      "note": "Transliteration: 'Fan ikko naar da main'. Glossary: 'fan' as English loanword and 'naar' = woman; kept literal and faithful."
     },
     {
       "startMs": 24500,
       "endMs": 25949,
       "original": "Das vaari vaarda main",
-      "translated": "I'm only a fan of one woman.",
-      "note": "Treated 'fan' as the English loanword and 'naar' as 'woman' per glossary preferred rendering."
+      "translated": "More than ten times",
+      "note": "Transliteration: 'Das vaari vaarda main'. Numeric phrase; kept literal."
     },
     {
       "startMs": 25950,
       "endMs": 28649,
       "original": "Ohde utton sau-sau diyan gatthiyan",
-      "translated": "I say it ten times.",
-      "note": "Rendered conservatively as 'say' to avoid overstating the tone."
+      "translated": "I rain 100-rupee notes over her",
+      "note": "Transliteration: 'Ohde utton sau-sau diyan gatthiyan'. Glossary: conservative 'making it rain' image; rendered literally to avoid overstating tone."
     },
     {
       "startMs": 28650,
       "endMs": 30099,
       "original": "Time laggu mitne nu",
-      "translated": "It'll take time to remove them.",
-      "note": "Rendered conservatively as 'remove' to remain neutral across possible senses."
+      "translated": "It will take much time",
+      "note": "Transliteration: 'Time laggu mitne nu'. Kept conservative: implies change/settling will need time."
     },
     {
       "startMs": 30100,
       "endMs": 31499,
       "original": "Sanu thalle sittne nu",
-      "translated": "To bring us down.",
-      "note": "Rendered idiomatically as 'bring us down' to match likely intended meaning in context."
+      "translated": "To make us sit down",
+      "note": "Transliteration: 'Sanu thalle sittne nu'. Could mean 'to humble us' or 'to force us down'; literal phrasing retained for neutrality."
     },
     {
       "startMs": 31500,
       "endMs": 33199,
       "original": "Ikki vaari jor laa lai chhatti",
-      "translated": "To bring us down.",
-      "note": "Repeated line — kept consistent with prior occurrence."
+      "translated": "Even if you try 21 times with all your strength",
+      "note": "Transliteration: 'Ikki vaari jor laa lai chhatti'. Matches earlier '21 times' variant; glossary uncertainty remains."
     },
     {
       "startMs": 33200,
       "endMs": 36099,
       "original": "Vall kaddta rekaane hunn tutte na crease",
-      "translated": "Even if you try 21 times with all your strength.",
-      "note": "Chose the '21 times' reading to match glossary guidance elsewhere, but mark low confidence due to uncertainty."
+      "translated": "I’ve styled myself up, girl, now the crease won’t break",
+      "note": "Transliteration: 'Vall kaddta rekaane hunn tutte na crease'. Metaphorical; 'crease' likely refers to a style/detail. Low confidence on exact image."
     },
     {
       "startMs": 36100,
       "endMs": 38069,
       "original": "Thoda rukhe aa subaah de sanu aaundi ni tameez",
-      "translated": "He pulled out the hem, so the seams won't tear or crease now.",
-      "note": "Rendered conservatively as an action on clothing to preserve literal meaning."
+      "translated": "We're a bit rough in the mornings; we don't have manners",
+      "note": "Transliteration: 'Thoda rukhe aa subaah de sanu aaundi ni tameez'. 'Tameez' = manners; colloquial sense retained."
     },
     {
       "startMs": 38070,
       "endMs": 41699,
       "original": "Aa lai tainu ditti saambh laa ni bebe wali chunni",
-      "translated": "You're a little rough in the mornings; we don't have manners.",
-      "note": "Kept a conservative interpretation that mirrors the original's mixed address ('thoda' + 'sanu')."
+      "translated": "Here, I gave you—keep that baby girl's scarf safe",
+      "note": "Transliteration: 'Aa lai tainu ditti saambh laa ni bebe wali chunni'. 'bebe' could be 'baby' or affectionate 'bebi' (beloved); kept literal 'baby girl' to avoid assuming nuance."
     },
     {
       "startMs": 41700,
       "endMs": 44399,
       "original": "Baitha double R vich paake bapu di kameez",
-      "translated": "Here, take it; I gave it to you — keep that girl's scarf safe.",
-      "note": "Used 'girl' for 'bebe/beeba' and 'scarf' for 'chunni' per glossary and common usage."
+      "translated": "Sitting in a Double R wearing my father's shirt",
+      "note": "Transliteration: 'Baitha double R vich paake bapu di kameez'. 'Double R' left literal (likely vehicle/brand); kept familial detail literal."
     },
     {
       "startMs": 44400,
       "endMs": 47099,
       "original": "Bahla door ni rekaane hun Ranjheyan nu kheda",
-      "translated": "Sitting in a Double R wearing my father's shirt.",
-      "note": "Left 'Double R' untranslated due to brand ambiguity; 'bapu di kameez' rendered literally."
+      "translated": "Don't stay far; I'll start playing with the Ranjhes now",
+      "note": "Transliteration: 'Bahla door ni rekaane hun Ranjheyan nu kheda'. 'kheda' can mean tease/play or punish; 'Ranjhes' likely a group/name. Chose conservative 'playing' sense but confidence is low."
     },
     {
       "startMs": 47100,
       "endMs": 49799,
       "original": "Bahla nede nu na jawan bas jhaaka ee bada mera",
-      "translated": "Maybe don't keep them at a distance now; mess with those Ranjhas.",
-      "note": "Rendered 'kheda' as 'mess with' to cover both teasing and antagonistic senses."
+      "translated": "Don't come close; just look — my swagger's huge",
+      "note": "Transliteration: 'Bahla nede nu na jawan bas jhaaka ee bada mera'. 'jhaaka' rendered as glance/peep; 'bada' as big/pride/swagger."
     },
     {
       "startMs": 49800,
       "endMs": 52079,
       "original": "Bahla ruka na rekaane kite maaran ikk fera",
-      "translated": "Maybe don't try to hold them back — they might come back and strike once.",
-      "note": "Colloquial/idiomatic phrasing; preserved conservative meaning of possible retaliation."
+      "translated": "Don’t be too arrogant, girl, or I’ll spin back once more",
+      "note": "Transliteration: Bahla ruka na rekaane kite maaran ikk fera. Glossary-prescribed conservative warning/retaliation reading retained."
     },
     {
       "startMs": 52080,
       "endMs": 55449,
       "original": "Naddi do vall kha gayi ditta ikk vaari geda",
-      "translated": "The stream swept it to both sides and made it spin once.",
-      "note": "Kept literal image of stream carrying and spinning something."
+      "translated": "The girl got all weak/flustered when I made just one round",
+      "note": "Transliteration: Naddi do vall kha gayi ditta ikk vaari geda. Kept literal 'one round' image per glossary."
     },
     {
       "startMs": 55450,
       "endMs": 58399,
       "original": "Kithe dabeya rekaane ehna dekh layi dabake",
-      "translated": "Where did I press to hold them? See—I pressed them down.",
-      "note": "Retains ambiguity between literal and metaphorical 'pressing'."
+      "translated": "Where did I press to hold them? Girl — look closely and see the force of it",
+      "note": "Transliteration: Kithe dabeya rekaane ehna dekh layi dabake. Ambiguity preserved as advised in glossary."
     },
     {
       "startMs": 58400,
       "endMs": 60999,
       "original": "Karaan shopping'an Milan Afghan 'ali kha ke",
-      "translated": "I go shopping: Milan, Afghani, 'Ali — after I've eaten.",
-      "note": "Kept original names untranslated to avoid adding unsupported meaning."
+      "translated": "I shop in Milan, enjoying Afghan treats",
+      "note": "Transliteration: Karaan shopping'an Milan Afghan 'ali kha ke. Place names left untranslated per glossary guidance."
     },
     {
       "startMs": 61000,
       "endMs": 63849,
       "original": "Tera darji rekaane change karde Mohali",
-      "translated": "Your tailor does good alterations in Mohali."
+      "translated": "Your tailor does alterations in Mohali",
+      "note": "Transliteration: Tera darji rekaane change karde Mohali. Mohali kept as place name; tied to shopping/tailoring context."
     },
     {
       "startMs": 63850,
       "endMs": 66649,
       "original": "Jutti pairan wich paavan tere Paris'on manga ke",
-      "translated": "I wear shoes I ordered from Paris for you.",
-      "note": "Conservative wording avoids choosing between addressing the listener and describing the recipient."
+      "translated": "I wear shoes I ordered from Paris for you",
+      "note": "Transliteration: Jutti pairan wich paavan tere Paris'on manga ke. 'Tere' treated as address; Paris left untranslated."
     },
     {
       "startMs": 66650,
       "endMs": 69499,
       "original": "Tin mahine tin change ne location'an rekaane",
-      "translated": "I change locations every three months.",
-      "note": "Conservative, regular-interval interpretation chosen for clarity."
+      "translated": "Three months, three location changes",
+      "note": "Transliteration: Tin mahine tin change ne location'an rekaane. Short, literal phrasing maintained to reflect ambiguity."
     },
     {
       "startMs": 69500,
       "endMs": 72199,
       "original": "Nitt UAE ton UK nu rotation'an rekaane",
-      "translated": "I regularly rotate between the UAE and the UK."
+      "translated": "Every day I rotate between the UAE and the UK",
+      "note": "Transliteration: Nitt UAE ton UK nu rotation'an rekaane. Interpreted as frequent travel/rotation UAE↔UK."
     },
     {
       "startMs": 72200,
       "endMs": 75099,
       "original": "Main taan rukja dimag sala rukda ni mera",
-      "translated": "I don't stop; my mind never stops.",
-      "note": "'sala' functions as a colloquial intensifier in the source; tone preserved without explicit expletive."
+      "translated": "I never stop; my mind doesn't rest",
+      "note": "Transliteration: Main taan rukja dimag sala rukda ni mera. Tone smoothed into natural English while keeping emphasis."
     },
     {
       "startMs": 75100,
       "endMs": 77899,
       "original": "Tan hi laa laiye samadhi meditation'an rekaane",
-      "translated": "So we even bring samadhi meditation sessions.",
-      "note": "Kept original term to avoid mistranslating a culturally specific concept."
+      "translated": "So we take samadhi meditation sessions",
+      "note": "Transliteration: Tan hi laa laiye samadhi meditation'an rekaane. 'Samadhi' retained as specific meditation term per glossary."
     },
     {
       "startMs": 77900,
       "endMs": 80499,
       "original": "Loki sade kolon sikh hunn sanu den mattan",
-      "translated": "People learn from us, but they don't give us anything.",
-      "note": "Rendered to emphasize the sense of one-way learning without reciprocity."
+      "translated": "People now learn from us; they don't give us mattan",
+      "note": "Transliteration: Loki sade kolon sikh hunn sanu den mattan. 'Mattan' left as-is per glossary note to avoid guessing."
     },
     {
       "startMs": 80500,
       "endMs": 83409,
       "original": "Sanu kinna kuj de giyan ni mitti diyan vattan",
-      "translated": "They gave us almost nothing — only earthen pots (clods of dirt).",
-      "note": "Parenthetical alternative retained to indicate possible figurative reading."
+      "translated": "These dirt paths have given us so much",
+      "note": "Transliteration: Sanu kinna kuj de giyan ni mitti diyan vattan. Glossary-preferred literal rendering preserved for figurative flexibility."
     },
     {
       "startMs": 83410,
       "endMs": 86249,
       "original": "Jithon langhe tera yaar maare camera flash",
-      "translated": "Your friend flashes the camera wherever he goes."
+      "translated": "Wherever your guy passes, the camera flashes",
+      "note": "Transliteration: Jithon langhe tera yaar maare camera flash. Natural idiomatic English for paparazzi/camera-flash image."
     },
     {
       "startMs": 86250,
       "endMs": 89099,
       "original": "Hun khinch'de ne photo kade khinch de si lattan",
-      "translated": "Now they're taking photos; sometimes they used to take 'lattan'.",
-      "note": "Uncertain word left in quotes to avoid guessing its meaning."
+      "translated": "Now they click photos, earlier they captured scars",
+      "note": "Transliteration: Hun khinch'de ne photo kade khinch de si lattan. Glossary advised conservative 'scars' rendering; uncertainty preserved."
     },
     {
       "startMs": 89100,
       "endMs": 91799,
       "original": "Kehndi akh na lagge ve jad di mari tere utte",
-      "translated": "She says, \"May the evil eye not affect you,\" when something struck you.",
-      "note": "Retains common protective wish ('akh na lagge') in natural English."
+      "translated": "She says, 'May the evil eye not touch you' when she looks at you",
+      "note": "Transliteration: Kehndi akh na lagge ve jad di mari tere utte. Standard English idiom 'evil eye' used for clarity."
     },
     {
       "startMs": 91800,
       "endMs": 94559,
       "original": "Sanu sidha ne banage ni halaat sade puthe",
-      "translated": "We haven't become straight/upstanding; that's the state of our boys.",
-      "note": "Implies they haven't settled or become respectable; 'puthe' rendered as 'boys'."
+      "translated": "They haven't fixed our situation, man",
+      "note": "Transliteration: Sanu sidha ne banage ni halaat sade puthe. 'Puthe' left out of translation due to uncertain meaning."
     },
     {
       "startMs": 94560,
       "endMs": 97529,
       "original": "Tu taan hune ee tang aagyi biba nindran udake",
-      "translated": "You've already been bothering me, girl, by stealing my sleep.",
-      "note": "'biba' rendered as 'girl' per glossary guidance."
+      "translated": "You just now got upset, girl, having lost sleep",
+      "transliteration": "ਤੂੰ ਤਾਂ ਹੁਣੇ ਹੀ ਤੰਗ ਆ ਗਈ ਬਿਬਾ ਨਿੰਦਰਾਂ ਉਡਾ ਕੇ",
+      "note": "Transliteration: Tu taan hune ee tang aagyi biba nindran udake. Preserves address 'biba' (girl) and sleep-loss image."
     },
     {
       "startMs": 97530,
       "endMs": 100199,
       "original": "Sanu kai saal hogye naiyo changi tarah sutte",
-      "translated": "We haven't slept properly for many years."
+      "translated": "We haven't slept well in many years",
+      "transliteration": "ਸਾਨੂੰ ਕਈ ਸਾਲ ਹੋ ਗਏ ਨਹੀਂ ਚੰਗੀ ਤਰ੍ਹਾਂ ਸੁੱਤੇ",
+      "note": "Transliteration: Sanu kai saal hogye naiyo changi tarah sutte. Straightforward literal rendering."
     },
     {
       "startMs": 100200,
       "endMs": 102999,
       "original": "Naara thaar ke te vairi rakhan saarh ke rekaane",
-      "translated": "They shout slogans and keep their enemies close, watching them.",
-      "note": "Rendered to reflect the dual sense of keeping enemies close and monitoring them."
+      "translated": "Shouting slogans and keeping our enemies in check",
+      "transliteration": "ਨਾਰਾ ਠਾੜ ਕੇ ਤੇ ਵੈਰੀ ਰੱਖਣ ਸਾਰ੍ਹ ਕੇ ਰੇਕਾਣੇ",
+      "note": "Transliteration: Naara thaar ke te vairi rakhan saarh ke rekaane. Conservative idiomatic rendering used; flagged uncertain."
     },
     {
       "startMs": 103000,
       "endMs": 105699,
       "original": "Peende motran te chahan pattu kaarh ke rekaane",
-      "translated": "They ride motors and keep their followers/henchmen close.",
-      "note": "Kept neutral by offering two plausible English equivalents joined by '/'."
+      "translated": "Riding the bikes and tearing away the cloth of desire",
+      "transliteration": "ਪੀੰਦੇ ਮੋਟਰਾਂ ਤੇ ਚਾਹਨ ਪੱਟੂ ਕੱੜ੍ਹ ਕੇ ਰੇਕਾਣੇ",
+      "note": "Transliteration: Peende motran te chahan pattu kaarh ke rekaane. 'Motran' treated as 'bikes'; 'chahan pattu' as metaphor for desire."
     },
     {
       "startMs": 105700,
       "endMs": 108599,
       "original": "Tere bull'an de maare ne main vi ek M laata",
-      "translated": "Your words hit me; I also put an 'M'.",
-      "note": "Kept literal to avoid guessing specific slang meaning."
+      "translated": "Your lips hit me, and I made an impression",
+      "transliteration": "ਤੇਰੇ ਬੁੱਲਾਂ ਦੇ ਮਾਰੇ ਨੇ ਮੈਂ ਵੀ ਇੱਕ M ਲਾਟਾ",
+      "note": "Kept literal phrasing per glossary guidance to avoid over-interpreting slang 'M'."
     },
     {
       "startMs": 108600,
       "endMs": 111299,
       "original": "Haale navi aa Ferrari jutti jhaad ke rekaane",
-      "translated": "I just got a new Ferrari; I kick off my shoes to show it off.",
-      "note": "'jutti jhaad ke' rendered as a showy gesture (kicking off shoes)."
+      "translated": "I just got a new Ferrari; I kick off my shoes and ride",
+      "transliteration": "ਹਾਲੇ ਨਵੀਂ ਆ ਫੇਰਾਰੀ ਜੁੱਤੀ ਝਾੜ ਕੇ ਰੇਕਾਣੇ",
+      "note": "Colloquial 'jutti jhaad ke' implies shaking off shoes before riding; preserved casual tone."
     },
     {
       "startMs": 111300,
       "endMs": 113499,
       "original": "Dil todte main chhe chhe saak modte",
-      "translated": "When I break hearts, I twist/bend 'chhe chhe saak'.",
-      "note": "Left the phrase untranslated to avoid misinterpretation."
+      "translated": "I broke six hearts, turned six corners",
+      "transliteration": "ਦਿਲ ਤੋੜਤੇ ਮੈਂ ਛੇ ਛੇ ਸਾਕ ਮੋੜਤੇ",
+      "note": "Phrase preserved per glossary to avoid misinterpreting local idiom."
     },
     {
       "startMs": 113500,
       "endMs": 116499,
       "original": "Kataran wich atharan hor pakkian",
-      "translated": "There are eighteen more solid ones in the ranks.",
-      "note": "'atharan' = eighteen; 'pakkian' = solid/tough people."
+      "translated": "There are eighteen more packed in the lines",
+      "transliteration": "ਕਤਾਰਾਂ ਵਿੱਚ ਅਠਾਰਾਂ ਹੋਰ ਪੱਕੀਆਂ",
+      "note": "Numeric reading ('atharan' = eighteen) used literally; could be colloquial/count metaphor."
     },
     {
       "startMs": 116500,
       "endMs": 117999,
       "original": "Duron matha tekdiyan",
-      "translated": "They bow their heads from afar.",
-      "note": "'matha tekdiyan' indicates deference or respect."
+      "translated": "They bow their heads from afar",
+      "transliteration": "ਦੂਰੋਂ ਮੱਥਾ ਟੇਕਦੀਆਂ"
     },
     {
       "startMs": 118000,
       "endMs": 119349,
       "original": "Mud mud dekh diyan",
-      "translated": "They keep turning around to look."
+      "translated": "They keep looking back",
+      "transliteration": "ਮੁੜ ਮੁੜ ਦੇਖਦੀਆਂ"
     },
     {
       "startMs": 119350,
       "endMs": 121999,
       "original": "Assi naiyo ikk vaari takkiyan",
-      "translated": "We didn't even glance once."
+      "translated": "We haven't waited even once",
+      "transliteration": "ਅਸੀਂ ਨਹੀਂ ਇੱਕ ਵਾਰੀ ਟੱਕੀਆਂ",
+      "note": "Verb 'takkiyan' could mean 'waited' or 'checked' in dialect; chosen conservative 'waited'."
     },
     {
       "startMs": 122000,
       "endMs": 123599,
       "original": "Fan ikko naar da main",
-      "translated": "Even if you try 21 times with all your strength",
-      "note": "Followed glossary guidance favoring the '21 times' reading."
+      "translated": "I am a loyal admirer of only one woman",
+      "note": "Transliteration: 'Fan ikko naar da main'. Glossary: 'fan' as English loanword and 'naar' = woman; kept literal and faithful."
     },
     {
       "startMs": 123600,
       "endMs": 124899,
       "original": "Das vaari vaarda main",
-      "translated": "I'm only a fan of one woman.",
-      "note": "Treated 'fan' as the English loanword and 'naar' as 'woman' per glossary preferred rendering."
+      "translated": "More than ten times",
+      "note": "Transliteration: 'Das vaari vaarda main'. Numeric phrase; kept literal."
     },
     {
       "startMs": 124900,
       "endMs": 127549,
       "original": "Ohde utton sau sau diyan gatthiyan",
-      "translated": "I say it ten times.",
-      "note": "Rendered conservatively as 'say' to avoid overstating the tone."
+      "translated": "I rain 100-rupee notes over her",
+      "note": "Transliteration: 'Ohde utton sau-sau diyan gatthiyan'. Glossary: conservative 'making it rain' image; rendered literally to avoid overstating tone."
     },
     {
       "startMs": 127550,
       "endMs": 129149,
       "original": "Time laggu mitne nu",
-      "translated": "It'll take time to remove them.",
-      "note": "Rendered conservatively as 'remove' to remain neutral across possible senses."
+      "translated": "It will take much time",
+      "note": "Transliteration: 'Time laggu mitne nu'. Kept conservative: implies change/settling will need time."
     },
     {
       "startMs": 129150,
       "endMs": 130599,
       "original": "Sanu thalle sittne nu",
-      "translated": "To bring us down.",
-      "note": "Rendered idiomatically as 'bring us down' to match likely intended meaning in context."
+      "translated": "To make us sit down",
+      "note": "Transliteration: 'Sanu thalle sittne nu'. Could mean 'to humble us' or 'to force us down'; literal phrasing retained for neutrality."
     },
     {
       "startMs": 130600,
       "endMs": 133349,
       "original": "Ikki vaari jor laa lai chhatti'an",
       "translated": "Even if you try 21 times with all your strength",
-      "note": "Words are uncertain: 'Ikki' can mean 'once' or 'twenty-one'; 'chhatti'an' could be 'chests' (chhatiyaan) or 'roofs' (chhattian) depending on pronunciation."
+      "note": "Transliteration: 'Ikki vaari jor laa lai chhatti'an'. Glossary treats 'Ikki' as '21' here but notes uncertainty; rendered to match glossary preference."
     },
     {
       "startMs": 133350,
       "endMs": 136529,
       "original": "Oh kudi jatt di fragrance door ton pehchane",
-      "translated": "That girl can recognize a jatt's scent from far away",
-      "note": "Uses glossary term 'jatt' as identity; 'fragrance' implies distinctive aura."
+      "translated": "That girl recognizes a jatt's fragrance from far away",
+      "transliteration": "ਉਹ ਕੁੜੀ ਜੱਟ ਦੀ ਫਰੇਗਰੈਂਸ ਦੂਰੋਂ ਪਛਾਣੇ"
     },
     {
       "startMs": 136530,
       "endMs": 139199,
       "original": "Asi aashqui ch nave ni shikari aa purane",
-      "translated": "We're not new hunters in love; we're old ones",
-      "note": "'shikari' = hunter metaphor for experienced pursuers in romance."
+      "translated": "We aren't new hunters in love, we're old ones"
     },
     {
       "startMs": 139200,
       "endMs": 141999,
       "original": "Gal sukkda kehndi tu jadon supne ch aavein",
-      "translated": "You say I go speechless when you come in my dreams",
-      "note": "Structure rendered as 'you say' (kehndi tu) followed by the effect on the speaker."
+      "translated": "You say things die down when you come into my dreams",
+      "note": "'Gal sukkda' literally 'the talk dries' — preserved conservatively as 'dies down'."
     },
     {
       "startMs": 142000,
       "endMs": 144799,
       "original": "Naddi ohdon di saundi aa pani rakh ke sirhane",
-      "translated": "That little river used to sleep with water kept by the pillow.",
-      "note": "Kept conservative literal meaning due to unclear figurative sense."
+      "translated": "The river's scent lingers when you keep water by the pillow",
+      "note": "Poetic image preserved literally rather than forcing a smoother paraphrase."
     },
     {
       "startMs": 144800,
       "endMs": 147719,
       "original": "Main keha chalde rekaane sikke mitran de khote",
-      "translated": "I said, as I walked, my friends' coins were fake.",
-      "note": "Conservative reading treating 'sikke' literally while avoiding a definitive interpretation of 'rekaane'."
+      "translated": "I said as they move, the coins are my friends' counterfeits",
+      "note": "Line is syntactically and idiomatically unclear; 'khote' usually means 'fake/counterfeit' — rendered conservatively."
     },
     {
       "startMs": 147720,
       "endMs": 150399,
       "original": "Aa ke behnde aa rekaane cheene mitran de kothe",
-      "translated": "They come and sit and snatch 'rekaane' from friends' mansions.",
-      "note": "Kept 'rekaane' as-is to avoid inventing meaning."
+      "translated": "They come and sit after taking friends' houses",
+      "note": "Could be literal theft or figurative takeover; kept literal wording."
     },
     {
       "startMs": 150400,
       "endMs": 153249,
       "original": "Tainu sohniye rekaane karaan hathan naal chhavaan",
-      "translated": "Girl, I'll make 'rekaane' and touch you with my hands.",
-      "note": "'Sohniye' rendered as affectionate 'Girl'; kept unknown term unchanged."
+      "translated": "I'll touch you, beautiful, with my hands",
+      "note": "The repeated particle 'rekaane' is treated as a filler/vocative and omitted in English."
     },
     {
       "startMs": 153250,
       "endMs": 155999,
       "original": "Jivein karde ne chhavaan sadde pind'an de barote",
-      "translated": "Like the boys from our villages do the touching.",
-      "note": "Preserved rural reference and kept 'touching' as the action; conservative rendering of 'barote'."
+      "translated": "Like they set off gunpowder in our village",
+      "note": "Transliteration: Jivein karde ne chhavaan sadde pind'an de barote. Conservative, literal rendering of the explosive image to match surrounding 'gunpowder' references."
     },
     {
       "startMs": 156000,
       "endMs": 158899,
       "original": "Tera sau ton paar para hogyi dhilli kuj khaa ke",
-      "translated": "Something of yours went slack past a hundred after eating something.",
-      "note": "Very ambiguous numeration and referent; kept a conservative, literal wording."
+      "translated": "Your level/temperature went above 100 as you ate something from Delhi",
+      "note": "Transliteration: Tera sau ton paar para hogyi dhilli kuj khaa ke. Followed glossary's conservative literal wording to avoid over-interpreting the metaphor."
     },
     {
       "startMs": 158900,
       "endMs": 161549,
       "original": "Teri 'taar da nazar gun powder chhuva ke",
-      "translated": "The aim of your 'taar' brushed against the gunpowder.",
-      "note": "Retained figurative sense while flagging the uncertain term 'taar'."
+      "translated": "Your string’s spark touches gunpowder",
+      "note": "Transliteration: Teri 'taar da nazar gun powder chhuva ke. Chosen per glossary guidance keeping 'taar' figurative and preserving the spark/gunpowder image."
     },
     {
       "startMs": 161550,
       "endMs": 164249,
       "original": "Eh ton dar na rekaane dekh akhan wich paa ke",
-      "translated": "Don't be afraid of this after seeing 'rekaane' put into the eyes.",
-      "note": "Kept 'rekaane' untranslated to avoid misrepresenting a regional term; conservative rendering."
+      "translated": "Don't be afraid of this — look directly into my eyes",
+      "note": "Transliteration: Eh ton dar na rekaane dekh akhan wich paa ke. Omitted the filler 'rekaane' in English and rendered as a direct vocative/imperative."
     },
     {
       "startMs": 164250,
       "endMs": 167099,
       "original": "Jadon chaldi Beretta dindi surma bana ke",
-      "translated": "When the Beretta moves, like kohl being drawn.",
-      "note": "Kept simile linking gun motion to making kohl for clarity, but confidence is low due to syntactic uncertainty."
+      "translated": "When the Beretta fires, it creates kohl-like dust",
+      "note": "Transliteration: Jadon chaldi Beretta dindi surma bana ke. Followed glossary's simile-preserving, literal approach despite low confidence."
     },
     {
       "startMs": 167100,
       "endMs": 169999,
       "original": "Kafi kar layi kamai kafi mitran ne udaalayi",
-      "translated": "I've earned enough; many friends have spent it.",
-      "note": "Straightforward: 'kamai' = earned money; 'mitran ne udaalayi' = friends spent/blown it."
+      "translated": "I earned enough; friends have spent a lot",
+      "note": "Transliteration: Kafi kar layi kamai kafi mitran ne udaalayi. Conservative reading that preserves economic boast and friends' spending."
     },
     {
       "startMs": 170000,
       "endMs": 172649,
       "original": "Thode humble aa rekaane Lambo nivi karwali",
-      "translated": "Some act humble; they had the Lambo lowered.",
-      "note": "'Lambo' = Lamborghini; 'nivi karwali' = had it lowered (suspension)."
+      "translated": "You're a little humble, girl; I had the Lambo lowered",
+      "note": "Transliteration: Thode humble aa rekaane Lambo nivi karwali. Preserves automotive image (lowering suspension) and 'humble' remark."
     },
     {
       "startMs": 172650,
       "endMs": 175499,
       "original": "Nave shoran ton rekaane gaddi chaldi ni sidhi",
-      "translated": "With the new shocks, the car doesn't drive straight.",
-      "note": "Interpreted 'shoran' as shocks/suspension to make the line coherent in English."
+      "translated": "With the new shocks, the car doesn't run straight",
+      "note": "Transliteration: Nave shoran ton rekaane gaddi chaldi ni sidhi. Chosen conservative automotive reading ('shocks') consistent with previous Lambo line."
     },
     {
       "startMs": 175500,
       "endMs": 178209,
       "original": "La daan meech ke ankhan nu back ganne di trolly",
-      "translated": "Jaw clenched, the eyes like the rear of a sugarcane trolley.",
-      "note": "Preserved the original, unusual simile literally rather than forcing a smoother paraphrase."
+      "translated": "We squint our eyes and listen to sugarcane stalks crackle",
+      "note": "Transliteration: La daan meech ke ankhan nu back ganne di trolly. Preserved the literal, unusual simile per glossary instruction."
     },
     {
       "startMs": 178210,
       "endMs": 181099,
       "original": "Lagge gabru di tod kudi tutti payi nu aave",
-      "translated": "It looks like the young man's blow; the girl seems shattered.",
-      "note": "'Gabru' = young man; 'tutti payi' = fallen apart/shattered."
+      "translated": "It seems the young man's pull; the girl fell apart and came",
+      "note": "Transliteration: Lagge gabru di tod kudi tutti payi nu aave. Conservative literal rendering chosen to avoid imposing a single interpretive reading."
     },
     {
       "startMs": 181100,
       "endMs": 183899,
       "original": "Age naar di fasal jiven phutti payi nu aave",
-      "translated": "Like a field of fire ahead, as if it's burst open.",
-      "note": "Kept 'naar' = fire metaphor and preserved the explosive visual."
+      "translated": "Ahead, like a fire's crop that seems to have burst open and come",
+      "note": "Transliteration: Age naar di fasal jiven phutti payi nu aave. Preserved the metaphorical, image-rich phrasing conservatively."
     },
     {
       "startMs": 183900,
       "endMs": 186699,
       "original": "Meri yaad di maari nu tainu hichki rekaane",
-      "translated": "You'll get hiccups remembering me.",
-      "note": "Literal rendering of the idiom: being 'struck by my memory' causes hiccups."
+      "translated": "My memory hits you; it gives you hiccups",
+      "note": "Transliteration: Meri yaad di maari nu tainu hichki rekaane. Conservative figurative reading of 'memory hitting' resulting in a hiccup-like reaction."
     },
     {
       "startMs": 186700,
       "endMs": 189399,
       "original": "Sachi barish de gaane wangu sutti payi nu aave",
-      "translated": "It comes to the one asleep like true rain songs.",
-      "note": "Kept the simile comparing arrival to 'true rain songs'; preserved ambiguity of the subject."
+      "translated": "She seems asleep, like the songs of real rain.",
+      "note": "Transliteration: Sachi barish de gaane wangu sutti payi nu aave. Conservative, slightly poetic rendering to preserve tone."
     },
     {
       "startMs": 189400,
       "endMs": 191899,
       "original": "Bechain hogyi ikk kudi fan hogyi",
-      "translated": "One girl grew restless and became a fan.",
-      "note": "Straightforward: restlessness leading to fandom."
+      "translated": "One girl got restless and became a fan.",
+      "note": "Transliteration: Bechain hogyi ikk kudi fan hogyi. Straightforward, high-confidence translation."
     },
     {
       "startMs": 191900,
       "endMs": 194549,
       "original": "Aujle de kanna wich nattiyan",
-      "translated": "Aujle has nattiyan in his ears.",
-      "note": "Preserved the term 'nattiyan' rather than guessing its meaning."
+      "translated": "With shiny earrings in her ears.",
+      "note": "Transliteration: Aujle de kanna wich nattiyan. Rendered 'nattiyan' as 'shiny earrings' per glossary's conservative guidance."
     },
     {
       "startMs": 194550,
       "endMs": 197349,
       "original": "Kari di ni care kude gaul de ni sher kude",
-      "translated": "She doesn't care about it or about talk; the boys act like lions.",
-      "note": "Conservative rendering: she is indifferent while the boys display bravado ('sher' = lions)."
+      "translated": "I don’t care much, dear, I’m like a lion.",
+      "note": "Transliteration: Kari di ni care kude gaul de ni sher kude. Followed glossary-preferred conservative rendering contrasting her indifference with the speaker's bravado."
     },
     {
       "startMs": 197350,
       "endMs": 200199,
       "original": "Bhedaan hon baara baari kathiyan",
-      "translated": "There are twelve separations.",
-      "note": "Kept neutral, literal reading of 'baara' = twelve and 'bhedaan' = separations."
+      "translated": "Even if twelve sheep gather together.",
+      "note": "Transliteration: Bhedaan hon baara baari kathiyan. Kept literal phrasing (baara = twelve) as glossary recommended."
     },
     {
       "startMs": 200200,
       "endMs": 201799,
       "original": "Fan ikko naar da main",
-      "translated": "Even if you try 21 times with all your strength",
-      "note": "Followed glossary guidance favoring the '21 times' reading."
+      "translated": "I am a loyal admirer of only one woman",
+      "note": "Transliteration: 'Fan ikko naar da main'. Glossary: 'fan' as English loanword and 'naar' = woman; kept literal and faithful."
     },
     {
       "startMs": 201800,
       "endMs": 203049,
       "original": "Das vaari vaarda main",
-      "translated": "I'm only a fan of one woman.",
-      "note": "Treated 'fan' as the English loanword and 'naar' as 'woman' per glossary preferred rendering."
+      "translated": "More than ten times",
+      "note": "Transliteration: 'Das vaari vaarda main'. Numeric phrase; kept literal."
     },
     {
       "startMs": 203050,
       "endMs": 205699,
       "original": "Ohde utton sau sau diyan gatthiyan",
-      "translated": "I say it ten times.",
-      "note": "Rendered conservatively as 'say' to avoid overstating the tone."
+      "translated": "I rain 100-rupee notes over her",
+      "note": "Transliteration: 'Ohde utton sau-sau diyan gatthiyan'. Glossary: conservative 'making it rain' image; rendered literally to avoid overstating tone."
     },
     {
       "startMs": 205700,
       "endMs": 207299,
       "original": "Time laggu mitne nu",
-      "translated": "It'll take time to remove them.",
-      "note": "Rendered conservatively as 'remove' to remain neutral across possible senses."
+      "translated": "It will take much time",
+      "note": "Transliteration: 'Time laggu mitne nu'. Kept conservative: implies change/settling will need time."
     },
     {
       "startMs": 207300,
       "endMs": 208599,
       "original": "Sanu thalle sittne nu",
-      "translated": "To bring us down.",
-      "note": "Rendered idiomatically as 'bring us down' to match likely intended meaning in context."
+      "translated": "To make us sit down",
+      "note": "Transliteration: 'Sanu thalle sittne nu'. Could mean 'to humble us' or 'to force us down'; literal phrasing retained for neutrality."
     },
     {
       "startMs": 208600,
       "endMs": 211349,
       "original": "Ikki vaari jor laa lai chhatti'an",
       "translated": "Even if you try 21 times with all your strength",
-      "note": "Words are uncertain: 'Ikki' can mean 'once' or 'twenty-one'; 'chhatti'an' could be 'chests' (chhatiyaan) or 'roofs' (chhattian) depending on pronunciation."
+      "note": "Transliteration: 'Ikki vaari jor laa lai chhatti'an'. Glossary treats 'Ikki' as '21' here but notes uncertainty; rendered to match glossary preference."
     },
     {
       "startMs": 211350,
       "endMs": 212899,
       "original": "(Fan ikko naar da main)",
-      "translated": "Even if you try 21 times with all your strength",
-      "note": "Followed glossary guidance favoring the '21 times' reading."
+      "translated": "I am a loyal admirer of only one woman",
+      "note": "Transliteration: 'Fan ikko naar da main'. Glossary: 'fan' as English loanword and 'naar' = woman; kept literal and faithful."
     },
     {
       "startMs": 212900,
       "endMs": 214249,
       "original": "(Das vaari vaarda main)",
-      "translated": "I'm only a fan of one woman.",
-      "note": "Treated 'fan' as the English loanword and 'naar' as 'woman' per glossary preferred rendering."
+      "translated": "More than ten times",
+      "note": "Transliteration: 'Das vaari vaarda main'. Numeric phrase; kept literal."
     },
     {
       "startMs": 214250,
       "endMs": 216799,
       "original": "(Ohde utton sau-sau diyan gatthiyan)",
-      "translated": "I say it ten times.",
-      "note": "Rendered conservatively as 'say' to avoid overstating the tone."
+      "translated": "I rain 100-rupee notes over her",
+      "note": "Transliteration: 'Ohde utton sau-sau diyan gatthiyan'. Glossary: conservative 'making it rain' image; rendered literally to avoid overstating tone."
     },
     {
       "startMs": 216800,
       "endMs": 218249,
       "original": "(Time laggu mitne nu)",
-      "translated": "It'll take time to remove them.",
-      "note": "Rendered conservatively as 'remove' to remain neutral across possible senses."
+      "translated": "It will take much time",
+      "note": "Transliteration: 'Time laggu mitne nu'. Kept conservative: implies change/settling will need time."
     },
     {
       "startMs": 218250,
       "endMs": 219749,
       "original": "(Sanu thalle sittne nu)",
-      "translated": "To bring us down.",
-      "note": "Rendered idiomatically as 'bring us down' to match likely intended meaning in context."
+      "translated": "To make us sit down",
+      "note": "Transliteration: 'Sanu thalle sittne nu'. Could mean 'to humble us' or 'to force us down'; literal phrasing retained for neutrality."
     },
     {
       "startMs": 219750,
       "endMs": 227440,
       "original": "(Ikki vaari jor laa lai chhatti'an)",
       "translated": "Even if you try 21 times with all your strength",
-      "note": "Words are uncertain: 'Ikki' can mean 'once' or 'twenty-one'; 'chhatti'an' could be 'chests' (chhatiyaan) or 'roofs' (chhattian) depending on pronunciation."
+      "note": "Transliteration: 'Ikki vaari jor laa lai chhatti'an'. Glossary treats 'Ikki' as '21' here but notes uncertainty; rendered to match glossary preference."
     }
   ]
 }

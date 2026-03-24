@@ -1,10 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { normalizeLookupText } from "@/features/ai/romanized-normalization";
+
 export type AiGlossaryEntry = {
   term: string;
   meaning: string;
   note?: string;
+  aliases?: string[];
   category?: "entry" | "slang" | "idiom" | "phrase" | "reference" | "preferred_rendering";
 };
 
@@ -52,6 +55,11 @@ function parseGlossaryArray(value: unknown, category: AiGlossaryEntry["category"
       const term = asString(entry.term);
       const meaning = asString(entry.meaning);
       const note = asString(entry.note) ?? undefined;
+      const aliases = Array.isArray(entry.aliases)
+        ? entry.aliases.map((alias) => asString(alias)).filter((alias): alias is string => Boolean(alias))
+        : Array.isArray(entry.variants)
+          ? entry.variants.map((alias) => asString(alias)).filter((alias): alias is string => Boolean(alias))
+          : [];
 
       if (!term || !meaning) {
         return null;
@@ -62,6 +70,10 @@ function parseGlossaryArray(value: unknown, category: AiGlossaryEntry["category"
         meaning,
         category
       };
+
+      if (aliases.length > 0) {
+        normalizedEntry.aliases = aliases;
+      }
 
       if (note) {
         normalizedEntry.note = note;
@@ -120,6 +132,10 @@ function mergeGlossaries(glossaries: AiGlossaryEntry[][]) {
   }
 
   return Array.from(merged.values());
+}
+
+export function getGlossarySearchTerms(entry: AiGlossaryEntry) {
+  return [entry.term, ...(entry.aliases ?? [])].map((value) => normalizeLookupText(value)).filter(Boolean);
 }
 
 export async function getAiGlossaryEntries(options: {

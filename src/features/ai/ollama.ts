@@ -4,11 +4,13 @@ import type {
   AiCorrectionHint,
   AiProviderStatus,
   AiSongContext,
-  GeneratedTranslationLineDraft
+  GeneratedTranslationLineDraft,
+  MeaningAnalysisLine
 } from "@/features/ai/types";
 
 const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
 const DEFAULT_OLLAMA_MODEL = "qwen2.5:14b";
+const OLLAMA_REQUEST_TIMEOUT_MS = 90_000;
 
 type BasePromptOptions = {
   title: string;
@@ -27,6 +29,27 @@ type RequestAiTranslationDraftOptions = BasePromptOptions & {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    normalizationNotes?: string[];
+    meaning?: string;
+    impliedMeaning?: string | null;
+    register?: string | null;
+    contextBefore?: string[];
+    contextAfter?: string[];
+    groupIndex?: number;
+    groupText?: string;
+    matchingCorrections?: AiCorrectionHint[];
+  }>;
+};
+
+type RequestAiMeaningAnalysisOptions = BasePromptOptions & {
+  sourceLanguage: string | null;
+  songContext: AiSongContext | null;
+  lines: Array<{
+    index: number;
+    original: string;
+    normalizedOriginal?: string | null;
+    normalizationNotes?: string[];
     contextBefore?: string[];
     contextAfter?: string[];
     groupIndex?: number;
@@ -44,6 +67,10 @@ type RequestAiTranslationRefinementOptions = BasePromptOptions & {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    meaning: string;
+    impliedMeaning: string | null;
+    register: string | null;
     literal: string;
     natural: string;
     slangAware: string;
@@ -79,6 +106,10 @@ type RequestAiTranslationSelectionOptions = BasePromptOptions & {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    meaning: string;
+    impliedMeaning: string | null;
+    register: string | null;
     literal: string;
     natural: string;
     slangAware: string;
@@ -146,6 +177,13 @@ function buildDraftSchema(lineCount: number) {
           additionalProperties: false,
           properties: {
             literal: { type: "string" },
+            meaning: { type: "string" },
+            impliedMeaning: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            },
+            register: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            },
             natural: { type: "string" },
             slangAware: { type: "string" },
             chosen: { type: "string" },
@@ -169,6 +207,9 @@ function buildDraftSchema(lineCount: number) {
           },
           required: [
             "literal",
+            "meaning",
+            "impliedMeaning",
+            "register",
             "natural",
             "slangAware",
             "chosen",
@@ -186,6 +227,38 @@ function buildDraftSchema(lineCount: number) {
   };
 }
 
+function buildMeaningSchema(lineCount: number) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      detectedSourceLanguage: {
+        type: "string"
+      },
+      lines: {
+        type: "array",
+        minItems: lineCount,
+        maxItems: lineCount,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            meaning: { type: "string" },
+            impliedMeaning: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            },
+            register: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            }
+          },
+          required: ["meaning", "impliedMeaning", "register"]
+        }
+      }
+    },
+    required: ["detectedSourceLanguage", "lines"]
+  };
+}
+
 function buildSongContextSchema() {
   return {
     type: "object",
@@ -193,6 +266,18 @@ function buildSongContextSchema() {
     properties: {
       detectedSourceLanguage: { type: "string" },
       summary: { type: "string" },
+      speaker: {
+        anyOf: [{ type: "string" }, { type: "null" }]
+      },
+      addressee: {
+        anyOf: [{ type: "string" }, { type: "null" }]
+      },
+      stance: {
+        anyOf: [{ type: "string" }, { type: "null" }]
+      },
+      narrativeMode: {
+        anyOf: [{ type: "string" }, { type: "null" }]
+      },
       themes: {
         type: "array",
         items: { type: "string" }
@@ -203,7 +288,7 @@ function buildSongContextSchema() {
         items: { type: "string" }
       }
     },
-    required: ["detectedSourceLanguage", "summary", "themes", "tone", "notablePhrases"]
+    required: ["detectedSourceLanguage", "summary", "speaker", "addressee", "stance", "narrativeMode", "themes", "tone", "notablePhrases"]
   };
 }
 
@@ -274,7 +359,10 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       : `First infer the lyric language from the provided lines, then translate each line into ${options.targetLanguage}.`,
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script, not English.",
     "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
-    "For each line, produce literal, natural, slangAware, chosen, transliteration, note, ambiguity, confidence, and selectorReason.",
+    "For each line, produce meaning, impliedMeaning, register, literal, natural, slangAware, chosen, transliteration, note, ambiguity, confidence, and selectorReason.",
+    "Treat meaning as a concise semantic gloss of what the line is saying before polishing it into display English.",
+    "Treat impliedMeaning as optional cultural/subtextual explanation when the line hints at swagger, warning, romance, or disrespect beyond the literal meaning.",
+    "Treat register as a short label like flex, romantic, warning, teasing, devotional, boastful, reflective, or null if not useful.",
     "Literal must stay very close to the original meaning, even if the English sounds plain.",
     "Natural should sound like clean English while keeping the actual meaning.",
     "SlangAware should preserve swagger, idiom, and lyrical tone without inventing new meaning.",
@@ -291,6 +379,24 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       : "Return null for note on every line.",
     "Set confidence to low, medium, or high based on how certain you are about the line meaning.",
     "Set selectorReason to a short phrase explaining why chosen is the best candidate, or null if unnecessary.",
+    buildSharedContextHints(options, options.sourceLanguage),
+    "Respond only with JSON matching the schema."
+  ].join(" ");
+}
+
+function buildMeaningSystemPrompt(options: RequestAiMeaningAnalysisOptions) {
+  return [
+    "You are the meaning-analysis pass for Lafz lyric translation.",
+    options.sourceLanguage
+      ? `Interpret each lyric line from ${options.sourceLanguage} before any final English rewriting.`
+      : "First infer the lyric language from the provided lines, then interpret each line before any final English rewriting.",
+    "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script.",
+    "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
+    "For each line, produce a concise meaning, an optional impliedMeaning, and an optional register label.",
+    "Meaning should explain what the line actually says in plain English without turning it into polished lyrics.",
+    "ImpliedMeaning should only be used when slang, posture, threat, romance, or cultural context adds an important second layer.",
+    "Do not over-interpret. If context is ambiguous, keep meaning conservative and set impliedMeaning to null.",
+    "Use nearby context, verse-group context, song context, artist memory, glossary hints, and correction examples to resolve slang and idioms.",
     buildSharedContextHints(options, options.sourceLanguage),
     "Respond only with JSON matching the schema."
   ].join(" ");
@@ -324,7 +430,7 @@ function buildSongContextSystemPrompt(options: RequestAiSongContextOptions) {
   return [
     "You are summarizing song context for Lafz before translation.",
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script.",
-    "Infer the most likely song-level themes, attitude, and recurring ideas without overclaiming.",
+    "Infer the most likely song-level themes, attitude, recurring ideas, speaker, addressee, stance, and narrative mode without overclaiming.",
     "Keep the summary concise and grounded in the provided lines.",
     buildSharedContextHints(options, options.sourceLanguage),
     "Respond only with JSON matching the schema."
@@ -366,6 +472,40 @@ function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
       lines: options.lines.map((line) => ({
         index: line.index,
         original: line.original,
+        normalizedOriginal: line.normalizedOriginal ?? null,
+        normalizationNotes: line.normalizationNotes ?? [],
+        meaning: line.meaning ?? null,
+        impliedMeaning: line.impliedMeaning ?? null,
+        register: line.register ?? null,
+        contextBefore: line.contextBefore ?? [],
+        contextAfter: line.contextAfter ?? [],
+        groupIndex: line.groupIndex ?? null,
+        groupText: line.groupText ?? null,
+        matchingCorrections: line.matchingCorrections ?? []
+      }))
+    },
+    null,
+    2
+  );
+}
+
+function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions) {
+  return JSON.stringify(
+    {
+      track: {
+        title: options.title,
+        artist: options.artist,
+        album: options.album
+      },
+      sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
+      songContext: options.songContext,
+      artistMemory: options.artistMemory,
+      glossary: options.glossaryEntries,
+      lines: options.lines.map((line) => ({
+        index: line.index,
+        original: line.original,
+        normalizedOriginal: line.normalizedOriginal ?? null,
+        normalizationNotes: line.normalizationNotes ?? [],
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
         groupIndex: line.groupIndex ?? null,
@@ -401,6 +541,10 @@ function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOption
       lines: options.lines.map((line) => ({
         index: line.index,
         original: line.original,
+        normalizedOriginal: line.normalizedOriginal ?? null,
+        meaning: line.meaning,
+        impliedMeaning: line.impliedMeaning,
+        register: line.register,
         currentDraft: {
           literal: line.literal,
           natural: line.natural,
@@ -430,6 +574,10 @@ function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
       artistMemory: options.artistMemory,
       glossary: options.glossaryEntries,
+      outputRules: {
+        inferSpeakerAndAddressee: true,
+        inferNarrativeMode: true
+      },
       lines: options.lines
     },
     null,
@@ -459,6 +607,10 @@ function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions)
       lines: options.lines.map((line) => ({
         index: line.index,
         original: line.original,
+        normalizedOriginal: line.normalizedOriginal ?? null,
+        meaning: line.meaning,
+        impliedMeaning: line.impliedMeaning,
+        register: line.register,
         candidates: {
           literal: line.literal,
           natural: line.natural,
@@ -526,17 +678,23 @@ function parseGeneratedLines(
     }
 
     const translated = asString(line.translated);
+    const meaning = asString(line.meaning);
+    const impliedMeaning = normalizeNullableString(line.impliedMeaning);
+    const register = normalizeNullableString(line.register);
     const literal = asString(line.literal);
     const natural = asString(line.natural);
     const slangAware = asString(line.slangAware) ?? natural;
     const chosen = asString(line.chosen) ?? translated;
     const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
 
-    if (!translated || !literal || !natural || !slangAware || !chosen || !confidence) {
+    if (!translated || !meaning || !literal || !natural || !slangAware || !chosen || !confidence) {
       throw new Error(`${providerLabel} returned an empty translated line at index ${index}.`);
     }
 
     return {
+      meaning,
+      impliedMeaning,
+      register,
       literal,
       natural,
       slangAware,
@@ -556,9 +714,46 @@ function parseGeneratedLines(
   };
 }
 
+function parseMeaningResponse(
+  parsed: unknown,
+  expectedLineCount: number,
+  providerLabel: string
+): { sourceLanguage: string; lines: MeaningAnalysisLine[] } {
+  const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
+
+  if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.lines) || parsed.lines.length !== expectedLineCount) {
+    throw new Error(`${providerLabel} returned an invalid meaning-analysis shape or changed the lyric line count.`);
+  }
+
+  return {
+    sourceLanguage: detectedSourceLanguage,
+    lines: parsed.lines.map((line, index) => {
+      if (!isRecord(line)) {
+        throw new Error(`${providerLabel} returned a non-object meaning-analysis line at index ${index}.`);
+      }
+
+      const meaning = asString(line.meaning);
+
+      if (!meaning) {
+        throw new Error(`${providerLabel} returned an empty meaning-analysis line at index ${index}.`);
+      }
+
+      return {
+        meaning,
+        impliedMeaning: normalizeNullableString(line.impliedMeaning),
+        register: normalizeNullableString(line.register)
+      };
+    })
+  };
+}
+
 function parseSongContextResponse(parsed: unknown, providerLabel: string): { sourceLanguage: string; songContext: AiSongContext } {
   const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
   const summary = isRecord(parsed) ? asString(parsed.summary) : null;
+  const speaker = isRecord(parsed) ? normalizeNullableString(parsed.speaker) : null;
+  const addressee = isRecord(parsed) ? normalizeNullableString(parsed.addressee) : null;
+  const stance = isRecord(parsed) ? normalizeNullableString(parsed.stance) : null;
+  const narrativeMode = isRecord(parsed) ? normalizeNullableString(parsed.narrativeMode) : null;
   const tone = isRecord(parsed) ? asString(parsed.tone) : null;
   const themes = isRecord(parsed) && Array.isArray(parsed.themes)
     ? parsed.themes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
@@ -577,7 +772,11 @@ function parseSongContextResponse(parsed: unknown, providerLabel: string): { sou
       summary,
       themes,
       tone,
-      notablePhrases
+      notablePhrases,
+      speaker,
+      addressee,
+      stance,
+      narrativeMode
     }
   };
 }
@@ -640,6 +839,7 @@ async function callOllamaJson<T>(options: {
     headers: {
       "Content-Type": "application/json"
     },
+    signal: AbortSignal.timeout(OLLAMA_REQUEST_TIMEOUT_MS),
     body: JSON.stringify({
       model: options.model,
       stream: false,
@@ -751,6 +951,31 @@ export async function requestAiSongContext(
     model,
     sourceLanguage: normalized.sourceLanguage,
     songContext: normalized.songContext
+  };
+}
+
+export async function requestAiMeaningAnalysis(
+  options: RequestAiMeaningAnalysisOptions
+): Promise<{ model: string; sourceLanguage: string; lines: MeaningAnalysisLine[] }> {
+  if (options.lines.length === 0) {
+    throw new Error("No lyric lines were provided to the AI meaning-analysis generator.");
+  }
+
+  const model = getOllamaModel();
+  const parsed = await callOllamaJson<unknown>({
+    model,
+    schema: buildMeaningSchema(options.lines.length),
+    systemPrompt: buildMeaningSystemPrompt(options),
+    userPrompt: buildMeaningUserPrompt(options),
+    errorLabel: "Ollama meaning-analysis request",
+    temperature: 0.05
+  });
+  const normalized = parseMeaningResponse(parsed, options.lines.length, "Ollama");
+
+  return {
+    model,
+    sourceLanguage: normalized.sourceLanguage,
+    lines: normalized.lines
   };
 }
 
