@@ -1,0 +1,328 @@
+{
+  "spotifyTrackId": "5si4xdFplkXAydKfFe1xXa",
+  "title": "Take It Easy",
+  "artist": "Karan Aujla, Ikky",
+  "album": "Four You",
+  "durationMs": 210361,
+  "source": "local_import",
+  "sourceLabel": "Local import",
+  "kind": "synced",
+  "language": null,
+  "fetchedAt": "2026-03-24T22:33:29.376Z",
+  "providerTrackId": null,
+  "lines": [
+    {
+      "startMs": 28770,
+      "text": "Eni jyada rude kaahto tone krdi"
+    },
+    {
+      "startMs": 31360,
+      "text": "Tu tan ae kare jive mainu own krdi"
+    },
+    {
+      "startMs": 34620,
+      "text": "Thoda jeha karla behave goriye"
+    },
+    {
+      "startMs": 37050,
+      "text": "Enne bebe vi na kre jinne phone krdi"
+    },
+    {
+      "startMs": 40360,
+      "text": "Paisa fira kuttda ni time kitthe aa"
+    },
+    {
+      "startMs": 42760,
+      "text": "Main bahla busy"
+    },
+    {
+      "startMs": 43610,
+      "text": "Busy busy"
+    },
+    {
+      "startMs": 44290,
+      "text": "Main bahla busy"
+    },
+    {
+      "startMs": 45130,
+      "text": "Busy busy"
+    },
+    {
+      "startMs": 45810,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 47250,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 49480,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 50110,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 50920,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 51600,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 53020,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 55250,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 55910,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 56700,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 57350,
+      "text": "Main keha fer vi tu time kahto mangdi rehni aa"
+    },
+    {
+      "startMs": 60290,
+      "text": "Jadon pata ki rakane sada time aa"
+    },
+    {
+      "startMs": 63130,
+      "text": "Haan value tan pata kira kar jatt di ni"
+    },
+    {
+      "startMs": 66080,
+      "text": "Tere naal di toh puch meri fan aa"
+    },
+    {
+      "startMs": 69220,
+      "text": "Vajde salute jatt jitho langda ni jive DC"
+    },
+    {
+      "startMs": 72630,
+      "text": "DC DC"
+    },
+    {
+      "startMs": 73140,
+      "text": "Ni jive DC"
+    },
+    {
+      "startMs": 74080,
+      "text": "DC DC"
+    },
+    {
+      "startMs": 74760,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 76150,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 78380,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 79040,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 79860,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 80480,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 81960,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 84170,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 84820,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 85620,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 86070,
+      "text": "Oh kam roj da rakane mainu parkhe"
+    },
+    {
+      "startMs": 89210,
+      "text": "Main vi folan nu fol lava varhke"
+    },
+    {
+      "startMs": 92170,
+      "text": "Das ajegi ghdhe de utte tarke"
+    },
+    {
+      "startMs": 94940,
+      "text": "Das sikhlegi kattne charkhe"
+    },
+    {
+      "startMs": 97890,
+      "text": "Mera dil vi ni karda ravaun nu"
+    },
+    {
+      "startMs": 100640,
+      "text": "Ni tainu tatto kine keha si banaun nu"
+    },
+    {
+      "startMs": 103660,
+      "text": "Tainu kehnda kehda supne ch aun nu"
+    },
+    {
+      "startMs": 106570,
+      "text": "Mainu tu thodi chahidi savaun nu"
+    },
+    {
+      "startMs": 109740,
+      "text": "Aujle da ikko aa thikana goriye ni"
+    },
+    {
+      "startMs": 112360,
+      "text": "Surrey BC"
+    },
+    {
+      "startMs": 113080,
+      "text": "BC BC"
+    },
+    {
+      "startMs": 113780,
+      "text": "Surrey BC"
+    },
+    {
+      "startMs": 114510,
+      "text": "BC BC"
+    },
+    {
+      "startMs": 115200,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 116680,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 118810,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 119510,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 120320,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 121000,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 122450,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 124630,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 125330,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 126080,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 126750,
+      "text": "Biba akkeya peya main tere shak te"
+    },
+    {
+      "startMs": 129730,
+      "text": "Main tan sohniye heraan teri akh te"
+    },
+    {
+      "startMs": 132580,
+      "text": "Kade kare tu sawal lagge takk te"
+    },
+    {
+      "startMs": 135500,
+      "text": "Kade puchdi ki banneya ae lak te"
+    },
+    {
+      "startMs": 138650,
+      "text": "Mainu ni pasand jadon rehndi balliye ni khiji khiji"
+    },
+    {
+      "startMs": 141990,
+      "text": "Khiji khiji"
+    },
+    {
+      "startMs": 142590,
+      "text": "Ni khiji khiji"
+    },
+    {
+      "startMs": 143500,
+      "text": "Khiji khiji"
+    },
+    {
+      "startMs": 144150,
+      "text": "Oh yaari oh layi ae"
+    },
+    {
+      "startMs": 145600,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 147800,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 148430,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 149230,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 150270,
+      "text": "Yaari oh layi ae"
+    },
+    {
+      "startMs": 151360,
+      "text": "Kehda mull lai leya ni thoda easy"
+    },
+    {
+      "startMs": 153560,
+      "text": "Easy easy"
+    },
+    {
+      "startMs": 154210,
+      "text": "Take it easy"
+    },
+    {
+      "startMs": 155030,
+      "text": "Easy easy"
+    }
+  ],
+  "plainLyrics": null
+}
