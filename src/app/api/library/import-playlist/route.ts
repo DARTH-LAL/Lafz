@@ -15,11 +15,7 @@ function isValidImportOptions(value: unknown): value is PlaylistImportOptions {
 
   const candidate = value as Record<string, unknown>;
 
-  return (
-    typeof candidate.playlistInput === "string" &&
-    typeof candidate.createMissingTranslationStubs === "boolean" &&
-    typeof candidate.overwriteExistingStubs === "boolean"
-  );
+  return typeof candidate.playlistInput === "string";
 }
 
 export async function POST(request: NextRequest) {

@@ -27,6 +27,10 @@ function sanitizeRedirectTo(value: string | null) {
   return "/library/queue";
 }
 
+function wantsJsonResponse(request: NextRequest) {
+  return request.headers.get("x-lafz-response") === "json";
+}
+
 function withLyricsStatus(redirectTo: string, status: string) {
   const redirectUrl = new URL(redirectTo, "http://lafz.local");
   redirectUrl.searchParams.set("lyrics", status);
@@ -41,6 +45,10 @@ export async function POST(request: NextRequest) {
   const session = readSpotifySessionFromRequest(request);
 
   if (!session) {
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json({ success: false, status: "session_expired", error: "Spotify session expired." }, { status: 401 });
+    }
+
     return NextResponse.redirect(new URL("/login?reason=session_expired", request.url), 303);
   }
 
@@ -54,6 +62,17 @@ export async function POST(request: NextRequest) {
   const redirectTo = sanitizeRedirectTo(asNonEmptyString(formData.get("redirectTo")));
 
   if (!spotifyTrackId || !title || !artist || !album || !lyricsText || durationMs === null) {
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "local_error",
+          error: "Lafz could not import the local lyrics text. Paste valid LRC, synced JSON, or plain lyric text and try again."
+        },
+        { status: 400 }
+      );
+    }
+
     return redirectWithStatus(request, redirectTo, "local_error");
   }
 
@@ -67,8 +86,27 @@ export async function POST(request: NextRequest) {
       lyricsText
     });
 
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json({
+        success: true,
+        status: "local_imported",
+        message: "Lafz saved your local lyrics import into the local cache for this track."
+      });
+    }
+
     return redirectWithStatus(request, redirectTo, "local_imported");
   } catch {
+    if (wantsJsonResponse(request)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "local_error",
+          error: "Lafz could not import the local lyrics text. Paste valid LRC, synced JSON, or plain lyric text and try again."
+        },
+        { status: 500 }
+      );
+    }
+
     return redirectWithStatus(request, redirectTo, "local_error");
   }
 }

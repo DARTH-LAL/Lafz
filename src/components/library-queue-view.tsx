@@ -25,7 +25,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
     <main className="mx-auto min-h-screen w-full max-w-7xl px-6 py-8 lg:px-10">
       <AppTopBar connected className="mb-8" />
 
-      <header className="mb-8 flex flex-col gap-4 border-b border-white/8 pb-6 lg:flex-row lg:items-end lg:justify-between">
+      <header className="mb-8 border-b border-white/8 pb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz library queue</p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -35,21 +35,6 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             Lafz reads every local playlist file, merges duplicate songs by Spotify track ID, inspects local translation
             files, and builds a practical queue so you can focus on Punjabi, Hindi, and Urdu translation work.
           </p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/library/import"
-            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
-            Import playlists
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
-            Back to now playing
-          </Link>
         </div>
       </header>
 
@@ -63,7 +48,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.pending}</p>
         </div>
         <div className="rounded-[24px] border border-[rgba(255,45,120,0.14)] bg-[rgba(255,45,120,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-[#fff0f6]/70">Stub</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-[#fff0f6]/70">Needs lyrics</p>
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.stub}</p>
         </div>
         <div className="rounded-[24px] border border-[rgba(255,140,66,0.14)] bg-[rgba(255,140,66,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
@@ -94,7 +79,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             >
               <option value="all">All statuses</option>
               <option value="pending">Pending</option>
-              <option value="stub">Stub</option>
+              <option value="stub">Needs lyrics</option>
               <option value="translated">Translated</option>
             </select>
           </label>

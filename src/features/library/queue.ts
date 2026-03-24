@@ -4,6 +4,7 @@ import path from "node:path";
 import type { LafzLibraryPlaylistFile, LafzLibraryTrack, TranslationStatus } from "@/features/spotify/types";
 import { inspectAiTranslationDraftFile } from "@/features/ai/repository";
 import { inspectTranslationFile } from "@/features/translations/inspection";
+import { createTranslationStubFile } from "@/features/translations/stubs";
 import type {
   LibraryQueueFilters,
   LibraryQueueRecord,
@@ -39,6 +40,18 @@ type QueueRecordSeed = {
   explicit_translation_status: TranslationStatus | null;
   spotify_track_url: string | null;
 };
+
+async function ensureTranslationFilesForSeeds(seeds: Iterable<QueueRecordSeed>) {
+  await Promise.all(
+    [...seeds].map((seed) =>
+      createTranslationStubFile({
+        spotifyTrackId: seed.spotify_track_id,
+        language: seed.language,
+        overwriteExistingStub: false
+      })
+    )
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -279,6 +292,8 @@ export async function buildLibraryQueue(): Promise<LibraryQueueResult> {
       });
     }
   }
+
+  await ensureTranslationFilesForSeeds(queueSeeds.values());
 
   const records = await Promise.all([...queueSeeds.values()].map((seed) => hydrateQueueRecord(seed)));
   const sortedRecords = sortQueueRecords(records, "status");

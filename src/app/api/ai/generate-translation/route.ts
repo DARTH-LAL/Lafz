@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { startAiGenerationJob } from "@/features/ai/job-store";
 import { generateAiTranslationDraft } from "@/features/ai/translation-draft";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
@@ -119,6 +120,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (wantsJsonResponse(request)) {
+      const job = startAiGenerationJob({
+        spotifyTrackId,
+        title,
+        artist,
+        album,
+        durationMs,
+        sourceLanguage,
+        targetLanguage,
+        includeTransliteration,
+        includeNotes,
+        overwriteExistingTranslation
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          status: "started",
+          message: "Lafz started generating the AI draft.",
+          jobId: job.id
+        },
+        { status: 202 }
+      );
+    }
+
     const result = await generateAiTranslationDraft({
       spotifyTrackId,
       title,
@@ -132,19 +158,11 @@ export async function POST(request: NextRequest) {
       overwriteExistingTranslation
     });
 
-    if (wantsJsonResponse(request)) {
-      return NextResponse.json({
-        success: true,
-        status: result.status,
-        message: getStatusMessage(result.status)
-      });
-    }
-
     return redirectWithStatus(request, redirectTo, result.status);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown AI error.";
 
-    if (/could not reach ollama|could not reach openai|econnrefused|fetch failed|connect/i.test(message)) {
+    if (/could not reach ollama|could not reach openai|econnrefused|fetch failed|connect|timeout|timed out|aborted/i.test(message)) {
       if (wantsJsonResponse(request)) {
         return NextResponse.json(
           {

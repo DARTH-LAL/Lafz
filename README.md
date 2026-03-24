@@ -23,9 +23,9 @@ This repository is intentionally scoped as a personal prototype:
 - Tap-to-expand line details for original text, transliteration, and notes
 - Local Spotify playlist importer for building a translation work queue
 - Single-song Spotify importer for pulling one track into the queue quickly
-- Optional translation stub generation for imported tracks
+- Automatic local translation file creation for imported tracks
 - Local translation queue aggregated across imported playlists
-- Track detail view with translation JSON preview and one-click stub creation
+- Track detail view with translation JSON preview
 - Local fallback import for `.lrc`, synced JSON, or plain lyrics text
 - AI-assisted translation drafts from locally cached original lyrics
 - Multi-pass AI translation pipeline with song context, artist memory, selector pass, low-confidence review, and correction memory
@@ -51,14 +51,13 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   │   └── cache/                # locally imported lyrics cache, ignored by git
 │   └── translations/
 │       ├── drafts/               # AI-generated draft files, ignored by git
-│       ├── local/                # your private translation or stub files, ignored by git
+│       ├── local/                # your private translation files, ignored by git
 │       └── samples/              # placeholder sample data committed to the repo
 ├── public/
 ├── src/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── library/
-│   │   │   │   ├── create-stub/
 │   │   │   │   ├── import-playlist/
 │   │   │   │   └── import-track/
 │   │   │   ├── lyrics/
@@ -79,7 +78,7 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   │   ├── lyrics/               # cache inspection, LRC parsing, and local import handling
 │   │   ├── spotify/              # auth, playback, server-side playlist importer
 │   │   ├── sync/                 # active-line engine + local playback clock
-│   │   └── translations/         # JSON types, repository loader, stub generation, inspection
+│   │   └── translations/         # JSON types, local translation file creation, inspection
 │   └── lib/
 ├── .env.example
 ├── package.json
@@ -104,15 +103,14 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/lyrics/repository.ts`: stores and inspects the local original-lyrics cache and imports local `.lrc` / JSON / plain text fallback content
 - `src/features/lyrics/lrc.ts`: parses and formats LRC-style synced lyric timestamps
 - `src/features/ai/correction-memory.ts`: learns from reviewed draft edits and stores preferred renderings in local track and artist memory files
-- `src/features/translations/repository.ts`: loads local JSON by track ID and safely ignores empty stub files
-- `src/features/translations/stubs.ts`: creates translation stub files without overwriting existing files unless requested
+- `src/features/translations/repository.ts`: loads local JSON by track ID and safely ignores empty placeholder files
+- `src/features/translations/stubs.ts`: ensures local translation files exist without overwriting existing files
 - `src/features/translations/inspection.ts`: inspects local translation files for existence, line count, preview JSON, and last-modified timestamps
 - `src/features/sync/engine.ts`: finds the active line for a given `progressMs`
 - `src/features/sync/use-playback-clock.ts`: keeps a lightweight client-side progress clock between polls
 - `src/app/api/playback/route.ts`: returns the current playback snapshot plus matching local translation
 - `src/app/api/library/import-playlist/route.ts`: runs the protected local playlist import
 - `src/app/api/library/import-track/route.ts`: runs the protected local single-song import
-- `src/app/api/library/create-stub/route.ts`: creates a missing local translation stub for a specific track
 - `src/app/api/ai/generate-translation/route.ts`: generates an AI translation draft from the cached original lyrics for a track
 - `src/app/api/lyrics/import/route.ts`: imports local lyrics text as a fallback cache file for a track
 - `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist and single-song imports
@@ -160,7 +158,7 @@ The playlist importer will:
 4. skip local tracks, unsupported items, unavailable tracks, and duplicate Spotify track IDs
 5. normalize imported tracks into Lafz library records
 6. save the result to `data/library/playlists/<playlistId>.json`
-7. optionally create translation stub files in `data/translations/local/<spotifyTrackId>.json`
+7. automatically ensure `data/translations/local/<spotifyTrackId>.json` exists for every imported track
 
 Important: for newly created Spotify Development Mode apps, playlist item access is currently limited. In Spotify's February 11, 2026 Development Mode update and migration guide, playlist item access is described as available only for playlists the user owns or collaborates on. If a public playlist from another account returns `403 Forbidden`, copy it into one of your own playlists first, then import that copy.
 
@@ -178,7 +176,7 @@ The single-song importer will:
 2. fetch the track metadata from Spotify
 3. normalize that track into a Lafz library record
 4. write a small local JSON file to `data/library/playlists/single-track-<spotifyTrackId>.json`
-5. optionally create `data/translations/local/<spotifyTrackId>.json`
+5. automatically ensure `data/translations/local/<spotifyTrackId>.json` exists
 
 This keeps the queue logic unchanged because single-song imports still land in the same local library folder.
 
@@ -203,7 +201,7 @@ Then it:
 ### Queue status logic
 
 - `pending`: no local translation file exists
-- `stub`: translation file exists but `lines` is empty, or the file needs attention
+- `stub` (`Needs lyrics` in the UI): translation file exists but `lines` is empty, or the file needs attention
 - `translated`: translation file exists and contains at least one synced line
 
 Lafz also keeps the library file's explicit `translation_status` field, but the queue UI prioritizes the practical file-based status above for daily translation work.
@@ -231,7 +229,7 @@ The detail page shows:
 - translation file presence and line count
 - last modified time
 - a JSON preview of the current local translation file
-- a one-click button to create a missing stub file
+- guidance when a local translation file is unexpectedly missing
 
 ## Spotify developer setup
 
@@ -311,9 +309,9 @@ A committed placeholder example lives here:
 }
 ```
 
-### Translation stub JSON shape
+### Auto-created local translation file shape
 
-If you enable stub creation during playlist or single-song import, Lafz writes minimal stub files like this:
+When playlist or single-song import brings a track into Lafz for the first time, Lafz automatically writes a minimal local translation file like this:
 
 ```json
 {
@@ -323,7 +321,7 @@ If you enable stub creation during playlist or single-song import, Lafz writes m
 }
 ```
 
-Lafz intentionally treats these empty stubs as placeholders, not as finished synced translations.
+Lafz intentionally treats these empty files as placeholders, not as finished synced translations.
 
 ## Original lyrics sources
 
@@ -608,37 +606,33 @@ Open:
 3. If you signed in before the playlist scopes were added, disconnect and reconnect once.
 4. Open `/library/import`.
 5. Paste a Spotify playlist URL or playlist ID.
-6. Choose whether to create missing translation stubs.
-7. Leave overwrite off if you want to preserve any existing files in `data/translations/local`.
-8. Submit the import.
-9. Confirm that Lafz creates:
+6. Submit the import.
+7. Confirm that Lafz creates:
    - `data/library/playlists/<playlistId>.json`
-   - optional `data/translations/local/<spotifyTrackId>.json` stub files
-10. Open one of the generated files and begin filling in your own translation data.
+   - `data/translations/local/<spotifyTrackId>.json`
+8. Open one of the generated files and begin filling in your own translation data.
 
 ### Single-song test
 
 1. Open `/library/import`.
 2. Paste a Spotify track URL or track ID into the single-song import form.
-3. Choose whether to create a translation stub for that song.
-4. Submit the import.
-5. Confirm that Lafz creates:
+3. Submit the import.
+4. Confirm that Lafz creates:
    - `data/library/playlists/single-track-<spotifyTrackId>.json`
-   - optional `data/translations/local/<spotifyTrackId>.json`
-6. Open `/library/queue` and confirm the song appears there immediately.
+   - `data/translations/local/<spotifyTrackId>.json`
+5. Open `/library/queue` and confirm the song appears there immediately.
 
 ## Testing the translation queue
 
 1. Import one or more playlists from `/library/import`.
 2. Open `/library/queue`.
 3. Confirm the page shows a deduplicated combined list of imported tracks.
-4. Use the status filter to switch between `pending`, `stub`, and `translated`.
+4. Use the status filter to switch between `pending`, `Needs lyrics`, and `translated`.
 5. Use the language and playlist filters to narrow the queue.
 6. Open a track detail page from the queue.
-7. If the track has no local translation file, click `Create missing stub file`.
-8. Confirm Lafz creates `data/translations/local/<spotifyTrackId>.json`.
-9. Add one or more synced lines to that JSON file and refresh the queue.
-10. Confirm the track moves from `stub` to `translated` once `lines` contains at least one item.
+7. Confirm the track already has `data/translations/local/<spotifyTrackId>.json` after import.
+8. Add one or more synced lines to that JSON file and refresh the queue.
+9. Confirm the track moves from `Needs lyrics` to `translated` once `lines` contains at least one item.
 
 ## Testing AI drafts
 
@@ -686,9 +680,9 @@ Open:
 - Local playlist files and unavailable tracks are skipped instead of being forced into the library.
 - Duplicate Spotify track IDs are deduplicated within a playlist import.
 - Duplicate Spotify track IDs are deduplicated again across all imported playlist files when building the queue.
-- Empty translation stubs are treated as placeholders and not as synced translation files.
+- Empty auto-created translation files are treated as placeholders and not as synced translation files.
 - The queue treats malformed translation JSON as needing attention and keeps going instead of crashing the whole page.
-- Existing translation files are preserved unless you explicitly enable overwrite.
+- Existing translation files are preserved automatically during import.
 
 ## Future-ready extension points
 

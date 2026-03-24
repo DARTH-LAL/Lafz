@@ -18,14 +18,10 @@ function sanitizeRedirectTo(value: string | null) {
   return "/library/queue";
 }
 
-function withStubStatus(redirectTo: string, status: "created" | "exists" | "error") {
+function redirectWithStatus(request: NextRequest, redirectTo: string, status: "exists" | "error") {
   const redirectUrl = new URL(redirectTo, "http://lafz.local");
   redirectUrl.searchParams.set("stub", status);
-  return `${redirectUrl.pathname}${redirectUrl.search}`;
-}
-
-function redirectWithStatus(request: NextRequest, redirectTo: string, status: "created" | "exists" | "error") {
-  return NextResponse.redirect(new URL(withStubStatus(redirectTo, status), request.url), 303);
+  return NextResponse.redirect(new URL(`${redirectUrl.pathname}${redirectUrl.search}`, request.url), 303);
 }
 
 export async function POST(request: NextRequest) {
@@ -45,14 +41,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await createTranslationStubFile({
+    await createTranslationStubFile({
       spotifyTrackId,
       language,
       overwriteExistingStub: false
     });
-    const status = result.created ? "created" : result.skipped ? "exists" : "created";
 
-    return redirectWithStatus(request, redirectTo, status);
+    return redirectWithStatus(request, redirectTo, "exists");
   } catch {
     return redirectWithStatus(request, redirectTo, "error");
   }

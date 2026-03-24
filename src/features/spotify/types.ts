@@ -46,6 +46,7 @@ export type PlaybackApiResponse = {
   translationFileHint: string | null;
   aiDraft:
     | {
+        spotifyTrackId: string;
         exists: boolean;
         lineCount: number;
         mode: "synced" | "plain";
@@ -99,14 +100,10 @@ export type LafzLibraryPlaylistFile = {
 
 export type PlaylistImportOptions = {
   playlistInput: string;
-  createMissingTranslationStubs: boolean;
-  overwriteExistingStubs: boolean;
 };
 
 export type TrackImportOptions = {
   trackInput: string;
-  createMissingTranslationStubs: boolean;
-  overwriteExistingStubs: boolean;
 };
 
 export type PlaylistImportResult = {
@@ -115,9 +112,8 @@ export type PlaylistImportResult = {
   totalTracksFetched: number;
   importedCount: number;
   skippedCount: number;
-  stubFilesCreatedCount: number;
-  stubFilesOverwrittenCount: number;
-  stubFilesSkippedCount: number;
+  translationFilesCreatedCount: number;
+  translationFilesPreservedCount: number;
   playlistFilePath: string;
   skippedReasons: Record<PlaylistImportSkippedReason, number>;
 };
@@ -127,7 +123,7 @@ export type PlaylistImportSuccessResponse = {
   summary: PlaylistImportResult;
 };
 
-export type TrackImportStubOutcome = "created" | "overwritten" | "preserved" | "not_requested";
+export type TrackImportTranslationFileStatus = "created" | "preserved";
 
 export type TrackImportResult = {
   syntheticLibraryId: string;
@@ -138,8 +134,8 @@ export type TrackImportResult = {
   trackDurationMs: number;
   trackUrl: string | null;
   libraryFilePath: string;
-  stubFileOutcome: TrackImportStubOutcome;
-  stubFilePath: string | null;
+  translationFileStatus: TrackImportTranslationFileStatus;
+  translationFilePath: string;
 };
 
 export type PlaylistImportErrorResponse = {

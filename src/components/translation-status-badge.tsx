@@ -3,7 +3,7 @@ import { cx } from "@/lib/utils";
 
 const statusLabelMap: Record<DerivedQueueStatus, string> = {
   pending: "Pending",
-  stub: "Stub",
+  stub: "Needs lyrics",
   translated: "Translated"
 };
 

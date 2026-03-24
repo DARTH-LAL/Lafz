@@ -1,7 +1,6 @@
-import Link from "next/link";
-
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AppTopBar } from "@/components/app-top-bar";
+import { LyricsImportForm } from "@/components/lyrics-import-form";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { LyricsCacheInspection } from "@/features/lyrics/types";
@@ -27,8 +26,6 @@ type LibraryTrackDetailProps = {
   aiProviderStatus: AiProviderStatus;
   aiConfigured: boolean;
   aiModel: string;
-  stubStatus: "created" | "exists" | "error" | null;
-  stubMessage: string | null;
   lyricsStatus: string;
   lyricsMessage: string | null;
   aiStatus: string;
@@ -44,8 +41,6 @@ export function LibraryTrackDetail({
   aiProviderStatus,
   aiConfigured,
   aiModel,
-  stubStatus,
-  stubMessage,
   lyricsStatus,
   lyricsMessage,
   aiStatus,
@@ -60,14 +55,7 @@ export function LibraryTrackDetail({
           eyebrow="Track missing"
           title="Lafz could not find that track in the imported library"
           description="Import a playlist containing this song first, then return to the queue to inspect it."
-        >
-          <Link
-            href="/library/queue"
-            className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            Back to queue
-          </Link>
-        </StatePanel>
+        />
       </main>
     );
   }
@@ -97,26 +85,8 @@ export function LibraryTrackDetail({
               Open on Spotify
             </a>
           ) : null}
-          <Link
-            href="/library/queue"
-            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
-            Back to queue
-          </Link>
         </div>
       </header>
-
-      {stubMessage ? (
-        <div
-          className={`mb-6 rounded-[24px] px-5 py-4 text-sm ${
-            stubStatus === "error"
-              ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-              : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
-          }`}
-        >
-          {stubMessage}
-        </div>
-      ) : null}
 
       {lyricsMessage ? (
         <div
@@ -168,6 +138,12 @@ export function LibraryTrackDetail({
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Translation file</p>
               <p className="mt-2 text-base text-white">{translationInspection.exists ? "Present" : "Missing"}</p>
               <p className="mt-2 break-all font-mono text-xs text-slate-400">{translationInspection.filePath}</p>
+              {!translationInspection.exists ? (
+                <p className="mt-2 text-xs leading-6 text-slate-400">
+                  Lafz now auto-creates this file during playlist and single-song imports. If it is missing here, the song
+                  was likely imported before that change or the file was removed locally.
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Line count</p>
@@ -192,20 +168,6 @@ export function LibraryTrackDetail({
               ))}
             </div>
           </div>
-
-          {!translationInspection.exists ? (
-            <form action="/api/library/create-stub" method="post" className="mt-8">
-              <input type="hidden" name="spotifyTrackId" value={record.spotify_track_id} />
-              <input type="hidden" name="language" value={record.language} />
-              <input type="hidden" name="redirectTo" value={`/library/track/${record.spotify_track_id}`} />
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-              >
-                Create missing stub file
-              </button>
-            </form>
-          ) : null}
         </section>
 
         <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
@@ -251,34 +213,17 @@ export function LibraryTrackDetail({
           original-lyrics cache for this track and uses that cache for AI translation drafts.
         </p>
 
-        <form action="/api/lyrics/import" method="post" className="mt-6 space-y-4">
-          <input type="hidden" name="spotifyTrackId" value={record.spotify_track_id} />
-          <input type="hidden" name="title" value={record.title} />
-          <input type="hidden" name="artist" value={record.artist} />
-          <input type="hidden" name="album" value={record.album} />
-          <input type="hidden" name="durationMs" value={record.duration_ms.toString()} />
-          <input type="hidden" name="redirectTo" value={`/library/track/${record.spotify_track_id}`} />
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Lyrics text</span>
-            <textarea
-              name="lyricsText"
-              rows={10}
-              placeholder={`[00:12.34] Example timed line
-[00:16.40] Another line
-
-or plain lyrics text
-
-or synced JSON`}
-              className="mt-3 w-full rounded-[22px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
-            />
-          </label>
-          <button
-            type="submit"
-            className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
-            Import local lyrics
-          </button>
-        </form>
+        <LyricsImportForm
+          track={{
+            spotifyTrackId: record.spotify_track_id,
+            title: record.title,
+            artist: record.artist,
+            album: record.album,
+            durationMs: record.duration_ms
+          }}
+          initialMessage={lyricsMessage}
+          initialStatus={lyricsStatus}
+        />
       </section>
 
       <section className="mt-6 rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">

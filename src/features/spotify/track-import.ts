@@ -202,13 +202,11 @@ export async function importSpotifyTrackLibrary(
 
   const libraryFilePath = await writeSingleTrackLibraryFile(libraryFile);
 
-  const stubResult = options.createMissingTranslationStubs
-    ? await createTranslationStubFile({
-        spotifyTrackId: normalizedTrack.spotify_track_id,
-        language: normalizedTrack.language,
-        overwriteExistingStub: options.overwriteExistingStubs
-      })
-    : null;
+  const translationFileResult = await createTranslationStubFile({
+    spotifyTrackId: normalizedTrack.spotify_track_id,
+    language: normalizedTrack.language,
+    overwriteExistingStub: false
+  });
 
   return {
     syntheticLibraryId,
@@ -219,14 +217,8 @@ export async function importSpotifyTrackLibrary(
     trackDurationMs: normalizedTrack.duration_ms,
     trackUrl: normalizedTrack.spotify_track_url,
     libraryFilePath,
-    stubFileOutcome: !stubResult
-      ? "not_requested"
-      : stubResult.overwritten
-        ? "overwritten"
-        : stubResult.created
-          ? "created"
-          : "preserved",
-    stubFilePath: stubResult?.filePath ?? null
+    translationFileStatus: translationFileResult.created ? "created" : "preserved",
+    translationFilePath: translationFileResult.filePath
   };
 }
 

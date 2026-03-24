@@ -368,15 +368,9 @@ export async function importSpotifyPlaylistLibrary(
 
   const playlistFilePath = await writePlaylistLibraryFile(libraryFile);
 
-  const stubResult = options.createMissingTranslationStubs
-    ? await createTranslationStubsForTracks(trackResult.importedTracks, {
-        overwriteExistingStubs: options.overwriteExistingStubs
-      })
-    : {
-        createdCount: 0,
-        overwrittenCount: 0,
-        skippedCount: 0
-      };
+  const translationFileResult = await createTranslationStubsForTracks(trackResult.importedTracks, {
+    overwriteExistingStubs: false
+  });
 
   return {
     playlistId: libraryFile.playlist_id,
@@ -384,9 +378,8 @@ export async function importSpotifyPlaylistLibrary(
     totalTracksFetched: libraryFile.total_tracks_fetched,
     importedCount: libraryFile.imported_track_count,
     skippedCount: libraryFile.skipped_track_count,
-    stubFilesCreatedCount: stubResult.createdCount,
-    stubFilesOverwrittenCount: stubResult.overwrittenCount,
-    stubFilesSkippedCount: stubResult.skippedCount,
+    translationFilesCreatedCount: translationFileResult.createdCount,
+    translationFilesPreservedCount: translationFileResult.skippedCount,
     playlistFilePath,
     skippedReasons: trackResult.skippedReasons
   };

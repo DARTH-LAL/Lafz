@@ -6,6 +6,10 @@ export type AiSongContext = {
   themes: string[];
   tone: string;
   notablePhrases: string[];
+  speaker: string | null;
+  addressee: string | null;
+  stance: string | null;
+  narrativeMode: string | null;
 };
 
 export type AiArtistMemory = {
@@ -36,6 +40,11 @@ export type AiCorrectionHint = {
 export type AiDraftLine = {
   order: number;
   original: string;
+  normalizedOriginal: string | null;
+  normalizationNotes: string[];
+  meaning: string;
+  impliedMeaning: string | null;
+  register: string | null;
   literal: string;
   natural: string;
   slangAware: string;
@@ -94,6 +103,9 @@ export type AiTranslationDraftInspection = {
 };
 
 export type GeneratedTranslationLineDraft = {
+  meaning: string;
+  impliedMeaning: string | null;
+  register: string | null;
   literal: string;
   natural: string;
   slangAware: string;
@@ -146,6 +158,12 @@ export type GenerateAiTranslationResult =
   | {
       status: "provider_unavailable";
     }
-  | {
+    | {
       status: "model_missing";
     };
+
+export type MeaningAnalysisLine = {
+  meaning: string;
+  impliedMeaning: string | null;
+  register: string | null;
+};

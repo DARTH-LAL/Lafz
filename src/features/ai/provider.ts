@@ -1,10 +1,18 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import type { AiArtistMemory, AiCorrectionHint, AiSongContext } from "@/features/ai/types";
+import type {
+  AiArtistMemory,
+  AiCorrectionHint,
+  AiProviderStatus,
+  AiSongContext,
+  GeneratedTranslationLineDraft,
+  MeaningAnalysisLine
+} from "@/features/ai/types";
 import {
   getOllamaModel,
   inspectOllamaStatus,
   isOllamaConfigured,
   requestAiSongContext,
+  requestAiMeaningAnalysis,
   requestAiTranslationSelection,
   requestAiTranslationDraft,
   requestAiTranslationRefinement
@@ -14,12 +22,11 @@ import {
   inspectOpenAiStatus,
   isOpenAiConfigured,
   requestOpenAiSongContext,
+  requestOpenAiMeaningAnalysis,
   requestOpenAiTranslationSelection,
   requestOpenAiTranslationDraft,
   requestOpenAiTranslationRefinement
 } from "@/features/ai/openai";
-import type { AiProviderStatus, GeneratedTranslationLineDraft } from "@/features/ai/types";
-
 type RequestAiTranslationDraftOptions = {
   title: string;
   artist: string;
@@ -34,6 +41,32 @@ type RequestAiTranslationDraftOptions = {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    normalizationNotes?: string[];
+    meaning?: string;
+    impliedMeaning?: string | null;
+    register?: string | null;
+    contextBefore?: string[];
+    contextAfter?: string[];
+    groupIndex?: number;
+    groupText?: string;
+    matchingCorrections?: AiCorrectionHint[];
+  }>;
+};
+
+type RequestAiMeaningAnalysisOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string | null;
+  glossaryEntries: AiGlossaryEntry[];
+  songContext: AiSongContext | null;
+  artistMemory: AiArtistMemory | null;
+  lines: Array<{
+    index: number;
+    original: string;
+    normalizedOriginal?: string | null;
+    normalizationNotes?: string[];
     contextBefore?: string[];
     contextAfter?: string[];
     groupIndex?: number;
@@ -56,6 +89,10 @@ type RequestAiTranslationRefinementOptions = {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    meaning: string;
+    impliedMeaning: string | null;
+    register: string | null;
     literal: string;
     natural: string;
     slangAware: string;
@@ -101,6 +138,10 @@ type RequestAiTranslationSelectionOptions = {
   lines: Array<{
     index: number;
     original: string;
+    normalizedOriginal?: string | null;
+    meaning: string;
+    impliedMeaning: string | null;
+    register: string | null;
     literal: string;
     natural: string;
     slangAware: string;
@@ -140,6 +181,12 @@ export async function requestProviderTranslationDraft(
   options: RequestAiTranslationDraftOptions
 ): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
   return getActiveAiProvider() === "openai" ? requestOpenAiTranslationDraft(options) : requestAiTranslationDraft(options);
+}
+
+export async function requestProviderMeaningAnalysis(
+  options: RequestAiMeaningAnalysisOptions
+): Promise<{ model: string; sourceLanguage: string; lines: MeaningAnalysisLine[] }> {
+  return getActiveAiProvider() === "openai" ? requestOpenAiMeaningAnalysis(options) : requestAiMeaningAnalysis(options);
 }
 
 export async function requestProviderTranslationRefinement(

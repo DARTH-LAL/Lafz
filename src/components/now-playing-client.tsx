@@ -71,6 +71,13 @@ export function NowPlayingClient() {
 
   const visualProgressMs = usePlaybackClock(payload?.playback ?? null);
   const playback = payload?.playback ?? null;
+  const resolvedTrackDetailId =
+    payload?.translation?.spotifyTrackId ?? payload?.aiDraft?.spotifyTrackId ?? playback?.track?.spotifyTrackId ?? null;
+  const resolvedTrackDetailHref = resolvedTrackDetailId
+    ? `/library/track/${resolvedTrackDetailId}`
+    : playback?.track
+      ? `/library/track/${playback.track.spotifyTrackId}`
+      : "/library/queue";
 
   const handlePlaybackCommand = useCallback(
     async (
@@ -225,7 +232,7 @@ export function NowPlayingClient() {
                       draft={payload.aiDraft}
                       trackTitle={playback.track.title}
                       trackArtist={playback.track.artist}
-                      trackHref={`/library/track/${playback.track.spotifyTrackId}`}
+                      trackHref={resolvedTrackDetailHref}
                     />
                   ) : (
                     <div className="h-full p-5 lg:p-8">
@@ -256,7 +263,7 @@ export function NowPlayingClient() {
                           ) : null}
                           <div className="mt-4 flex flex-wrap gap-3">
                             <Link
-                              href={`/library/track/${playback.track.spotifyTrackId}`}
+                              href={resolvedTrackDetailHref}
                               className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
                             >
                               Open track detail
