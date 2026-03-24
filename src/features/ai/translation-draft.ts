@@ -1161,6 +1161,63 @@ export function getChosenLineEditOrdersFromDraft(previousDraft: AiTranslationDra
   return getChosenLineEditOrders(previousDraft, nextDraft);
 }
 
+export function applyManualCorrectionPropagation(
+  draft: AiTranslationDraftFile,
+  editedOrders: number[]
+) {
+  if (editedOrders.length === 0 || draft.lines.length === 0) {
+    return draft;
+  }
+
+  const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
+  const currentSongCorrectionExamples = buildCorrectionExamplesFromDraftLines(
+    propagatedDraft.lines,
+    propagatedDraft.lockedOrders,
+    "current_song"
+  );
+
+  const nextLines = propagatedDraft.lines.map((line) => {
+    if (propagatedDraft.lockedOrders.has(line.order)) {
+      return line;
+    }
+
+    const matchingCorrections = buildMatchingCorrectionHints(
+      currentSongCorrectionExamples,
+      [line.original, line.literal, line.natural, line.slangAware, line.chosen],
+      1
+    );
+    const bestCorrection = matchingCorrections[0];
+
+    if (!bestCorrection || bestCorrection.similarity === "medium") {
+      return line;
+    }
+
+    const propagatedChosen = bestCorrection.chosen.trim();
+
+    if (!propagatedChosen || propagatedChosen === line.chosen.trim()) {
+      return line;
+    }
+
+    return {
+      ...line,
+      chosen: propagatedChosen,
+      translated: propagatedChosen,
+      note: line.note ?? bestCorrection.note ?? null,
+      confidence: bestCorrection.similarity === "exact" ? "high" : line.confidence === "low" ? "medium" : line.confidence,
+      selectorReason:
+        bestCorrection.similarity === "exact"
+          ? "Matched a repeated line you already corrected."
+          : "Aligned with a similar line you already corrected."
+    } satisfies AiDraftLine;
+  });
+
+  return {
+    ...draft,
+    generatedAt: new Date().toISOString(),
+    lines: nextLines
+  } satisfies AiTranslationDraftFile;
+}
+
 export async function generateAiTranslationDraft(
   options: GenerateAiTranslationOptions
 ): Promise<GenerateAiTranslationResult> {
