@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AiDraftLine, AiTranslationDraftFile } from "@/features/ai/types";
+import type { AiCorrectionExample, AiDraftLine, AiTranslationDraftFile } from "@/features/ai/types";
 
 const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries", "local");
 const artistMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
@@ -11,6 +11,8 @@ type PreferredRenderingEntry = {
   meaning: string;
   note?: string;
 };
+
+type CorrectionExampleEntry = AiCorrectionExample;
 
 type LearnedCorrection = {
   original: string;
@@ -91,6 +93,38 @@ function parsePreferredRenderings(value: unknown) {
     .filter((entry): entry is PreferredRenderingEntry => Boolean(entry));
 }
 
+function parseCorrectionExamples(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] satisfies CorrectionExampleEntry[];
+  }
+
+  return value
+    .map((entry): CorrectionExampleEntry | null => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+
+      const original = asString(entry.original);
+      const chosen = asString(entry.chosen) ?? asString(entry.meaning) ?? asString(entry.translation);
+      const note = asString(entry.note);
+      const updatedAt = asString(entry.updatedAt);
+      const useCount = typeof entry.useCount === "number" && Number.isFinite(entry.useCount) ? entry.useCount : null;
+
+      if (!original || !chosen) {
+        return null;
+      }
+
+      return {
+        original,
+        chosen,
+        note,
+        updatedAt,
+        useCount
+      };
+    })
+    .filter((entry): entry is CorrectionExampleEntry => Boolean(entry));
+}
+
 async function readJsonRecord(filePath: string) {
   try {
     const text = await readFile(filePath, "utf8");
@@ -121,6 +155,40 @@ function mergePreferredRenderings(existingEntries: PreferredRenderingEntry[], co
   }
 
   return Array.from(merged.values()).sort((left, right) => left.term.localeCompare(right.term));
+}
+
+function mergeCorrectionExamples(existingEntries: CorrectionExampleEntry[], corrections: LearnedCorrection[]) {
+  const merged = new Map<string, CorrectionExampleEntry>();
+
+  for (const entry of existingEntries) {
+    merged.set(normalizeTermKey(entry.original), entry);
+  }
+
+  for (const correction of corrections) {
+    const key = normalizeTermKey(correction.original);
+    const existing = merged.get(key);
+    const useCount = (existing?.useCount ?? 0) + 1;
+
+    merged.set(key, {
+      original: correction.original,
+      chosen: correction.chosen,
+      note: correction.note ?? null,
+      updatedAt: new Date().toISOString(),
+      useCount
+    });
+  }
+
+  return Array.from(merged.values())
+    .sort((left, right) => {
+      const useCountDelta = (right.useCount ?? 0) - (left.useCount ?? 0);
+
+      if (useCountDelta !== 0) {
+        return useCountDelta;
+      }
+
+      return left.original.localeCompare(right.original);
+    })
+    .slice(0, 200);
 }
 
 function getLearnedCorrections(previousDraft: AiTranslationDraftFile, nextDraft: AiTranslationDraftFile) {
@@ -166,6 +234,7 @@ async function writeTrackCorrectionGlossary(spotifyTrackId: string, corrections:
     parsePreferredRenderings(existing?.preferredRenderings),
     corrections
   );
+  const mergedCorrectionExamples = mergeCorrectionExamples(parseCorrectionExamples(existing?.correctionExamples), corrections);
 
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(
@@ -173,7 +242,8 @@ async function writeTrackCorrectionGlossary(spotifyTrackId: string, corrections:
     `${JSON.stringify(
       {
         ...(existing ?? {}),
-        preferredRenderings: mergedPreferredRenderings
+        preferredRenderings: mergedPreferredRenderings,
+        correctionExamples: mergedCorrectionExamples
       },
       null,
       2
@@ -201,6 +271,7 @@ async function writeArtistCorrectionMemory(
     parsePreferredRenderings(existing?.preferredRenderings),
     corrections
   );
+  const mergedCorrectionExamples = mergeCorrectionExamples(parseCorrectionExamples(existing?.correctionExamples), corrections);
 
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(
@@ -212,7 +283,8 @@ async function writeArtistCorrectionMemory(
         recurringThemes: asStringArray(existing?.recurringThemes),
         toneNotes: asStringArray(existing?.toneNotes),
         notes: asStringArray(existing?.notes),
-        preferredRenderings: mergedPreferredRenderings
+        preferredRenderings: mergedPreferredRenderings,
+        correctionExamples: mergedCorrectionExamples
       },
       null,
       2
@@ -246,4 +318,10 @@ export async function learnFromDraftCorrections(previousDraft: AiTranslationDraf
     trackGlossaryPath,
     artistMemoryPath
   } satisfies LearnedCorrectionsResult;
+}
+
+export async function getTrackCorrectionExamples(spotifyTrackId: string) {
+  const filePath = path.join(aiGlossariesRoot, "tracks", `${spotifyTrackId}.json`);
+  const existing = await readJsonRecord(filePath);
+  return parseCorrectionExamples(existing?.correctionExamples);
 }

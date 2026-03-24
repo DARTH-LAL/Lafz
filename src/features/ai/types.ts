@@ -17,6 +17,22 @@ export type AiArtistMemory = {
   notes: string[];
 };
 
+export type AiCorrectionExample = {
+  original: string;
+  chosen: string;
+  note: string | null;
+  updatedAt?: string | null;
+  useCount?: number | null;
+};
+
+export type AiCorrectionHint = {
+  original: string;
+  chosen: string;
+  note: string | null;
+  source: "current_song" | "track_memory" | "artist_memory";
+  similarity: "exact" | "high" | "medium";
+};
+
 export type AiDraftLine = {
   order: number;
   original: string;

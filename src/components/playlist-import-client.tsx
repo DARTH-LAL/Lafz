@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 
+import { AppTopBar } from "@/components/app-top-bar";
 import { StatePanel } from "@/components/state-panel";
 import type {
   PlaylistImportApiResponse,
@@ -126,6 +127,8 @@ export function PlaylistImportClient() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-8 lg:px-10">
+      <AppTopBar connected className="mb-8" />
+
       <header className="mb-8 flex flex-col gap-4 border-b border-white/8 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz library tools</p>

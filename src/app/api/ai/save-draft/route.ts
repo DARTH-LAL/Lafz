@@ -8,8 +8,8 @@ import {
 } from "@/features/ai/repository";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 import {
+  applyManualCorrectionPropagation,
   getChosenLineEditOrdersFromDraft,
-  rerunDraftAfterManualCorrections
 } from "@/features/ai/translation-draft";
 import { writeTrackTranslationFile } from "@/features/translations/repository";
 
@@ -96,11 +96,11 @@ export async function POST(request: NextRequest) {
 
   const chosenLineEditOrders = getChosenLineEditOrdersFromDraft(existingDraft, nextDraft);
   const learnedCorrections = await learnFromDraftCorrections(existingDraft, nextDraft);
-  const rerunDraft =
-    chosenLineEditOrders.length > 0 ? await rerunDraftAfterManualCorrections(nextDraft, chosenLineEditOrders) : nextDraft;
+  const finalizedDraft =
+    chosenLineEditOrders.length > 0 ? applyManualCorrectionPropagation(nextDraft, chosenLineEditOrders) : nextDraft;
 
-  await writeAiTranslationDraftFile(rerunDraft);
-  const playbackTranslation = buildTrackTranslationFromAiDraft(rerunDraft);
+  await writeAiTranslationDraftFile(finalizedDraft);
+  const playbackTranslation = buildTrackTranslationFromAiDraft(finalizedDraft);
 
   if (playbackTranslation) {
     await writeTrackTranslationFile(playbackTranslation);
@@ -113,12 +113,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (chosenLineEditOrders.length > 0) {
-    messageParts.push("Lafz re-ran the remaining lines with your corrected context while keeping your manual edits locked.");
+    messageParts.push(
+      "Lafz saved your edits immediately, propagated matching lines in the same song, and kept your manual corrections locked."
+    );
   }
 
   if (learnedCorrections.count > 0) {
     messageParts.push(
-      `Lafz learned from ${learnedCorrections.count} corrected line${learnedCorrections.count === 1 ? "" : "s"} for future drafts.`
+      `Lafz learned from ${learnedCorrections.count} corrected line${learnedCorrections.count === 1 ? "" : "s"} for future song drafts too.`
     );
   }
 

@@ -41,6 +41,11 @@ type EditableDraftLine = {
   selectorReason: string | null;
 };
 
+type DisplayDraftLine = {
+  line: EditableDraftLine;
+  duplicateCount: number;
+};
+
 function getAiProviderLabel(provider: AiProviderStatus["provider"]) {
   return provider === "openai" ? "OpenAI" : "Ollama";
 }
@@ -81,6 +86,15 @@ function getConfidenceClasses(confidence: EditableDraftLine["confidence"]) {
   return "border-rose-300/20 bg-rose-300/10 text-rose-100";
 }
 
+function normalizeReviewKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[\u2018\u2019']/g, "")
+    .replace(/[^a-z0-9\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function AiDraftWorkspace({
   track,
   lyricsKind,
@@ -109,11 +123,43 @@ export function AiDraftWorkspace({
 
   const canGenerate = aiConfigured && (lyricsKind === "synced" || lyricsKind === "plain");
   const lowConfidenceCount = useMemo(() => draftLines.filter((line) => line.confidence === "low").length, [draftLines]);
-  const displayedDraftLines = useMemo(() => {
+  const displayedDraftLines = useMemo<DisplayDraftLine[]>(() => {
+    const dedupeLowConfidenceLines = (lines: EditableDraftLine[]) => {
+      const seenLowConfidence = new Map<string, DisplayDraftLine>();
+      const deduped: DisplayDraftLine[] = [];
+
+      for (const line of lines) {
+        if (line.confidence !== "low") {
+          deduped.push({ line, duplicateCount: 1 });
+          continue;
+        }
+
+        const key = normalizeReviewKey(line.original);
+
+        if (!key) {
+          deduped.push({ line, duplicateCount: 1 });
+          continue;
+        }
+
+        const existing = seenLowConfidence.get(key);
+
+        if (existing) {
+          existing.duplicateCount += 1;
+          continue;
+        }
+
+        const nextEntry = { line, duplicateCount: 1 };
+        seenLowConfidence.set(key, nextEntry);
+        deduped.push(nextEntry);
+      }
+
+      return deduped;
+    };
+
     const lines = [...draftLines];
 
     if (!showLowConfidenceFirst) {
-      return lines.sort((left, right) => left.order - right.order);
+      return dedupeLowConfidenceLines(lines.sort((left, right) => left.order - right.order));
     }
 
     const confidenceWeight = (confidence: EditableDraftLine["confidence"]) => {
@@ -128,7 +174,7 @@ export function AiDraftWorkspace({
       return 2;
     };
 
-    return lines.sort((left, right) => {
+    lines.sort((left, right) => {
       const confidenceDifference = confidenceWeight(left.confidence) - confidenceWeight(right.confidence);
 
       if (confidenceDifference !== 0) {
@@ -137,6 +183,8 @@ export function AiDraftWorkspace({
 
       return left.order - right.order;
     });
+
+    return dedupeLowConfidenceLines(lines);
   }, [draftLines, showLowConfidenceFirst]);
 
   const updateDraftLine = (order: number, updater: (line: EditableDraftLine) => EditableDraftLine) => {
@@ -500,11 +548,18 @@ export function AiDraftWorkspace({
         {draftLines.length > 0 ? (
           <>
             <div className="mt-6 space-y-4">
-              {displayedDraftLines.map((line) => (
+              {displayedDraftLines.map(({ line, duplicateCount }) => (
                 <article key={`${track.spotifyTrackId}-${line.order}`} className="rounded-[24px] border border-white/8 bg-black/10 p-5">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Line {line.order + 1}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Line {line.order + 1}</p>
+                        {duplicateCount > 1 ? (
+                          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                            appears {duplicateCount} times
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="mt-2 text-lg text-white">{line.original}</p>
                     </div>
                     <span className={`inline-flex rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${getConfidenceClasses(line.confidence)}`}>

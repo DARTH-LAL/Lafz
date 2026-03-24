@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { AppTopBar } from "@/components/app-top-bar";
 import { LyricsPanel } from "@/components/lyrics-panel";
 import { PlayerCard } from "@/components/player-card";
 import { StatePanel } from "@/components/state-panel";
@@ -12,22 +13,6 @@ import { PLAYBACK_POLL_INTERVAL_MS } from "@/features/spotify/config";
 import type { PlaybackApiResponse } from "@/features/spotify/types";
 import { usePlaybackClock } from "@/features/sync/use-playback-clock";
 import type { SpotifyRepeatMode } from "@/features/spotify/types";
-
-function QueueIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-      <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
-    </svg>
-  );
-}
-
-function ImportIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-      <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" />
-    </svg>
-  );
-}
 
 export function NowPlayingClient() {
   const router = useRouter();
@@ -162,35 +147,10 @@ export function NowPlayingClient() {
         <div className="absolute left-[20%] top-[30%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(120,60,200,0.05)_0%,transparent_66%)]" />
       </div>
 
-      <div className="relative z-10 grid h-full min-h-0 grid-rows-[56px_1fr] lg:grid-cols-[360px_1fr] lg:grid-rows-[56px_1fr]">
-        <nav className="col-span-full flex items-center justify-between border-b border-white/6 bg-[rgba(7,5,16,0.7)] px-5 backdrop-blur-2xl lg:px-8">
-          <div className="text-[20px] font-extrabold tracking-[-0.8px] text-[#fff0f6]">
-            la
-            <span className="bg-[linear-gradient(135deg,#ff2d78_0%,#ff6ba8_100%)] bg-clip-text text-transparent">F</span>
-            z
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-3 py-1.5 text-[11px] font-semibold text-[#ff6ba8] sm:inline-flex">
-              <span className="lafz-badge-ring h-1.5 w-1.5 rounded-full bg-[#ff2d78]" />
-              Spotify connected
-            </div>
-            <Link
-              href="/library/queue"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-[#8570a0] transition hover:border-white/20 hover:bg-white/4 hover:text-white"
-              aria-label="Open translation queue"
-            >
-              <QueueIcon />
-            </Link>
-            <Link
-              href="/library/import"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-[#8570a0] transition hover:border-white/20 hover:bg-white/4 hover:text-white"
-              aria-label="Open importer"
-            >
-              <ImportIcon />
-            </Link>
-          </div>
-        </nav>
+      <div className="relative z-10 grid h-full min-h-0 grid-rows-[84px_1fr] lg:grid-cols-[360px_1fr] lg:grid-rows-[84px_1fr]">
+        <div className="col-span-full px-4 pt-4 lg:px-6 lg:pt-5">
+          <AppTopBar connected className="h-14" />
+        </div>
 
         {status === "loading" && !payload ? (
           <div className="col-span-full p-5 lg:p-8">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
+import { AppTopBar } from "@/components/app-top-bar";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { LyricsCacheInspection } from "@/features/lyrics/types";
@@ -53,6 +54,8 @@ export function LibraryTrackDetail({
   if (!record) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-5xl px-6 py-8 lg:px-10">
+        <AppTopBar connected className="mb-8" />
+
         <StatePanel
           eyebrow="Track missing"
           title="Lafz could not find that track in the imported library"
@@ -71,6 +74,8 @@ export function LibraryTrackDetail({
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-8 lg:px-10">
+      <AppTopBar connected className="mb-8" />
+
       <header className="mb-8 flex flex-col gap-4 border-b border-white/8 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz track detail</p>

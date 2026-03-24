@@ -1,4 +1,5 @@
 import { getAiArtistMemory } from "@/features/ai/artist-memory";
+import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, type AiGlossaryEntry } from "@/features/ai/glossary";
 import {
   getActiveAiProvider,
@@ -10,6 +11,8 @@ import {
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
 import type {
   AiDraftLine,
+  AiCorrectionExample,
+  AiCorrectionHint,
   AiSongContext,
   AiTranslationDraftFile,
   GenerateAiTranslationOptions,
@@ -62,6 +65,10 @@ type SourceLineGroup = {
   index: number;
   lineOrders: number[];
   text: string;
+};
+
+type CorrectionExampleWithSource = AiCorrectionExample & {
+  source: AiCorrectionHint["source"];
 };
 
 function normalizeLanguage(value: string) {
@@ -178,6 +185,160 @@ function normalizeLineKey(value: string) {
     .replace(/[^a-z0-9\s]/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function tokenizeNormalizedLine(value: string) {
+  return normalizeLineKey(value)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function scoreCorrectionSimilarity(candidateText: string, correctionOriginal: string) {
+  const normalizedCandidate = normalizeLineKey(candidateText);
+  const normalizedCorrection = normalizeLineKey(correctionOriginal);
+
+  if (!normalizedCandidate || !normalizedCorrection) {
+    return null;
+  }
+
+  if (normalizedCandidate === normalizedCorrection) {
+    return {
+      score: 1_000,
+      similarity: "exact" as const
+    };
+  }
+
+  const candidateTokens = new Set(tokenizeNormalizedLine(candidateText));
+  const correctionTokens = new Set(tokenizeNormalizedLine(correctionOriginal));
+
+  if (candidateTokens.size === 0 || correctionTokens.size === 0) {
+    return null;
+  }
+
+  const sharedTokens = Array.from(correctionTokens).filter((token) => candidateTokens.has(token));
+  const sharedCount = sharedTokens.length;
+
+  if (sharedCount === 0) {
+    return null;
+  }
+
+  const correctionCoverage = sharedCount / correctionTokens.size;
+  const candidateCoverage = sharedCount / candidateTokens.size;
+  const unionCount = new Set([...candidateTokens, ...correctionTokens]).size;
+  const jaccard = unionCount > 0 ? sharedCount / unionCount : 0;
+  const containsOther =
+    normalizedCandidate.includes(normalizedCorrection) || normalizedCorrection.includes(normalizedCandidate);
+  const phraseLengthBonus = Math.min(correctionTokens.size, 6);
+  const score =
+    (containsOther ? 120 : 0) +
+    Math.round(correctionCoverage * 100) +
+    Math.round(candidateCoverage * 60) +
+    Math.round(jaccard * 50) +
+    phraseLengthBonus;
+
+  if (containsOther && correctionCoverage >= 0.75) {
+    return {
+      score,
+      similarity: "high" as const
+    };
+  }
+
+  if (correctionCoverage >= 0.75 || jaccard >= 0.6 || (correctionCoverage >= 0.6 && candidateCoverage >= 0.6)) {
+    return {
+      score,
+      similarity: "high" as const
+    };
+  }
+
+  if (correctionCoverage >= 0.5 || (sharedCount >= 2 && jaccard >= 0.35)) {
+    return {
+      score,
+      similarity: "medium" as const
+    };
+  }
+
+  return null;
+}
+
+function mergeCorrectionExampleSources(lists: CorrectionExampleWithSource[][]) {
+  const merged = new Map<string, CorrectionExampleWithSource>();
+
+  for (const list of lists) {
+    for (const example of list) {
+      const originalKey = normalizeLineKey(example.original);
+      const chosenKey = normalizeLineKey(example.chosen);
+
+      if (!originalKey || !chosenKey) {
+        continue;
+      }
+
+      merged.set(`${example.source}:${originalKey}:${chosenKey}`, example);
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
+function buildMatchingCorrectionHints(
+  correctionExamples: CorrectionExampleWithSource[],
+  candidateTexts: string[],
+  maxHints = 3
+): AiCorrectionHint[] {
+  const seen = new Set<string>();
+
+  return correctionExamples
+    .map((example) => {
+      const bestMatch = candidateTexts.reduce<{ score: number; similarity: AiCorrectionHint["similarity"] } | null>(
+        (currentBest, candidateText) => {
+          const score = scoreCorrectionSimilarity(candidateText, example.original);
+
+          if (!score) {
+            return currentBest;
+          }
+
+          if (!currentBest || score.score > currentBest.score) {
+            return score;
+          }
+
+          return currentBest;
+        },
+        null
+      );
+
+      if (!bestMatch) {
+        return null;
+      }
+
+      return {
+        original: example.original,
+        chosen: example.chosen,
+        note: example.note ?? null,
+        source: example.source,
+        similarity: bestMatch.similarity,
+        _score: bestMatch.score
+      };
+    })
+    .filter(
+      (
+        hint
+      ): hint is AiCorrectionHint & {
+        _score: number;
+      } => Boolean(hint)
+    )
+    .sort((left, right) => right._score - left._score)
+    .filter((hint) => {
+      const key = `${normalizeLineKey(hint.original)}:${normalizeLineKey(hint.chosen)}`;
+
+      if (!key || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .slice(0, maxHints)
+    .map(({ _score: _ignored, ...hint }) => hint);
 }
 
 function normalizeRequestedSourceLanguage(value: string | null) {
@@ -450,6 +611,36 @@ async function loadRelevantGlossaryEntries(options: {
   );
 }
 
+function buildCorrectionExamplesFromDraftLines(
+  draftLines: AiDraftLine[],
+  orders: Set<number>,
+  source: AiCorrectionHint["source"]
+) {
+  const correctionExamples = new Map<string, CorrectionExampleWithSource>();
+
+  for (const line of draftLines) {
+    if (!orders.has(line.order)) {
+      continue;
+    }
+
+    const originalKey = normalizeLineKey(line.original);
+    const chosenKey = normalizeLineKey(line.chosen);
+
+    if (!originalKey || !chosenKey) {
+      continue;
+    }
+
+    correctionExamples.set(`${source}:${originalKey}:${chosenKey}`, {
+      original: line.original,
+      chosen: line.chosen,
+      note: line.note ?? null,
+      source
+    });
+  }
+
+  return Array.from(correctionExamples.values());
+}
+
 function sampleSongContextLines(sourceLines: SourceDraftLine[], maxLines = SONG_CONTEXT_MAX_LINES) {
   if (sourceLines.length <= maxLines) {
     return sourceLines;
@@ -470,7 +661,9 @@ function sampleSongContextLines(sourceLines: SourceDraftLine[], maxLines = SONG_
 
 async function generateSongContext(options: GenerateAiTranslationOptions, sourceLines: SourceDraftLine[]) {
   const requestedSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
-  const { memory: artistMemory, preferredRenderings } = await getAiArtistMemory(options.artist);
+  const { memory: artistMemory, preferredRenderings, correctionExamples: artistCorrectionExamples } =
+    await getAiArtistMemory(options.artist);
+  const trackCorrectionExamples = await getTrackCorrectionExamples(options.spotifyTrackId).catch(() => []);
   const sampledLines = sampleSongContextLines(sourceLines);
   const glossaryEntries = await loadRelevantGlossaryEntries({
     sourceLanguage: requestedSourceLanguage,
@@ -496,6 +689,8 @@ async function generateSongContext(options: GenerateAiTranslationOptions, source
   return {
     artistMemory,
     preferredRenderings,
+    artistCorrectionExamples,
+    trackCorrectionExamples,
     sourceLanguage: normalizeRequestedSourceLanguage(response?.sourceLanguage ?? requestedSourceLanguage),
     songContext: response?.songContext ?? null
   };
@@ -508,7 +703,9 @@ async function generateDraftLinesInBatches(
   requestedSourceLanguage: string | null,
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
-  preferredRenderings: AiGlossaryEntry[]
+  preferredRenderings: AiGlossaryEntry[],
+  artistCorrectionExamples: AiCorrectionExample[],
+  trackCorrectionExamples: AiCorrectionExample[]
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -535,6 +732,10 @@ async function generateDraftLinesInBatches(
       }),
       preferredRenderings
     });
+    const correctionExamples = mergeCorrectionExampleSources([
+      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+    ]);
 
     const aiResponse = await requestProviderTranslationDraft({
       title: options.title,
@@ -556,7 +757,13 @@ async function generateDraftLinesInBatches(
           contextBefore: buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
           contextAfter: buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
           groupIndex: group?.index,
-          groupText: group?.text
+          groupText: group?.text,
+          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+            line.original,
+            ...buildContextLines(sourceLines, line.order, -CONTEXT_WINDOW_LINES, -1),
+            ...buildContextLines(sourceLines, line.order, 1, CONTEXT_WINDOW_LINES),
+            group?.text ?? ""
+          ])
         };
       })
     });
@@ -607,7 +814,10 @@ async function refineDraftLinesInBatches(
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
   preferredRenderings: AiGlossaryEntry[],
-  lockedOrders?: Set<number>
+  artistCorrectionExamples: AiCorrectionExample[],
+  trackCorrectionExamples: AiCorrectionExample[],
+  lockedOrders?: Set<number>,
+  currentSongCorrectionExamples: CorrectionExampleWithSource[] = []
 ) {
   const batchSize = getRefinementBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -646,6 +856,11 @@ async function refineDraftLinesInBatches(
       ]),
       preferredRenderings
     });
+    const correctionExamples = mergeCorrectionExampleSources([
+      currentSongCorrectionExamples,
+      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+    ]);
 
     const aiResponse = await requestProviderTranslationRefinement({
       title: options.title,
@@ -668,7 +883,16 @@ async function refineDraftLinesInBatches(
         ambiguity: line.ambiguity,
         confidence: line.confidence,
         contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+          line.original,
+          ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+          ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+          line.literal,
+          line.natural,
+          line.slangAware,
+          line.chosen
+        ])
       }))
     });
 
@@ -729,7 +953,10 @@ async function selectDraftLinesInBatches(
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
   preferredRenderings: AiGlossaryEntry[],
-  lockedOrders?: Set<number>
+  artistCorrectionExamples: AiCorrectionExample[],
+  trackCorrectionExamples: AiCorrectionExample[],
+  lockedOrders?: Set<number>,
+  currentSongCorrectionExamples: CorrectionExampleWithSource[] = []
 ) {
   const batchSize = getSelectionBatchSize(sourceLyricsKind);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -765,6 +992,11 @@ async function selectDraftLinesInBatches(
       ]),
       preferredRenderings
     });
+    const correctionExamples = mergeCorrectionExampleSources([
+      currentSongCorrectionExamples,
+      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+    ]);
 
     const aiResponse = await requestProviderTranslationSelection({
       title: options.title,
@@ -788,7 +1020,16 @@ async function selectDraftLinesInBatches(
         ambiguity: draftLines[line.order]?.ambiguity ?? null,
         confidence: draftLines[line.order]?.confidence ?? "medium",
         contextBefore: buildRefinementContext(draftLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+        contextAfter: buildRefinementContext(draftLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES),
+        matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+          line.original,
+          draftLines[line.order]?.literal ?? "",
+          draftLines[line.order]?.natural ?? "",
+          draftLines[line.order]?.slangAware ?? "",
+          draftLines[line.order]?.chosen ?? "",
+          ...buildContextLines(sourceLines, line.order, -REFINEMENT_CONTEXT_WINDOW_LINES, -1),
+          ...buildContextLines(sourceLines, line.order, 1, REFINEMENT_CONTEXT_WINDOW_LINES)
+        ])
       }))
     });
 
@@ -849,8 +1090,18 @@ export async function rerunDraftAfterManualCorrections(
   const sourceLines = buildSourceLinesFromDraft(draft);
   const includeTransliteration = draft.lines.some((line) => line.transliteration !== null);
   const includeNotes = draft.lines.some((line) => line.note !== null);
-  const { memory: artistMemory, preferredRenderings } = await getAiArtistMemory(draft.artist);
+  const {
+    memory: artistMemory,
+    preferredRenderings,
+    correctionExamples: artistCorrectionExamples
+  } = await getAiArtistMemory(draft.artist);
+  const trackCorrectionExamples = await getTrackCorrectionExamples(draft.spotifyTrackId).catch(() => []);
   const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
+  const currentSongCorrectionExamples = buildCorrectionExamplesFromDraftLines(
+    propagatedDraft.lines,
+    propagatedDraft.lockedOrders,
+    "current_song"
+  );
   const baseOptions: GenerateAiTranslationOptions = {
     spotifyTrackId: draft.spotifyTrackId,
     title: draft.title,
@@ -873,7 +1124,10 @@ export async function rerunDraftAfterManualCorrections(
     draft.songContext,
     artistMemory,
     preferredRenderings,
-    propagatedDraft.lockedOrders
+    artistCorrectionExamples,
+    trackCorrectionExamples,
+    propagatedDraft.lockedOrders,
+    currentSongCorrectionExamples
   ).catch(() => null);
 
   const selectedDraft = await selectDraftLinesInBatches(
@@ -885,7 +1139,10 @@ export async function rerunDraftAfterManualCorrections(
     draft.songContext,
     artistMemory,
     preferredRenderings,
-    propagatedDraft.lockedOrders
+    artistCorrectionExamples,
+    trackCorrectionExamples,
+    propagatedDraft.lockedOrders,
+    currentSongCorrectionExamples
   ).catch(() => null);
 
   return {
@@ -902,6 +1159,63 @@ export async function rerunDraftAfterManualCorrections(
 
 export function getChosenLineEditOrdersFromDraft(previousDraft: AiTranslationDraftFile, nextDraft: AiTranslationDraftFile) {
   return getChosenLineEditOrders(previousDraft, nextDraft);
+}
+
+export function applyManualCorrectionPropagation(
+  draft: AiTranslationDraftFile,
+  editedOrders: number[]
+) {
+  if (editedOrders.length === 0 || draft.lines.length === 0) {
+    return draft;
+  }
+
+  const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
+  const currentSongCorrectionExamples = buildCorrectionExamplesFromDraftLines(
+    propagatedDraft.lines,
+    propagatedDraft.lockedOrders,
+    "current_song"
+  );
+
+  const nextLines = propagatedDraft.lines.map((line) => {
+    if (propagatedDraft.lockedOrders.has(line.order)) {
+      return line;
+    }
+
+    const matchingCorrections = buildMatchingCorrectionHints(
+      currentSongCorrectionExamples,
+      [line.original, line.literal, line.natural, line.slangAware, line.chosen],
+      1
+    );
+    const bestCorrection = matchingCorrections[0];
+
+    if (!bestCorrection || bestCorrection.similarity === "medium") {
+      return line;
+    }
+
+    const propagatedChosen = bestCorrection.chosen.trim();
+
+    if (!propagatedChosen || propagatedChosen === line.chosen.trim()) {
+      return line;
+    }
+
+    return {
+      ...line,
+      chosen: propagatedChosen,
+      translated: propagatedChosen,
+      note: line.note ?? bestCorrection.note ?? null,
+      confidence: bestCorrection.similarity === "exact" ? "high" : line.confidence === "low" ? "medium" : line.confidence,
+      selectorReason:
+        bestCorrection.similarity === "exact"
+          ? "Matched a repeated line you already corrected."
+          : "Aligned with a similar line you already corrected."
+    } satisfies AiDraftLine;
+  });
+
+  return {
+    ...draft,
+    generatedAt: new Date().toISOString(),
+    lines: nextLines
+  } satisfies AiTranslationDraftFile;
 }
 
 export async function generateAiTranslationDraft(
@@ -932,7 +1246,9 @@ export async function generateAiTranslationDraft(
     contextResponse.sourceLanguage,
     contextResponse.songContext,
     contextResponse.artistMemory,
-    contextResponse.preferredRenderings
+    contextResponse.preferredRenderings,
+    contextResponse.artistCorrectionExamples,
+    contextResponse.trackCorrectionExamples
   );
   const refinedDraft = await refineDraftLinesInBatches(
     options,
@@ -942,7 +1258,9 @@ export async function generateAiTranslationDraft(
     initialDraft.sourceLanguage,
     contextResponse.songContext,
     contextResponse.artistMemory,
-    contextResponse.preferredRenderings
+    contextResponse.preferredRenderings,
+    contextResponse.artistCorrectionExamples,
+    contextResponse.trackCorrectionExamples
   ).catch(() => null);
   const selectedDraft = await selectDraftLinesInBatches(
     options,
@@ -952,7 +1270,9 @@ export async function generateAiTranslationDraft(
     initialDraft.sourceLanguage,
     contextResponse.songContext,
     contextResponse.artistMemory,
-    contextResponse.preferredRenderings
+    contextResponse.preferredRenderings,
+    contextResponse.artistCorrectionExamples,
+    contextResponse.trackCorrectionExamples
   ).catch(() => null);
 
   const aiResponse = {

@@ -3,6 +3,8 @@
 import type { CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { AppTopBar } from "@/components/app-top-bar";
+
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "The Spotify sign-in attempt expired before the callback completed. Try connecting again.",
   missing_code: "Spotify returned without an authorization code. Please retry the login flow.",
@@ -136,16 +138,7 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
       </div>
 
       <div className="relative z-10 mx-auto max-w-[430px] px-6 pb-16">
-        <nav className="lafz-home-fade-in flex items-center justify-between pt-7">
-          <div className="text-[24px] font-extrabold tracking-[-1px] text-[#fff0f6]">
-            la
-            <span className="bg-[linear-gradient(135deg,#ff2d78_0%,#ff6ba8_100%)] bg-clip-text text-transparent">F</span>
-            z
-          </div>
-          <a href="#how-it-works" className="text-[13px] font-medium text-[#9a85b2] transition hover:text-[#fff0f6]">
-            How it works
-          </a>
-        </nav>
+        <AppTopBar className="lafz-home-fade-in mt-7" />
 
         <section className="relative pb-12 pt-14">
           <div className="pointer-events-none absolute right-[-8px] top-6 h-[210px] w-[165px]">
