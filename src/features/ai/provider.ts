@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import type { AiArtistMemory, AiSongContext } from "@/features/ai/types";
+import type { AiArtistMemory, AiCorrectionHint, AiSongContext } from "@/features/ai/types";
 import {
   getOllamaModel,
   inspectOllamaStatus,
@@ -38,6 +38,7 @@ type RequestAiTranslationDraftOptions = {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 
@@ -69,6 +70,7 @@ type RequestAiTranslationRefinementOptions = {
       original: string;
       chosen: string;
     }>;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 
@@ -114,6 +116,7 @@ type RequestAiTranslationSelectionOptions = {
       original: string;
       chosen: string;
     }>;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 

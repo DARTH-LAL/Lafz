@@ -1,6 +1,7 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import type {
   AiArtistMemory,
+  AiCorrectionHint,
   AiProviderStatus,
   AiSongContext,
   GeneratedTranslationLineDraft
@@ -30,6 +31,7 @@ type RequestAiTranslationDraftOptions = BasePromptOptions & {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 
@@ -56,6 +58,7 @@ type RequestAiTranslationRefinementOptions = BasePromptOptions & {
       original: string;
       chosen: string;
     }>;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 
@@ -91,6 +94,7 @@ type RequestAiTranslationSelectionOptions = BasePromptOptions & {
       original: string;
       chosen: string;
     }>;
+    matchingCorrections?: AiCorrectionHint[];
   }>;
 };
 
@@ -277,6 +281,7 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
     "Chosen should be the strongest conservative final line for display.",
     "Do not invent scenes, emotions, or metaphors that are not present in the original line.",
     "Use nearby context, verse group context, song context, artist memory, and glossary hints to disambiguate meaning.",
+    "If a line includes correction examples, treat them as strong guidance for similar phrasing unless the current context clearly changes the meaning.",
     "If the meaning is uncertain, keep chosen conservative and explain uncertainty in ambiguity or note instead of guessing confidently.",
     options.includeTransliteration
       ? "Return transliteration only when it adds value. If the original line is already in Latin characters or transliteration would be redundant, return null."
@@ -300,6 +305,7 @@ function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOpti
     "Review the current literal, natural, slangAware, and chosen translations for each line and improve them only when needed.",
     "Your main goals are semantic accuracy, slang correctness, and consistency across repeated phrases or recurring terms.",
     "If a repeated original line appears multiple times, keep its translation candidates consistent unless the local context clearly changes the meaning.",
+    "If manual correction examples are provided for a line, preserve their corrected meaning and style for similar phrasing unless the current context clearly changes it.",
     "Do not invent imagery, emotional emphasis, or cultural detail that is not present in the original lyric.",
     "If the draft is uncertain, keep chosen conservative, lower the confidence, and explain ambiguity instead of guessing.",
     options.includeTransliteration
@@ -331,6 +337,7 @@ function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOption
     `The source lyrics are in ${options.sourceLanguage}. Select the best final English line for each entry.`,
     "Choose among the candidate translations by prioritizing semantic accuracy first, then slang correctness, then lyrical naturalness.",
     "Use song context, artist memory, glossary hints, and nearby chosen lines to keep the whole song consistent.",
+    "If manual correction examples are provided for a line, treat them as strong guidance and stay aligned with their corrected meaning unless the current context clearly changes it.",
     "Do not rewrite the original meaning into something flashier than the lyric actually says.",
     "If the candidates are all weak, choose the most conservative one, reduce confidence, and explain ambiguity or note instead of guessing.",
     buildSharedContextHints(options, options.sourceLanguage),
@@ -362,7 +369,8 @@ function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
         groupIndex: line.groupIndex ?? null,
-        groupText: line.groupText ?? null
+        groupText: line.groupText ?? null,
+        matchingCorrections: line.matchingCorrections ?? []
       }))
     },
     null,
@@ -402,7 +410,8 @@ function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOption
           confidence: line.confidence
         },
         contextBefore: line.contextBefore ?? [],
-        contextAfter: line.contextAfter ?? []
+        contextAfter: line.contextAfter ?? [],
+        matchingCorrections: line.matchingCorrections ?? []
       }))
     },
     null,
@@ -462,7 +471,8 @@ function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions)
           confidence: line.confidence
         },
         contextBefore: line.contextBefore ?? [],
-        contextAfter: line.contextAfter ?? []
+        contextAfter: line.contextAfter ?? [],
+        matchingCorrections: line.matchingCorrections ?? []
       }))
     },
     null,

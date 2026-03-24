@@ -113,12 +113,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (chosenLineEditOrders.length > 0) {
-    messageParts.push("Lafz re-ran the remaining lines with your corrected context while keeping your manual edits locked.");
+    messageParts.push(
+      "Lafz re-ran the remaining lines with your corrected context, improved similar lines in the same song, and kept your manual edits locked."
+    );
   }
 
   if (learnedCorrections.count > 0) {
     messageParts.push(
-      `Lafz learned from ${learnedCorrections.count} corrected line${learnedCorrections.count === 1 ? "" : "s"} for future drafts.`
+      `Lafz learned from ${learnedCorrections.count} corrected line${learnedCorrections.count === 1 ? "" : "s"} for future song drafts too.`
     );
   }
 

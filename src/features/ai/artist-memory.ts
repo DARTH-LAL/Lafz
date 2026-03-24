@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AiArtistMemory } from "@/features/ai/types";
+import type { AiArtistMemory, AiCorrectionExample } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 
 const aiMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
@@ -74,9 +74,42 @@ function parsePreferredRenderings(value: unknown) {
     .filter((entry): entry is AiGlossaryEntry => Boolean(entry));
 }
 
+function parseCorrectionExamples(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] satisfies AiCorrectionExample[];
+  }
+
+  return value
+    .map((entry): AiCorrectionExample | null => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+
+      const original = asString(entry.original);
+      const chosen = asString(entry.chosen) ?? asString(entry.meaning) ?? asString(entry.translation);
+      const note = asString(entry.note);
+      const updatedAt = asString(entry.updatedAt);
+      const useCount = typeof entry.useCount === "number" && Number.isFinite(entry.useCount) ? entry.useCount : null;
+
+      if (!original || !chosen) {
+        return null;
+      }
+
+      return {
+        original,
+        chosen,
+        note,
+        updatedAt,
+        useCount
+      };
+    })
+    .filter((entry): entry is AiCorrectionExample => Boolean(entry));
+}
+
 export async function getAiArtistMemory(artist: string | null): Promise<{
   memory: AiArtistMemory | null;
   preferredRenderings: AiGlossaryEntry[];
+  correctionExamples: AiCorrectionExample[];
 }> {
   const artistKeys = splitArtistNames(artist)
     .map((value) => normalizeKey(value))
@@ -103,7 +136,8 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
 
       return {
         memory,
-        preferredRenderings: parsePreferredRenderings(parsed.preferredRenderings)
+        preferredRenderings: parsePreferredRenderings(parsed.preferredRenderings),
+        correctionExamples: parseCorrectionExamples(parsed.correctionExamples)
       };
     } catch {
       continue;
@@ -112,6 +146,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
 
   return {
     memory: null,
-    preferredRenderings: []
+    preferredRenderings: [],
+    correctionExamples: []
   };
 }
