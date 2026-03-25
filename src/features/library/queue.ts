@@ -1,8 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { LafzLibraryPlaylistFile, LafzLibraryTrack, TranslationStatus } from "@/features/spotify/types";
 import { inspectAiTranslationDraftFile } from "@/features/ai/repository";
+import { deriveStudioStatus } from "@/features/library/studio-status";
+import { inspectLyricsCache } from "@/features/lyrics/repository";
+import type { LafzLibraryPlaylistFile, LafzLibraryTrack, TranslationStatus } from "@/features/spotify/types";
 import { inspectTranslationFile } from "@/features/translations/inspection";
 import { createTranslationStubFile } from "@/features/translations/stubs";
 import type {
@@ -21,10 +23,13 @@ const libraryStatusPriority: Record<TranslationStatus, number> = {
   in_progress: 1,
   translated: 2
 };
-const derivedStatusPriority = {
-  pending: 0,
-  stub: 1,
-  translated: 2
+const studioStatusPriority = {
+  needs_lyrics: 0,
+  lyrics_ready: 1,
+  needs_review: 2,
+  reviewed: 3,
+  synced: 4,
+  published: 5
 } as const;
 
 type SearchParamsInput = Record<string, string | string[] | undefined>;
@@ -179,33 +184,43 @@ function buildQueueSummary(records: LibraryQueueRecord[]): LibraryQueueSummary {
   return records.reduce<LibraryQueueSummary>(
     (summary, record) => {
       summary.total_unique_tracks += 1;
-      summary[record.derived_status] += 1;
+      summary[record.studio_status] += 1;
+      summary.total_needs_review += record.needs_review_count;
+      if (record.ready_to_publish) {
+        summary.ready_to_publish += 1;
+      }
       return summary;
     },
     {
       total_unique_tracks: 0,
-      pending: 0,
-      stub: 0,
-      translated: 0
+      needs_lyrics: 0,
+      lyrics_ready: 0,
+      needs_review: 0,
+      reviewed: 0,
+      synced: 0,
+      published: 0,
+      ready_to_publish: 0,
+      total_needs_review: 0
     }
   );
 }
 
 async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRecord> {
-  const [translationInspection, aiDraftInspection] = await Promise.all([
+  const [translationInspection, aiDraftInspection, lyricsInspection] = await Promise.all([
     inspectTranslationFile(seed.spotify_track_id),
-    inspectAiTranslationDraftFile(seed.spotify_track_id)
+    inspectAiTranslationDraftFile(seed.spotify_track_id),
+    inspectLyricsCache(seed.spotify_track_id)
   ]);
-  const derived_status =
-    translationInspection.kind === "missing"
-      ? aiDraftInspection.exists && aiDraftInspection.mode === "synced"
-        ? "translated"
-        : "pending"
-      : translationInspection.kind === "translated"
-        ? "translated"
-        : aiDraftInspection.exists && aiDraftInspection.mode === "synced"
-          ? "translated"
-          : "stub";
+  const studioStatus = deriveStudioStatus({
+    lyricsInspection,
+    translationInspection,
+    aiDraftInspection
+  });
+  const timestampCandidates = [translationInspection.lastModifiedAt, aiDraftInspection.lastModifiedAt, lyricsInspection.lastModifiedAt]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value).getTime())
+    .filter((value) => Number.isFinite(value));
+  const reviewDenominator = Math.max(aiDraftInspection.lineCount, aiDraftInspection.highConfidenceCount + aiDraftInspection.mediumConfidenceCount + aiDraftInspection.lowConfidenceCount);
 
   return {
     spotify_track_id: seed.spotify_track_id,
@@ -216,7 +231,13 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
     source_playlists: [...seed.source_playlists.values()].sort((left, right) => compareStrings(left.playlist_name, right.playlist_name)),
     language: normalizeDisplayLanguage(translationInspection.language ?? seed.language),
     explicit_translation_status: seed.explicit_translation_status,
-    derived_status,
+    studio_status: studioStatus.status,
+    studio_status_reason: studioStatus.reason,
+    ready_to_publish: studioStatus.readyToPublish,
+    published: studioStatus.published,
+    lyrics_kind: lyricsInspection.kind,
+    lyrics_language: lyricsInspection.language,
+    lyrics_line_count: lyricsInspection.kind === "plain" ? lyricsInspection.plainLyrics?.split(/\r?\n/).filter((line) => line.trim().length > 0).length ?? 0 : lyricsInspection.lineCount,
     translation_file_exists: translationInspection.exists,
     translation_file_path: translationInspection.filePath,
     translation_line_count:
@@ -227,6 +248,14 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
     ai_draft_line_count: aiDraftInspection.lineCount,
     ai_draft_mode: aiDraftInspection.mode,
     ai_draft_model: aiDraftInspection.model,
+    low_confidence_count: aiDraftInspection.lowConfidenceCount,
+    medium_confidence_count: aiDraftInspection.mediumConfidenceCount,
+    high_confidence_count: aiDraftInspection.highConfidenceCount,
+    manual_review_count: aiDraftInspection.manualReviewCount,
+    needs_review_count: studioStatus.needsReviewCount,
+    review_completion_ratio:
+      reviewDenominator > 0 ? Math.min(1, (aiDraftInspection.highConfidenceCount + aiDraftInspection.manualReviewCount) / reviewDenominator) : studioStatus.reviewCompletionRatio,
+    last_activity_at: timestampCandidates.length > 0 ? new Date(Math.max(...timestampCandidates)).toISOString() : null,
     spotify_track_url: seed.spotify_track_url
   };
 }
@@ -328,11 +357,22 @@ export function parseLibraryQueueFilters(searchParams: SearchParamsInput): Libra
   return {
     search: getFirstParamValue(searchParams.q).trim(),
     status:
-      statusValue === "pending" || statusValue === "stub" || statusValue === "translated" ? statusValue : "all",
+      statusValue === "needs_lyrics" ||
+      statusValue === "lyrics_ready" ||
+      statusValue === "needs_review" ||
+      statusValue === "reviewed" ||
+      statusValue === "synced" ||
+      statusValue === "published"
+        ? statusValue
+        : "all",
     language: getFirstParamValue(searchParams.language),
     playlist: getFirstParamValue(searchParams.playlist),
     sort:
-      sortValue === "title" || sortValue === "artist" || sortValue === "recently_updated" || sortValue === "status"
+      sortValue === "title" ||
+      sortValue === "artist" ||
+      sortValue === "recently_updated" ||
+      sortValue === "status" ||
+      sortValue === "needs_review"
         ? sortValue
         : "status"
   };
@@ -342,7 +382,7 @@ export function filterQueueRecords(records: LibraryQueueRecord[], filters: Libra
   const searchTerm = filters.search.toLowerCase();
 
   return records.filter((record) => {
-    if (filters.status !== "all" && record.derived_status !== filters.status) {
+    if (filters.status !== "all" && record.studio_status !== filters.status) {
       return false;
     }
 
@@ -388,14 +428,19 @@ export function sortQueueRecords(records: LibraryQueueRecord[], sort: QueueSortO
     }
 
     if (sort === "recently_updated") {
-      const leftTime = left.translation_last_modified_at ? new Date(left.translation_last_modified_at).getTime() : -1;
-      const rightTime = right.translation_last_modified_at ? new Date(right.translation_last_modified_at).getTime() : -1;
+      const leftTime = left.last_activity_at ? new Date(left.last_activity_at).getTime() : -1;
+      const rightTime = right.last_activity_at ? new Date(right.last_activity_at).getTime() : -1;
 
       return rightTime - leftTime || compareStrings(left.title, right.title);
     }
 
+    if (sort === "needs_review") {
+      return right.needs_review_count - left.needs_review_count || compareStrings(left.title, right.title);
+    }
+
     return (
-      derivedStatusPriority[left.derived_status] - derivedStatusPriority[right.derived_status] ||
+      studioStatusPriority[left.studio_status] - studioStatusPriority[right.studio_status] ||
+      right.needs_review_count - left.needs_review_count ||
       compareStrings(left.title, right.title)
     );
   });
