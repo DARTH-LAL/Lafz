@@ -94,6 +94,10 @@ export type AiTranslationDraftInspection = {
   filePath: string;
   mode: AiTranslationDraftMode | "missing" | "malformed";
   lineCount: number;
+  lowConfidenceCount: number;
+  mediumConfidenceCount: number;
+  highConfidenceCount: number;
+  manualReviewCount: number;
   lastModifiedAt: string | null;
   sourceLanguage: string | null;
   targetLanguage: string | null;

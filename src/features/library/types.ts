@@ -1,7 +1,8 @@
 import type { TranslationStatus } from "@/features/spotify/types";
+import type { LyricsInspectionKind } from "@/features/lyrics/types";
 
-export type DerivedQueueStatus = "pending" | "stub" | "translated";
-export type QueueSortOption = "title" | "artist" | "recently_updated" | "status";
+export type StudioQueueStatus = "needs_lyrics" | "lyrics_ready" | "needs_review" | "reviewed" | "synced" | "published";
+export type QueueSortOption = "title" | "artist" | "recently_updated" | "status" | "needs_review";
 
 export type LibraryQueueWarning = {
   source: string;
@@ -23,7 +24,13 @@ export type LibraryQueueRecord = {
   source_playlists: LibrarySourcePlaylist[];
   language: string;
   explicit_translation_status: TranslationStatus | null;
-  derived_status: DerivedQueueStatus;
+  studio_status: StudioQueueStatus;
+  studio_status_reason: string;
+  ready_to_publish: boolean;
+  published: boolean;
+  lyrics_kind: LyricsInspectionKind;
+  lyrics_language: string | null;
+  lyrics_line_count: number;
   translation_file_exists: boolean;
   translation_file_path: string;
   translation_line_count: number;
@@ -33,19 +40,31 @@ export type LibraryQueueRecord = {
   ai_draft_line_count: number;
   ai_draft_mode: "synced" | "plain" | "missing" | "malformed";
   ai_draft_model: string | null;
+  low_confidence_count: number;
+  medium_confidence_count: number;
+  high_confidence_count: number;
+  manual_review_count: number;
+  needs_review_count: number;
+  review_completion_ratio: number;
+  last_activity_at: string | null;
   spotify_track_url: string | null;
 };
 
 export type LibraryQueueSummary = {
   total_unique_tracks: number;
-  pending: number;
-  stub: number;
-  translated: number;
+  needs_lyrics: number;
+  lyrics_ready: number;
+  needs_review: number;
+  reviewed: number;
+  synced: number;
+  published: number;
+  ready_to_publish: number;
+  total_needs_review: number;
 };
 
 export type LibraryQueueFilters = {
   search: string;
-  status: DerivedQueueStatus | "all";
+  status: StudioQueueStatus | "all";
   language: string;
   playlist: string;
   sort: QueueSortOption;
