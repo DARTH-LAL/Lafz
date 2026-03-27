@@ -47,7 +47,13 @@ function parseLyricsCacheFile(value: unknown): LyricsCacheFile {
   const album = asString(value.album);
   const durationMs = asNumber(value.durationMs);
   const fetchedAt = asString(value.fetchedAt);
-  const source = value.source === "musixmatch" || value.source === "local_import" ? value.source : null;
+  const source =
+    value.source === "musixmatch" ||
+    value.source === "local_import" ||
+    value.source === "lrclib" ||
+    value.source === "genius"
+      ? value.source
+      : null;
   const sourceLabel = asString(value.sourceLabel);
   const kind = value.kind === "synced" || value.kind === "plain" ? value.kind : null;
   const language = typeof value.language === "string" && value.language.trim().length > 0 ? value.language.trim() : null;

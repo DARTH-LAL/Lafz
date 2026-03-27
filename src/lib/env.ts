@@ -39,3 +39,10 @@ export function getSpotifyAppOriginOrNull() {
 export function isSecureCookieEnvironment() {
   return process.env.NODE_ENV === "production";
 }
+
+// Optional — Genius is a fallback lyrics provider. The app works without it;
+// lrclib is tried first and the manual paste form is always available.
+export function getGeniusAccessToken(): string | null {
+  const value = process.env.GENIUS_ACCESS_TOKEN;
+  return value && value.trim().length > 0 ? value.trim() : null;
+}

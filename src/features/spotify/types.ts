@@ -146,9 +146,18 @@ export type PlaylistImportErrorResponse = {
 
 export type PlaylistImportApiResponse = PlaylistImportSuccessResponse | PlaylistImportErrorResponse;
 
+export type LyricsAutoFetchStatus = "fetched_synced" | "fetched_plain" | "not_found" | "error";
+
+export type LyricsAutoFetchResult = {
+  status: LyricsAutoFetchStatus;
+  sourceLabel?: string;
+  message: string;
+};
+
 export type TrackImportSuccessResponse = {
   success: true;
   summary: TrackImportResult;
+  lyricsAutoFetch: LyricsAutoFetchResult;
 };
 
 export type TrackImportErrorResponse = {

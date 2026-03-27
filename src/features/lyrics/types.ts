@@ -1,4 +1,4 @@
-export type LyricsCacheSource = "musixmatch" | "local_import";
+export type LyricsCacheSource = "musixmatch" | "local_import" | "lrclib" | "genius";
 export type LyricsCacheKind = "synced" | "plain";
 export type LyricsInspectionKind = LyricsCacheKind | "missing" | "malformed";
 
