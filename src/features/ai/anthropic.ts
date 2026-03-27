@@ -169,6 +169,10 @@ async function callAnthropicJson<T>(options: {
         {
           role: "user",
           content: options.userPrompt
+        },
+        {
+          role: "assistant",
+          content: "{"
         }
       ]
     })
@@ -180,12 +184,13 @@ async function callAnthropicJson<T>(options: {
     throw new Error(extractAnthropicErrorMessage(payload, `${options.errorLabel} failed with status ${response.status}.`));
   }
 
-  const outputText = extractAnthropicText(payload);
+  const rawText = extractAnthropicText(payload);
 
-  if (!outputText) {
+  if (!rawText) {
     throw new Error(`Anthropic returned an empty response for ${options.errorLabel.toLowerCase()}.`);
   }
 
+  const outputText = "{" + rawText;
   const parsed = extractJsonCandidate(outputText);
 
   if (parsed === null) {
@@ -193,6 +198,15 @@ async function callAnthropicJson<T>(options: {
   }
 
   return parsed as T;
+}
+
+function buildAnthropicSystemPrompt(options: RequestAnthropicTranslationDraftOptions) {
+  const lineCount = options.lines.length;
+  const schema = JSON.stringify(buildDraftSchema(lineCount), null, 2);
+  return buildSystemPrompt(options).replace(
+    "Respond only with JSON matching the schema.",
+    `Respond only with a JSON object matching this exact schema (exactly ${lineCount} lines):\n${schema}`
+  );
 }
 
 export async function requestAnthropicTranslationDraft(
@@ -205,7 +219,7 @@ export async function requestAnthropicTranslationDraft(
   const model = getAnthropicGeneratorBModel();
   const parsed = await callAnthropicJson<unknown>({
     model,
-    systemPrompt: buildSystemPrompt(options),
+    systemPrompt: buildAnthropicSystemPrompt(options),
     userPrompt: buildUserPrompt(options),
     errorLabel: "Anthropic translation request"
   });
