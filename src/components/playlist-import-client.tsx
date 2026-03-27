@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { AppTopBar } from "@/components/app-top-bar";
 import { StatePanel } from "@/components/state-panel";
 import type {
+  LyricsAutoFetchResult,
   PlaylistImportApiResponse,
   PlaylistImportResult,
   TrackImportApiResponse,
@@ -20,6 +22,7 @@ function formatDuration(durationMs: number) {
 }
 
 export function PlaylistImportClient() {
+  const router = useRouter();
   const [playlistInput, setPlaylistInput] = useState("");
   const [playlistStatus, setPlaylistStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [playlistErrorMessage, setPlaylistErrorMessage] = useState<string | null>(null);
@@ -29,6 +32,7 @@ export function PlaylistImportClient() {
   const [trackStatus, setTrackStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [trackErrorMessage, setTrackErrorMessage] = useState<string | null>(null);
   const [trackSummary, setTrackSummary] = useState<TrackImportResult | null>(null);
+  const [lyricsAutoFetch, setLyricsAutoFetch] = useState<LyricsAutoFetchResult | null>(null);
 
   async function handlePlaylistSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,9 +96,12 @@ export function PlaylistImportClient() {
       }
 
       setTrackSummary(payload.summary);
+      setLyricsAutoFetch(payload.lyricsAutoFetch);
       setTrackStatus("success");
+      router.push(`/library/track/${payload.summary.trackId}`);
     } catch (error) {
       setTrackSummary(null);
+      setLyricsAutoFetch(null);
       setTrackStatus("error");
       setTrackErrorMessage(error instanceof Error ? error.message : "Single-song import failed.");
     }
@@ -179,7 +186,7 @@ export function PlaylistImportClient() {
                 disabled={trackStatus === "submitting"}
                 className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-6 py-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {trackStatus === "submitting" ? "Importing song..." : "Import song"}
+                {trackStatus === "submitting" ? "Importing & fetching lyrics…" : "Import song"}
               </button>
             </form>
           </section>
@@ -307,6 +314,29 @@ export function PlaylistImportClient() {
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Local translation file path</p>
                 <p className="mt-2 break-all font-mono text-xs text-slate-200">{trackSummary.translationFilePath}</p>
               </div>
+
+              {lyricsAutoFetch ? (
+                <div
+                  className={`mt-4 rounded-[22px] border p-4 text-sm leading-6 ${
+                    lyricsAutoFetch.status === "fetched_synced"
+                      ? "border-[rgba(255,45,120,0.25)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
+                      : lyricsAutoFetch.status === "fetched_plain"
+                        ? "border-white/12 bg-white/[0.04] text-slate-200"
+                        : "border-amber-300/20 bg-amber-300/10 text-amber-100"
+                  }`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] opacity-70">
+                    {lyricsAutoFetch.status === "fetched_synced"
+                      ? "✓ Synced lyrics fetched"
+                      : lyricsAutoFetch.status === "fetched_plain"
+                        ? "✓ Plain lyrics fetched"
+                        : lyricsAutoFetch.status === "not_found"
+                          ? "Lyrics not found"
+                          : "Lyrics fetch error"}
+                  </p>
+                  <p className="mt-1">{lyricsAutoFetch.message}</p>
+                </div>
+              ) : null}
 
               <div className="mt-6 flex flex-wrap gap-3">
                 {trackSummary.trackUrl ? (

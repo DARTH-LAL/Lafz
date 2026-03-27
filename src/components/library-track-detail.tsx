@@ -209,8 +209,7 @@ export function LibraryTrackDetail({
           Paste local LRC, JSON, or plain lyrics.
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-300">
-          Import your own local `.lrc`, synced JSON, or plain lyric text here. Lafz stores it locally as the
-          original-lyrics cache for this track and uses that cache for AI translation drafts.
+          Lyrics are fetched automatically on import. If the auto-fetch missed this track, paste them manually here.
         </p>
 
         <LyricsImportForm

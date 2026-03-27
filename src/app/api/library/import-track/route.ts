@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { autoFetchLyrics } from "@/features/lyrics/auto-fetch";
 import { importSpotifyTrackLibrary, toTrackImportErrorResponse } from "@/features/spotify/track-import";
 import { clearSpotifySession, readSpotifySessionFromRequest, writeSpotifySession } from "@/features/spotify/session";
 import { ensureFreshSpotifySession, refreshSpotifySession } from "@/features/spotify/server-session";
-import type { TrackImportApiResponse, TrackImportOptions } from "@/features/spotify/types";
+import type { LyricsAutoFetchResult, TrackImportApiResponse, TrackImportOptions, TrackImportResult } from "@/features/spotify/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,6 +17,44 @@ function isValidImportOptions(value: unknown): value is TrackImportOptions {
   const candidate = value as Record<string, unknown>;
 
   return typeof candidate.trackInput === "string";
+}
+
+async function fetchLyricsForTrack(summary: TrackImportResult): Promise<LyricsAutoFetchResult> {
+  try {
+    const result = await autoFetchLyrics({
+      spotifyTrackId: summary.trackId,
+      title: summary.trackTitle,
+      artist: summary.trackArtist,
+      album: summary.trackAlbum,
+      durationMs: summary.trackDurationMs
+    });
+
+    if (result.status === "fetched_synced") {
+      return {
+        status: "fetched_synced",
+        sourceLabel: result.sourceLabel,
+        message: `Found synced lyrics from ${result.sourceLabel}.`
+      };
+    }
+
+    if (result.status === "fetched_plain") {
+      return {
+        status: "fetched_plain",
+        sourceLabel: result.sourceLabel,
+        message: `Found plain lyrics from ${result.sourceLabel}. No timestamps — add timed lyrics later for karaoke sync.`
+      };
+    }
+
+    return {
+      status: "not_found",
+      message: "No lyrics found on lrclib or Genius. Paste them manually on the track page."
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Lyrics auto-fetch failed."
+    };
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -67,9 +106,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const summary = await importSpotifyTrackLibrary(session.accessToken, requestBody);
+    const lyricsAutoFetch = await fetchLyricsForTrack(summary);
     const response = NextResponse.json<TrackImportApiResponse>({
       success: true,
-      summary
+      summary,
+      lyricsAutoFetch
     });
 
     if (refreshed) {
@@ -84,9 +125,11 @@ export async function POST(request: NextRequest) {
       try {
         session = await refreshSpotifySession(session);
         const summary = await importSpotifyTrackLibrary(session.accessToken, requestBody);
+        const lyricsAutoFetch = await fetchLyricsForTrack(summary);
         const response = NextResponse.json<TrackImportApiResponse>({
           success: true,
-          summary
+          summary,
+          lyricsAutoFetch
         });
 
         writeSpotifySession(response, session);

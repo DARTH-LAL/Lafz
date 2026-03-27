@@ -164,6 +164,7 @@ export async function GET(request: NextRequest) {
     }
 
     const message = error instanceof Error ? error.message : "Failed to read Spotify playback state.";
+    console.error("[playback] Spotify error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

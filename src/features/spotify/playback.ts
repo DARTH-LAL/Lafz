@@ -71,7 +71,17 @@ export async function fetchCurrentSpotifyPlayback(accessToken: string): Promise<
   }
 
   if (!response.ok) {
-    throw new Error(`Spotify playback request failed with status ${response.status}.`);
+    const rawBody = await response.text().catch(() => "");
+    console.error(`[spotify/playback] ${response.status} body:`, rawBody || "(empty)");
+    let spotifyMessage: string | null = null;
+    let spotifyReason: string | null = null;
+    try {
+      const parsed = JSON.parse(rawBody) as { error?: { message?: string; reason?: string } };
+      spotifyMessage = parsed?.error?.message ?? null;
+      spotifyReason = parsed?.error?.reason ?? null;
+    } catch { /* not JSON */ }
+    const detail = [spotifyMessage, spotifyReason].filter(Boolean).join(" — ");
+    throw new Error(`Spotify playback request failed with status ${response.status}${detail ? `: ${detail}` : "."}`);
   }
 
   const payload = (await response.json()) as SpotifyPlaybackApiResponse;
