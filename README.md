@@ -265,13 +265,13 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/spotify/callback
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5-mini
+OPENAI_GENERATOR_A_MODEL=gpt-5.1
 OPENAI_BASE_URL=https://api.openai.com/v1
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=qwen2.5:14b
 ```
 
-`OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5-mini` and `https://api.openai.com/v1`.
+`OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`. Lafz currently uses this as Generator A in the upcoming multi-model pipeline.
 
 `OLLAMA_BASE_URL` and `OLLAMA_MODEL` are optional. If OpenAI is not configured, Lafz falls back to Ollama and defaults to `http://127.0.0.1:11434` and `qwen2.5:14b`.
 
@@ -456,7 +456,7 @@ If you want the higher-quality hosted AI path:
 2. Add it to `.env.local`:
    - `OPENAI_API_KEY=...`
 3. Optionally choose a model:
-   - `OPENAI_MODEL=gpt-5-mini`
+   - `OPENAI_GENERATOR_A_MODEL=gpt-5.1`
 
 Lafz uses OpenAI automatically whenever `OPENAI_API_KEY` is present.
 

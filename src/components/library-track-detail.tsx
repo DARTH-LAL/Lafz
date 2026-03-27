@@ -115,11 +115,12 @@ export function LibraryTrackDetail({
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,380px)_1fr] lg:items-start">
         <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <TranslationStatusBadge status={record.derived_status} />
+            <TranslationStatusBadge status={record.studio_status} />
             <span className="text-xs uppercase tracking-[0.22em] text-slate-500">
               Library status: {record.explicit_translation_status ?? "pending"}
             </span>
           </div>
+          <p className="mt-4 text-sm leading-6 text-slate-400">{record.studio_status_reason}</p>
 
           <div className="mt-6 space-y-4 text-sm text-slate-300">
             <div>

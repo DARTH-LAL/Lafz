@@ -9,7 +9,7 @@ import type {
 } from "@/features/ai/types";
 
 const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
-const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
+const DEFAULT_OPENAI_GENERATOR_A_MODEL = "gpt-5.1";
 const OPENAI_REQUEST_TIMEOUT_MS = 180_000;
 
 type BasePromptOptions = {
@@ -146,9 +146,13 @@ export function getOpenAiBaseUrl() {
   return normalizeOpenAiBaseUrl(process.env.OPENAI_BASE_URL);
 }
 
+export function getOpenAiGeneratorAModel() {
+  const value = process.env.OPENAI_GENERATOR_A_MODEL ?? process.env.OPENAI_MODEL;
+  return value && value.trim().length > 0 ? value.trim() : DEFAULT_OPENAI_GENERATOR_A_MODEL;
+}
+
 export function getOpenAiModel() {
-  const value = process.env.OPENAI_MODEL;
-  return value && value.trim().length > 0 ? value.trim() : DEFAULT_OPENAI_MODEL;
+  return getOpenAiGeneratorAModel();
 }
 
 export function isOpenAiConfigured() {

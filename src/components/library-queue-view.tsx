@@ -44,16 +44,16 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
           <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.total_unique_tracks}</p>
         </div>
         <div className="rounded-[24px] border border-amber-300/15 bg-amber-300/8 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-amber-100/70">Pending</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.pending}</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-amber-100/70">Needs review</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.needs_review}</p>
         </div>
         <div className="rounded-[24px] border border-[rgba(255,45,120,0.14)] bg-[rgba(255,45,120,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
           <p className="text-xs uppercase tracking-[0.24em] text-[#fff0f6]/70">Needs lyrics</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.stub}</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.needs_lyrics}</p>
         </div>
         <div className="rounded-[24px] border border-[rgba(255,140,66,0.14)] bg-[rgba(255,140,66,0.08)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-[#ffd9b8]/70">Translated</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.translated}</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-[#ffd9b8]/70">Synced</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{queue.summary.synced}</p>
         </div>
       </section>
 
@@ -78,9 +78,12 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
               className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[#ff2d78]/50"
             >
               <option value="all">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="stub">Needs lyrics</option>
-              <option value="translated">Translated</option>
+              <option value="needs_lyrics">Needs lyrics</option>
+              <option value="lyrics_ready">Lyrics ready</option>
+              <option value="needs_review">Needs review</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="synced">Synced</option>
+              <option value="published">Published</option>
             </select>
           </label>
 
@@ -196,7 +199,8 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                       </p>
                     </td>
                     <td className="px-5 py-5">
-                      <TranslationStatusBadge status={record.derived_status} />
+                      <TranslationStatusBadge status={record.studio_status} />
+                      <p className="mt-3 max-w-[16rem] text-xs leading-6 text-slate-400">{record.studio_status_reason}</p>
                       {record.translation_parse_error ? (
                         <p className="mt-3 max-w-[16rem] text-xs leading-6 text-amber-200">
                           Translation JSON needs attention: {record.translation_parse_error}
