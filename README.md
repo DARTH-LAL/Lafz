@@ -267,11 +267,22 @@ SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/spotify/callback
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_GENERATOR_A_MODEL=gpt-5.1
 OPENAI_BASE_URL=https://api.openai.com/v1
+ANTHROPIC_API_KEY=your_anthropic_api_key
+ANTHROPIC_BASE_URL=https://api.anthropic.com/v1
+ANTHROPIC_GENERATOR_B_MODEL=claude-sonnet-4-20250514
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+GEMINI_EVALUATOR_MODEL=gemini-2.5-pro
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=qwen2.5:14b
 ```
 
-`OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`. Lafz currently uses this as Generator A in the upcoming multi-model pipeline.
+`OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`.
+
+If you also set Anthropic and Gemini keys, Lafz enables a three-model pipeline:
+- Generator A: OpenAI via `OPENAI_GENERATOR_A_MODEL`
+- Generator B: Anthropic via `ANTHROPIC_GENERATOR_B_MODEL`
+- Evaluator: Gemini via `GEMINI_EVALUATOR_MODEL`
 
 `OLLAMA_BASE_URL` and `OLLAMA_MODEL` are optional. If OpenAI is not configured, Lafz falls back to Ollama and defaults to `http://127.0.0.1:11434` and `qwen2.5:14b`.
 
@@ -349,7 +360,7 @@ Once a track has original lyrics cached, the track detail page can generate an A
 
 1. Lafz reads the cached original lyrics from `data/lyrics/cache/<spotifyTrackId>.json`.
 2. Lafz loads any matching glossary hints for the detected language from `data/ai/glossaries`.
-3. If `OPENAI_API_KEY` is set, Lafz sends the lyric lines to OpenAI first. Otherwise it falls back to your local Ollama server.
+3. If OpenAI, Anthropic, and Gemini are all configured, Lafz runs the three-model pipeline first. Otherwise it uses the existing single-provider OpenAI/Ollama flow.
 4. Lafz builds a song-level context summary first so later passes can stay consistent about tone, themes, and recurring phrases.
 5. Lafz loads any matching artist memory from `data/ai/memory/artists`.
 6. Lafz generates a grouped first-pass draft so nearby verse lines can help disambiguate each other.

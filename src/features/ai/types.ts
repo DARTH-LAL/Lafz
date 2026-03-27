@@ -71,7 +71,7 @@ export type AiTranslationDraftFile = {
   mode: AiTranslationDraftMode;
   sourceLyricsKind: AiTranslationDraftMode;
   generator: {
-    provider: "ollama" | "openai";
+    provider: "ollama" | "openai" | "multi";
     model: string;
   };
   songContext: AiSongContext | null;

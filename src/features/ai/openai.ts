@@ -159,7 +159,7 @@ export function isOpenAiConfigured() {
   return typeof process.env.OPENAI_API_KEY === "string" && process.env.OPENAI_API_KEY.trim().length > 0;
 }
 
-function buildDraftSchema(lineCount: number) {
+export function buildDraftSchema(lineCount: number) {
   return {
     type: "object",
     additionalProperties: false,
@@ -226,7 +226,7 @@ function buildDraftSchema(lineCount: number) {
   };
 }
 
-function buildMeaningSchema(lineCount: number) {
+export function buildMeaningSchema(lineCount: number) {
   return {
     type: "object",
     additionalProperties: false,
@@ -258,7 +258,7 @@ function buildMeaningSchema(lineCount: number) {
   };
 }
 
-function buildSongContextSchema() {
+export function buildSongContextSchema() {
   return {
     type: "object",
     additionalProperties: false,
@@ -291,7 +291,7 @@ function buildSongContextSchema() {
   };
 }
 
-function buildSelectionSchema(lineCount: number) {
+export function buildSelectionSchema(lineCount: number) {
   return {
     type: "object",
     additionalProperties: false,
@@ -350,7 +350,7 @@ function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: str
   return hints.join(" ");
 }
 
-function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
+export function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
   return [
     "You help draft lyric translations for Lafz, a personal local-first translation tool.",
     options.sourceLanguage
@@ -383,7 +383,7 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
   ].join(" ");
 }
 
-function buildMeaningSystemPrompt(options: RequestAiMeaningAnalysisOptions) {
+export function buildMeaningSystemPrompt(options: RequestAiMeaningAnalysisOptions) {
   return [
     "You are the meaning-analysis pass for Lafz lyric translation.",
     options.sourceLanguage
@@ -401,7 +401,7 @@ function buildMeaningSystemPrompt(options: RequestAiMeaningAnalysisOptions) {
   ].join(" ");
 }
 
-function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOptions) {
+export function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOptions) {
   return [
     "You are reviewing a first-pass lyric translation draft for Lafz, a personal local-first translation tool.",
     `The source lyrics are in ${options.sourceLanguage}. Refine them into ${options.targetLanguage}.`,
@@ -425,7 +425,7 @@ function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOpti
   ].join(" ");
 }
 
-function buildSongContextSystemPrompt(options: RequestAiSongContextOptions) {
+export function buildSongContextSystemPrompt(options: RequestAiSongContextOptions) {
   return [
     "You are summarizing song context for Lafz before translation.",
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script.",
@@ -436,7 +436,7 @@ function buildSongContextSystemPrompt(options: RequestAiSongContextOptions) {
   ].join(" ");
 }
 
-function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOptions) {
+export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOptions) {
   return [
     "You are the final selector for Lafz lyric translations.",
     `The source lyrics are in ${options.sourceLanguage}. Select the best final English line for each entry.`,
@@ -450,7 +450,7 @@ function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOption
   ].join(" ");
 }
 
-function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
+export function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
   return JSON.stringify(
     {
       track: {
@@ -488,7 +488,7 @@ function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
   );
 }
 
-function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions) {
+export function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions) {
   return JSON.stringify(
     {
       track: {
@@ -517,7 +517,7 @@ function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions) {
   );
 }
 
-function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOptions) {
+export function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOptions) {
   return JSON.stringify(
     {
       track: {
@@ -562,7 +562,7 @@ function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOption
   );
 }
 
-function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
+export function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
   return JSON.stringify(
     {
       track: {
@@ -584,7 +584,7 @@ function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
   );
 }
 
-function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions) {
+export function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions) {
   return JSON.stringify(
     {
       track: {
@@ -722,7 +722,7 @@ async function callOpenAiJson<T>(options: {
   }
 }
 
-function parseGeneratedLines(
+export function parseGeneratedLines(
   parsed: unknown,
   expectedLineCount: number,
   providerLabel: string
@@ -775,7 +775,7 @@ function parseGeneratedLines(
   };
 }
 
-function parseMeaningResponse(
+export function parseMeaningResponse(
   parsed: unknown,
   expectedLineCount: number,
   providerLabel: string
@@ -808,7 +808,7 @@ function parseMeaningResponse(
   };
 }
 
-function parseSongContextResponse(parsed: unknown, providerLabel: string): { sourceLanguage: string; songContext: AiSongContext } {
+export function parseSongContextResponse(parsed: unknown, providerLabel: string): { sourceLanguage: string; songContext: AiSongContext } {
   const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
   const summary = isRecord(parsed) ? asString(parsed.summary) : null;
   const speaker = isRecord(parsed) ? normalizeNullableString(parsed.speaker) : null;
@@ -842,7 +842,7 @@ function parseSongContextResponse(parsed: unknown, providerLabel: string): { sou
   };
 }
 
-function parseSelectionResponse(
+export function parseSelectionResponse(
   parsed: unknown,
   expectedLineCount: number,
   providerLabel: string

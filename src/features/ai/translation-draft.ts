@@ -3,12 +3,17 @@ import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import {
   getActiveAiProvider,
+  getThreeModelPipelineLabel,
+  isThreeModelPipelineConfigured,
   requestProviderMeaningAnalysis,
   requestProviderSongContext,
   requestProviderTranslationDraft,
   requestProviderTranslationRefinement,
   requestProviderTranslationSelection
 } from "@/features/ai/provider";
+import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
+import { requestGeminiDraftComparison } from "@/features/ai/gemini";
+import { requestOpenAiTranslationDraft } from "@/features/ai/openai";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
 import type {
@@ -19,6 +24,7 @@ import type {
   AiTranslationDraftFile,
   GenerateAiTranslationOptions,
   GenerateAiTranslationResult,
+  GeneratedTranslationLineDraft,
   MeaningAnalysisLine
 } from "@/features/ai/types";
 import { getLyricsCacheByTrackId } from "@/features/lyrics/repository";
@@ -148,6 +154,37 @@ type SourceLineGroup = {
 type CorrectionExampleWithSource = AiCorrectionExample & {
   source: AiCorrectionHint["source"];
 };
+
+type DraftRequestOptions = {
+  title: string;
+  artist: string;
+  album: string;
+  sourceLanguage: string | null;
+  targetLanguage: string;
+  includeTransliteration: boolean;
+  includeNotes: boolean;
+  glossaryEntries: AiGlossaryEntry[];
+  songContext: AiSongContext | null;
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"];
+  lines: Array<{
+    index: number;
+    original: string;
+    normalizedOriginal?: string | null;
+    normalizationNotes?: string[];
+    meaning?: string;
+    impliedMeaning?: string | null;
+    register?: string | null;
+    contextBefore?: string[];
+    contextAfter?: string[];
+    groupIndex?: number;
+    groupText?: string;
+    matchingCorrections?: AiCorrectionHint[];
+  }>;
+};
+
+type DraftRequester = (
+  options: DraftRequestOptions
+) => Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }>;
 
 function buildNormalizedSourceLineLookup(lines: SourceDraftLine[]) {
   return new Map<number, NormalizedSourceLine>(
@@ -933,7 +970,8 @@ async function generateDraftLinesInBatches(
   artistCorrectionExamples: AiCorrectionExample[],
   trackCorrectionExamples: AiCorrectionExample[],
   normalizedSourceLookup: Map<number, NormalizedSourceLine>,
-  meaningLines: MeaningAnalysisLine[]
+  meaningLines: MeaningAnalysisLine[],
+  requestDraft: DraftRequester = requestProviderTranslationDraft
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -967,7 +1005,7 @@ async function generateDraftLinesInBatches(
       artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
     ]);
 
-    const aiResponse = await requestProviderTranslationDraft({
+    const aiResponse = await requestDraft({
       title: options.title,
       artist: options.artist,
       album: options.album,
@@ -1332,6 +1370,177 @@ async function selectDraftLinesInBatches(
   };
 }
 
+function scoreChosenLineSimilarity(reference: string, candidate: string) {
+  const normalizedReference = normalizeLineKey(reference);
+  const normalizedCandidate = normalizeLineKey(candidate);
+
+  if (!normalizedReference || !normalizedCandidate) {
+    return 0;
+  }
+
+  if (normalizedReference === normalizedCandidate) {
+    return 10_000;
+  }
+
+  const referenceTokens = new Set(tokenizeNormalizedLine(reference));
+  const candidateTokens = new Set(tokenizeNormalizedLine(candidate));
+  const shared = Array.from(referenceTokens).filter((token) => candidateTokens.has(token)).length;
+  const union = new Set([...referenceTokens, ...candidateTokens]).size;
+
+  return shared * 100 + (union > 0 ? Math.round((shared / union) * 50) : 0);
+}
+
+function chooseDraftBaseLine(
+  chosen: string,
+  generatorALine: AiDraftLine,
+  generatorBLine: AiDraftLine
+) {
+  if (normalizeLineKey(chosen) === normalizeLineKey(generatorBLine.chosen)) {
+    return generatorBLine;
+  }
+
+  if (normalizeLineKey(chosen) === normalizeLineKey(generatorALine.chosen)) {
+    return generatorALine;
+  }
+
+  return scoreChosenLineSimilarity(chosen, generatorBLine.chosen) > scoreChosenLineSimilarity(chosen, generatorALine.chosen)
+    ? generatorBLine
+    : generatorALine;
+}
+
+async function evaluateDraftAlternativesInBatches(
+  options: GenerateAiTranslationOptions,
+  sourceLines: SourceDraftLine[],
+  sourceLyricsKind: "synced" | "plain",
+  sourceLanguage: string,
+  songContext: AiSongContext | null,
+  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
+  preferredRenderings: AiGlossaryEntry[],
+  artistCorrectionExamples: AiCorrectionExample[],
+  trackCorrectionExamples: AiCorrectionExample[],
+  normalizedSourceLookup: Map<number, NormalizedSourceLine>,
+  generatorALines: AiDraftLine[],
+  generatorBLines: AiDraftLine[]
+) {
+  const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
+  const batches = chunkSourceLines(sourceLines, batchSize);
+  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
+  const evaluatedLines: AiDraftLine[] = [];
+  let model = "";
+
+  for (const batch of batches) {
+    const glossaryEntries = await loadRelevantGlossaryEntries({
+      sourceLanguage,
+      artist: options.artist,
+      spotifyTrackId: options.spotifyTrackId,
+      candidateTexts: batch.flatMap((line) => [
+        line.original,
+        generatorALines[line.order]?.chosen ?? "",
+        generatorBLines[line.order]?.chosen ?? "",
+        generatorALines[line.order]?.literal ?? "",
+        generatorBLines[line.order]?.literal ?? "",
+        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
+      ]),
+      preferredRenderings
+    });
+    const correctionExamples = mergeCorrectionExampleSources([
+      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+    ]);
+
+    const aiResponse = await requestGeminiDraftComparison({
+      title: options.title,
+      artist: options.artist,
+      album: options.album,
+      sourceLanguage,
+      targetLanguage: normalizeLanguage(options.targetLanguage),
+      glossaryEntries,
+      songContext,
+      artistMemory,
+      lines: batch.map((line) => {
+        const generatorALine = generatorALines[line.order];
+        const generatorBLine = generatorBLines[line.order];
+
+        return {
+          index: line.order + 1,
+          original: line.original,
+          normalizedOriginal: normalizedSourceLookup.get(line.order)?.canonical ?? null,
+          meaning: generatorALine?.meaning ?? generatorBLine?.meaning ?? line.original,
+          impliedMeaning: generatorALine?.impliedMeaning ?? generatorBLine?.impliedMeaning ?? null,
+          register: generatorALine?.register ?? generatorBLine?.register ?? null,
+          generatorA: {
+            literal: generatorALine?.literal ?? "",
+            natural: generatorALine?.natural ?? "",
+            slangAware: generatorALine?.slangAware ?? "",
+            chosen: generatorALine?.chosen ?? "",
+            transliteration: generatorALine?.transliteration ?? null,
+            note: generatorALine?.note ?? null,
+            ambiguity: generatorALine?.ambiguity ?? null,
+            confidence: generatorALine?.confidence ?? "medium"
+          },
+          generatorB: {
+            literal: generatorBLine?.literal ?? "",
+            natural: generatorBLine?.natural ?? "",
+            slangAware: generatorBLine?.slangAware ?? "",
+            chosen: generatorBLine?.chosen ?? "",
+            transliteration: generatorBLine?.transliteration ?? null,
+            note: generatorBLine?.note ?? null,
+            ambiguity: generatorBLine?.ambiguity ?? null,
+            confidence: generatorBLine?.confidence ?? "medium"
+          },
+          contextBefore: buildRefinementContext(generatorALines, line.order, -refinementContextWindow, -1),
+          contextAfter: buildRefinementContext(generatorALines, line.order, 1, refinementContextWindow),
+          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+            line.original,
+            generatorALine?.chosen ?? "",
+            generatorBLines[line.order]?.chosen ?? "",
+            ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
+            ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
+          ])
+        };
+      })
+    });
+
+    model = aiResponse.model || model;
+
+    evaluatedLines.push(
+      ...batch.map((line, index) => {
+        const generatorALine = generatorALines[line.order];
+        const generatorBLine = generatorBLines[line.order];
+        const evaluationLine = aiResponse.lines[index];
+        const baseLine =
+          evaluationLine?.winner === "generator_b"
+            ? generatorBLine
+            : generatorALine && generatorBLine
+              ? chooseDraftBaseLine(evaluationLine?.chosen ?? generatorALine.chosen, generatorALine, generatorBLine)
+              : generatorALine ?? generatorBLine;
+
+        if (!baseLine) {
+          return generatorALine ?? generatorBLine;
+        }
+
+        return {
+          ...baseLine,
+          chosen: evaluationLine?.chosen ?? baseLine.chosen,
+          translated: evaluationLine?.chosen ?? baseLine.chosen,
+          note: evaluationLine?.note ?? baseLine.note,
+          ambiguity: evaluationLine?.ambiguity ?? baseLine.ambiguity,
+          confidence: evaluationLine?.confidence ?? baseLine.confidence,
+          selectorReason: evaluationLine?.selectorReason ?? baseLine.selectorReason,
+          startMs: line.startMs,
+          endMs: line.endMs
+        } satisfies AiDraftLine;
+      }).filter((line): line is AiDraftLine => Boolean(line))
+    );
+  }
+
+  return {
+    model,
+    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(evaluatedLines), normalizedSourceLookup)
+  };
+}
+
 function shouldPreserveExistingTranslationFile(kind: "missing" | "stub" | "translated" | "malformed", overwrite: boolean) {
   if (kind === "missing" || kind === "stub") {
     return false;
@@ -1539,58 +1748,119 @@ export async function generateAiTranslationDraft(
     contextResponse.trackCorrectionExamples,
     normalizedSourceLookup
   );
-  const skipRefinement = shouldSkipRefinement(lyricsCache.kind, sourceLines.length);
-  const initialDraft = await generateDraftLinesInBatches(
-    options,
-    sourceLines,
-    lyricsCache.kind,
-    meaningResponse.sourceLanguage,
-    contextResponse.songContext,
-    contextResponse.artistMemory,
-    contextResponse.preferredRenderings,
-    contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples,
-    normalizedSourceLookup,
-    meaningResponse.lines
-  );
-  const refinedDraft = skipRefinement
-    ? null
-    : await refineDraftLinesInBatches(
+  const useThreeModelPipeline = isThreeModelPipelineConfigured();
+  let aiResponse: {
+    model: string;
+    sourceLanguage: string;
+    lines: AiDraftLine[];
+  };
+
+  if (useThreeModelPipeline) {
+    const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
+      generateDraftLinesInBatches(
         options,
         sourceLines,
-        initialDraft.lines,
         lyricsCache.kind,
-        initialDraft.sourceLanguage,
+        meaningResponse.sourceLanguage,
         contextResponse.songContext,
         contextResponse.artistMemory,
         contextResponse.preferredRenderings,
         contextResponse.artistCorrectionExamples,
         contextResponse.trackCorrectionExamples,
-        undefined,
-        [],
-        normalizedSourceLookup
-      ).catch(() => null);
-  const selectedDraft = await selectDraftLinesInBatches(
-    options,
-    sourceLines,
-    refinedDraft?.lines ?? initialDraft.lines,
-    lyricsCache.kind,
-    initialDraft.sourceLanguage,
-    contextResponse.songContext,
-    contextResponse.artistMemory,
-    contextResponse.preferredRenderings,
-    contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples,
-    undefined,
-    [],
-    normalizedSourceLookup
-  ).catch(() => null);
+        normalizedSourceLookup,
+        meaningResponse.lines,
+        requestOpenAiTranslationDraft
+      ),
+      generateDraftLinesInBatches(
+        options,
+        sourceLines,
+        lyricsCache.kind,
+        meaningResponse.sourceLanguage,
+        contextResponse.songContext,
+        contextResponse.artistMemory,
+        contextResponse.preferredRenderings,
+        contextResponse.artistCorrectionExamples,
+        contextResponse.trackCorrectionExamples,
+        normalizedSourceLookup,
+        meaningResponse.lines,
+        requestAnthropicTranslationDraft
+      )
+    ]);
 
-  const aiResponse = {
-    model: selectedDraft?.model || refinedDraft?.model || initialDraft.model,
-    sourceLanguage: initialDraft.sourceLanguage,
-    lines: selectedDraft?.lines ?? refinedDraft?.lines ?? initialDraft.lines
-  };
+    const evaluatedDraft = await evaluateDraftAlternativesInBatches(
+      options,
+      sourceLines,
+      lyricsCache.kind,
+      generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+      contextResponse.songContext,
+      contextResponse.artistMemory,
+      contextResponse.preferredRenderings,
+      contextResponse.artistCorrectionExamples,
+      contextResponse.trackCorrectionExamples,
+      normalizedSourceLookup,
+      generatorAInitialDraft.lines,
+      generatorBInitialDraft.lines
+    );
+
+    aiResponse = {
+      model: `${getThreeModelPipelineLabel()} | Selected:${evaluatedDraft.model}`,
+      sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+      lines: evaluatedDraft.lines
+    };
+  } else {
+    const skipRefinement = shouldSkipRefinement(lyricsCache.kind, sourceLines.length);
+    const initialDraft = await generateDraftLinesInBatches(
+      options,
+      sourceLines,
+      lyricsCache.kind,
+      meaningResponse.sourceLanguage,
+      contextResponse.songContext,
+      contextResponse.artistMemory,
+      contextResponse.preferredRenderings,
+      contextResponse.artistCorrectionExamples,
+      contextResponse.trackCorrectionExamples,
+      normalizedSourceLookup,
+      meaningResponse.lines
+    );
+    const refinedDraft = skipRefinement
+      ? null
+      : await refineDraftLinesInBatches(
+          options,
+          sourceLines,
+          initialDraft.lines,
+          lyricsCache.kind,
+          initialDraft.sourceLanguage,
+          contextResponse.songContext,
+          contextResponse.artistMemory,
+          contextResponse.preferredRenderings,
+          contextResponse.artistCorrectionExamples,
+          contextResponse.trackCorrectionExamples,
+          undefined,
+          [],
+          normalizedSourceLookup
+        ).catch(() => null);
+    const selectedDraft = await selectDraftLinesInBatches(
+      options,
+      sourceLines,
+      refinedDraft?.lines ?? initialDraft.lines,
+      lyricsCache.kind,
+      initialDraft.sourceLanguage,
+      contextResponse.songContext,
+      contextResponse.artistMemory,
+      contextResponse.preferredRenderings,
+      contextResponse.artistCorrectionExamples,
+      contextResponse.trackCorrectionExamples,
+      undefined,
+      [],
+      normalizedSourceLookup
+    ).catch(() => null);
+
+    aiResponse = {
+      model: selectedDraft?.model || refinedDraft?.model || initialDraft.model,
+      sourceLanguage: initialDraft.sourceLanguage,
+      lines: selectedDraft?.lines ?? refinedDraft?.lines ?? initialDraft.lines
+    };
+  }
 
   const draftFile = {
     spotifyTrackId: options.spotifyTrackId,
@@ -1604,7 +1874,7 @@ export async function generateAiTranslationDraft(
     mode: lyricsCache.kind,
     sourceLyricsKind: lyricsCache.kind,
     generator: {
-      provider: getActiveAiProvider(),
+      provider: (useThreeModelPipeline ? "multi" : getActiveAiProvider()) as AiTranslationDraftFile["generator"]["provider"],
       model: aiResponse.model
     },
     songContext: contextResponse.songContext,

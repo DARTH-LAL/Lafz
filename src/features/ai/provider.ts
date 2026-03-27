@@ -27,6 +27,8 @@ import {
   requestOpenAiTranslationDraft,
   requestOpenAiTranslationRefinement
 } from "@/features/ai/openai";
+import { getAnthropicGeneratorBModel, isAnthropicConfigured } from "@/features/ai/anthropic";
+import { getGeminiEvaluatorModel, isGeminiConfigured } from "@/features/ai/gemini";
 type RequestAiTranslationDraftOptions = {
   title: string;
   artist: string;
@@ -163,6 +165,14 @@ type RequestAiTranslationSelectionOptions = {
 
 export function getActiveAiProvider(): AiProviderStatus["provider"] {
   return isOpenAiConfigured() ? "openai" : "ollama";
+}
+
+export function isThreeModelPipelineConfigured() {
+  return isOpenAiConfigured() && isAnthropicConfigured() && isGeminiConfigured();
+}
+
+export function getThreeModelPipelineLabel() {
+  return `A:${getOpenAiModel()} | B:${getAnthropicGeneratorBModel()} | Eval:${getGeminiEvaluatorModel()}`;
 }
 
 export function getActiveAiModel() {

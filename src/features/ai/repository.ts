@@ -236,7 +236,10 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   const songContext = parseSongContext(value.songContext);
   const artistMemory = parseArtistMemory(value.artistMemory);
   const generator = isRecord(value.generator) ? value.generator : null;
-  const provider = generator?.provider === "openai" || generator?.provider === "ollama" ? generator.provider : null;
+  const provider =
+    generator?.provider === "openai" || generator?.provider === "ollama" || generator?.provider === "multi"
+      ? generator.provider
+      : null;
   const model = asString(generator?.model);
   const lines = Array.isArray(value.lines) ? value.lines.map((line, index) => parseAiDraftLine(line, index)) : null;
 
