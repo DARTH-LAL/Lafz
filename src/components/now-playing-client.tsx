@@ -235,42 +235,32 @@ export function NowPlayingClient() {
                       trackHref={resolvedTrackDetailHref}
                     />
                   ) : (
-                    <div className="h-full p-5 lg:p-8">
-                      <StatePanel
-                        eyebrow={payload.aiDraft ? "Draft only" : "No translation yet"}
-                        title={
-                          payload.aiDraft
-                            ? "This track has a translation draft, but it is not synced for karaoke-style playback yet"
-                            : "This track is playing, but Lafz does not have a synced local file for it"
-                        }
-                        description={
-                          payload.aiDraft
-                            ? payload.aiDraft.mode === "plain"
-                              ? "Lafz found an untimed AI draft for this song, so it stays in plain reading mode until synced lyrics are available."
-                              : `Lafz found a synced AI draft for this song, but playback could not materialize the local translation file at ${payload.translationFileHint} yet. Generate the AI draft again from the track page to recreate it.`
-                            : `Create ${payload.translationFileHint} with your own timestamped translation data and refresh playback. Lafz will pick it up on the next poll.`
-                        }
-                        className="h-full"
-                      >
-                        <div className="rounded-[24px] border border-dashed border-white/12 bg-black/10 p-5 text-sm leading-7 text-slate-300">
-                          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current song</p>
-                          <p className="mt-2 text-lg text-white">{playback.track.title}</p>
-                          <p className="mt-1 text-slate-400">{playback.track.artist}</p>
-                          {payload.aiDraft ? (
-                            <div className="mt-4 rounded-[20px] border border-[rgba(255,45,120,0.18)] bg-[rgba(255,45,120,0.08)] p-4 text-sm text-[#fff0f6]">
-                              AI draft found: {payload.aiDraft.lineCount} line{payload.aiDraft.lineCount === 1 ? "" : "s"} ({payload.aiDraft.mode}) via {payload.aiDraft.model ?? "AI"}.
-                            </div>
-                          ) : null}
-                          <div className="mt-4 flex flex-wrap gap-3">
-                            <Link
-                              href={resolvedTrackDetailHref}
-                              className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
-                            >
-                              Open track detail
-                            </Link>
-                          </div>
+                    <div className="flex h-full flex-col items-center justify-center gap-8 p-5 lg:p-8">
+                      <div className="flex flex-col items-center gap-3 text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(255,45,120,0.1)] text-2xl">
+                          🎵
                         </div>
-                      </StatePanel>
+                        <h2 className="text-xl font-bold tracking-[-0.4px] text-white">
+                          {payload.aiDraft ? "Draft ready — sync coming soon" : "No translation yet"}
+                        </h2>
+                        <p className="max-w-[260px] text-sm leading-relaxed text-slate-400">
+                          {payload.aiDraft
+                            ? "An AI draft exists for this song. Open the track page to review and sync it."
+                            : "This song hasn't been translated yet. Open the track page to get started."}
+                        </p>
+                      </div>
+
+                      <div className="w-full max-w-[320px] rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Now playing</p>
+                        <p className="mt-2 truncate text-base font-semibold text-white">{playback.track.title}</p>
+                        <p className="mt-0.5 truncate text-sm text-slate-400">{playback.track.artist}</p>
+                        <Link
+                          href={resolvedTrackDetailHref}
+                          className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78,#ff8c42)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                        >
+                          Open track
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>

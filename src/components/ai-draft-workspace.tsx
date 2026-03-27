@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FloatingToast } from "@/components/floating-toast";
@@ -31,87 +31,20 @@ type AiDraftWorkspaceProps = {
 type EditableDraftLine = {
   order: number;
   original: string;
-  literal: string;
-  natural: string;
-  slangAware: string;
   chosen: string;
-  transliteration: string | null;
-  note: string | null;
-  ambiguity: string | null;
   confidence: "low" | "medium" | "high";
-  selectorReason: string | null;
-};
-
-type DisplayDraftLine = {
-  line: EditableDraftLine;
-  duplicateCount: number;
 };
 
 function getAiProviderLabel(provider: AiProviderStatus["provider"]) {
   return provider === "openai" ? "OpenAI" : "Ollama";
 }
 
-function formatUpdatedAt(value: string | null) {
-  if (!value) {
-    return "Not updated yet";
-  }
-
-  return new Date(value).toLocaleString();
-}
-
 function toEditableDraftLine(line: AiTranslationDraftFile["lines"][number]): EditableDraftLine {
-  return {
-    order: line.order,
-    original: line.original,
-    literal: line.literal,
-    natural: line.natural,
-    slangAware: line.slangAware,
-    chosen: line.chosen,
-    transliteration: line.transliteration,
-    note: line.note,
-    ambiguity: line.ambiguity,
-    confidence: line.confidence,
-    selectorReason: line.selectorReason
-  };
+  return { order: line.order, original: line.original, chosen: line.chosen, confidence: line.confidence };
 }
 
-function getConfidenceClasses(confidence: EditableDraftLine["confidence"]) {
-  if (confidence === "high") {
-    return "border-[rgba(255,140,66,0.2)] bg-[rgba(255,140,66,0.1)] text-[#ffd9b8]";
-  }
-
-  if (confidence === "medium") {
-    return "border-amber-300/20 bg-amber-300/10 text-amber-100";
-  }
-
-  return "border-rose-300/20 bg-rose-300/10 text-rose-100";
-}
-
-function normalizeReviewKey(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[\u2018\u2019']/g, "")
-    .replace(/[^a-z0-9\s]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function sleep(delayMs: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, delayMs);
-  });
-}
-
-function applyManualReview(
-  line: EditableDraftLine,
-  overrides: Partial<Pick<EditableDraftLine, "chosen" | "transliteration" | "note">>
-) {
-  return {
-    ...line,
-    ...overrides,
-    confidence: "high" as const,
-    selectorReason: "Manually reviewed in Lafz."
-  };
+function sleep(ms: number) {
+  return new Promise((resolve) => { window.setTimeout(resolve, ms); });
 }
 
 export function AiDraftWorkspace({
@@ -134,113 +67,12 @@ export function AiDraftWorkspace({
   const [includeNotes, setIncludeNotes] = useState(true);
   const [overwriteExistingTranslation, setOverwriteExistingTranslation] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [savingReviewKey, setSavingReviewKey] = useState<string | null>(null);
-  const [showLowConfidenceFirst, setShowLowConfidenceFirst] = useState(true);
   const [message, setMessage] = useState(initialMessage);
   const [messageTone, setMessageTone] = useState<"success" | "error">(initialStatus === "error" ? "error" : "success");
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [draftLines, setDraftLines] = useState<EditableDraftLine[]>(() => (initialDraft ? initialDraft.lines.map(toEditableDraftLine) : []));
 
   const canGenerate = aiConfigured && (lyricsKind === "synced" || lyricsKind === "plain");
-  const lowConfidenceCount = useMemo(() => draftLines.filter((line) => line.confidence === "low").length, [draftLines]);
-  const displayedDraftLines = useMemo<DisplayDraftLine[]>(() => {
-    const dedupeLowConfidenceLines = (lines: EditableDraftLine[]) => {
-      const seenLowConfidence = new Map<string, DisplayDraftLine>();
-      const deduped: DisplayDraftLine[] = [];
-
-      for (const line of lines) {
-        if (line.confidence !== "low") {
-          deduped.push({ line, duplicateCount: 1 });
-          continue;
-        }
-
-        const key = normalizeReviewKey(line.original);
-
-        if (!key) {
-          deduped.push({ line, duplicateCount: 1 });
-          continue;
-        }
-
-        const existing = seenLowConfidence.get(key);
-
-        if (existing) {
-          existing.duplicateCount += 1;
-          continue;
-        }
-
-        const nextEntry = { line, duplicateCount: 1 };
-        seenLowConfidence.set(key, nextEntry);
-        deduped.push(nextEntry);
-      }
-
-      return deduped;
-    };
-
-    const lines = [...draftLines];
-
-    if (!showLowConfidenceFirst) {
-      return dedupeLowConfidenceLines(lines.sort((left, right) => left.order - right.order));
-    }
-
-    const confidenceWeight = (confidence: EditableDraftLine["confidence"]) => {
-      if (confidence === "low") {
-        return 0;
-      }
-
-      if (confidence === "medium") {
-        return 1;
-      }
-
-      return 2;
-    };
-
-    lines.sort((left, right) => {
-      const confidenceDifference = confidenceWeight(left.confidence) - confidenceWeight(right.confidence);
-
-      if (confidenceDifference !== 0) {
-        return confidenceDifference;
-      }
-
-      return left.order - right.order;
-    });
-
-    return dedupeLowConfidenceLines(lines);
-  }, [draftLines, showLowConfidenceFirst]);
-
-  const updateMatchingDraftLines = (order: number, updater: (line: EditableDraftLine) => EditableDraftLine) => {
-    setDraftLines((currentLines) => {
-      const sourceLine = currentLines.find((line) => line.order === order);
-      const reviewKey = sourceLine ? normalizeReviewKey(sourceLine.original) : "";
-
-      return currentLines.map((currentLine) => {
-        if (currentLine.order === order) {
-          return updater(currentLine);
-        }
-
-        if (reviewKey && normalizeReviewKey(currentLine.original) === reviewKey) {
-          return updater(currentLine);
-        }
-
-        return currentLine;
-      });
-    });
-  };
-
-  const getMatchingLines = (order: number) => {
-    const sourceLine = draftLines.find((line) => line.order === order);
-
-    if (!sourceLine) {
-      return [];
-    }
-
-    const reviewKey = normalizeReviewKey(sourceLine.original);
-
-    if (!reviewKey) {
-      return [sourceLine];
-    }
-
-    return draftLines.filter((line) => normalizeReviewKey(line.original) === reviewKey);
-  };
 
   useEffect(() => {
     setDraftLines(initialDraft ? initialDraft.lines.map(toEditableDraftLine) : []);
@@ -382,165 +214,94 @@ export function AiDraftWorkspace({
     }
   };
 
-  const handleSaveLine = async (order: number) => {
-    const matchingLines = getMatchingLines(order);
-
-    if (matchingLines.length === 0) {
-      return;
-    }
-
-    const reviewKey = normalizeReviewKey(matchingLines[0].original) || `line-${order}`;
-    setSavingReviewKey(reviewKey);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/ai/save-draft", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          spotifyTrackId: track.spotifyTrackId,
-          lines: matchingLines.map((line) => ({
-            order: line.order,
-            chosen: line.chosen,
-            note: line.note,
-            transliteration: line.transliteration
-          }))
-        })
-      });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error ?? "Could not save the AI draft review changes.");
-      }
-
-      const nextMessage = payload.message ?? "Saved the draft review changes.";
-      setMessage(nextMessage);
-      setMessageTone("success");
-      setToast({
-        message: nextMessage,
-        tone: "success"
-      });
-      router.refresh();
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Could not save the AI draft review changes.";
-      setMessage(nextMessage);
-      setMessageTone("error");
-      setToast({
-        message: nextMessage,
-        tone: "error"
-      });
-    } finally {
-      setSavingReviewKey(null);
-    }
-  };
-
   return (
-    <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr] xl:items-start">
+    <div className="mt-6">
       {toast ? <FloatingToast message={toast.message} tone={toast.tone} /> : null}
 
-      <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">AI translation draft</p>
-        <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
-          Generate a stronger translation draft.
+      {/* AI settings */}
+      <section className="rounded-[24px] border border-[rgba(160,60,255,0.18)] bg-[linear-gradient(135deg,rgba(160,60,255,0.06)_0%,rgba(255,20,100,0.04)_100%)] p-6 backdrop-blur-[20px]">
+        <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(160,60,255,0.70)]">AI Translation</p>
+        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[rgba(160,60,255,0.25)] bg-[rgba(160,60,255,0.12)] px-3 py-1 text-[12px] font-semibold text-[#c87eff]">
+          <span>✦</span> gpt-5.1 + claude-sonnet-4.6 → gemini-2.5-pro
+        </div>
+        <h2 className="mt-3 text-[22px] font-bold tracking-[-0.5px]">
+          Generate a translation draft.
         </h2>
-        <p className="mt-3 text-sm leading-7 text-slate-300">
-          Lafz now does song-level context detection, grouped first-pass translation, consistency refinement, and a
-          final selector pass. You get literal, natural, and slang-aware candidates so the harder lines are easier to trust and refine.
+        <p className="mt-2 text-[13px] leading-[1.7] text-[#7a6890]">
+          Two models translate in parallel. A third evaluates and picks the best line by line — literal, natural, and slang-aware options included.
         </p>
 
         {message ? (
           <div
-            className={`mt-5 rounded-[22px] p-4 text-sm leading-7 ${
+            className={`mt-4 rounded-[14px] p-4 text-[13px] leading-[1.65] ${
               messageTone === "error"
-                ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-                : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
+                ? "border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] text-[#ffc87a]"
+                : "border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.08)] text-[#ff6aaa]"
             }`}
           >
             {message}
           </div>
         ) : null}
 
-        <div className="mt-5 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current AI behavior</p>
+        <div className="mt-4 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+          <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Current AI behavior</p>
           <p className="mt-2">
             {lyricsKind === "synced"
-              ? "This track has synced original lyrics, so Lafz can generate a draft and automatically use those timings for playback."
+              ? "Synced lyrics detected — draft will include timestamps for karaoke-style playback."
               : lyricsKind === "plain"
-                ? "This track only has plain original lyrics right now, so Lafz will save an untimed draft and keep playback in reading mode."
-                : "Import local lyrics for this track first, then generate a draft from that cache."}
+                ? "Plain lyrics only — draft will be saved untimed and playback stays in reading mode."
+                : "Import lyrics for this track first, then generate a draft."}
           </p>
         </div>
 
-        <div className="mt-4 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Current AI provider</p>
+        <div className="mt-3 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+          <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">AI provider</p>
           <p className="mt-2">
-            Provider: <span className="text-slate-100">{getAiProviderLabel(aiProviderStatus.provider)}</span>
+            Provider: <span className="text-[#fff0f6]">{getAiProviderLabel(aiProviderStatus.provider)}</span>
           </p>
-          <p className="mt-2">
-            Endpoint: <span className="font-mono text-xs text-slate-100">{aiProviderStatus.baseUrl}</span>
+          <p className="mt-1.5">
+            Model: <span className="font-mono text-[11px] text-[#fff0f6]">{aiProviderStatus.model}</span>
           </p>
-          <p className="mt-2">
-            Model: <span className="font-mono text-xs text-slate-100">{aiProviderStatus.model}</span>
-          </p>
-          <p className="mt-2">
+          <p className="mt-1.5">
             Status:{" "}
-            <span className={aiProviderStatus.available ? "text-[#fff0f6]" : "text-amber-100"}>
+            <span className={aiProviderStatus.available ? "text-[#3fffaa]" : "text-[#ffc87a]"}>
               {aiProviderStatus.available ? "reachable" : "not reachable"}
-            </span>
-          </p>
-          <p className="mt-2">
-            Model ready:{" "}
-            <span className={aiProviderStatus.modelAvailable ? "text-[#fff0f6]" : "text-amber-100"}>
-              {aiProviderStatus.modelAvailable ? "yes" : "no"}
             </span>
           </p>
         </div>
 
         {canGenerate ? (
-          <div className="mt-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+          <div className="mt-5 space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Source language</span>
+                <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">Source language</span>
                 <input
                   type="text"
                   value={sourceLanguage}
-                  onChange={(event) => {
-                    setSourceLanguage(event.target.value);
-                  }}
-                  placeholder="Leave blank to auto-detect from lyrics"
-                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
+                  onChange={(event) => { setSourceLanguage(event.target.value); }}
+                  placeholder="Auto-detect from lyrics"
+                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
                 />
               </label>
 
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Target language</span>
+                <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">Target language</span>
                 <input
                   type="text"
                   value={targetLanguage}
-                  onChange={(event) => {
-                    setTargetLanguage(event.target.value);
-                  }}
-                  className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
+                  onChange={(event) => { setTargetLanguage(event.target.value); }}
+                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
                 />
               </label>
             </div>
 
-            <div className="space-y-3 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
+            <div className="space-y-3 rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4 text-[13px] text-[#c8b8d8]">
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={includeTransliteration}
-                  onChange={(event) => {
-                    setIncludeTransliteration(event.target.checked);
-                  }}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
+                  onChange={(event) => { setIncludeTransliteration(event.target.checked); }}
+                  className="mt-0.5 h-4 w-4 rounded border-[rgba(255,20,100,0.30)] bg-transparent accent-[#ff1464]"
                 />
                 <span>Include transliteration when it helps.</span>
               </label>
@@ -549,10 +310,8 @@ export function AiDraftWorkspace({
                 <input
                   type="checkbox"
                   checked={includeNotes}
-                  onChange={(event) => {
-                    setIncludeNotes(event.target.checked);
-                  }}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
+                  onChange={(event) => { setIncludeNotes(event.target.checked); }}
+                  className="mt-0.5 h-4 w-4 rounded border-[rgba(255,20,100,0.30)] bg-transparent accent-[#ff1464]"
                 />
                 <span>Include slang and cultural notes when needed.</span>
               </label>
@@ -562,37 +321,26 @@ export function AiDraftWorkspace({
                   <input
                     type="checkbox"
                     checked={overwriteExistingTranslation}
-                    onChange={(event) => {
-                      setOverwriteExistingTranslation(event.target.checked);
-                    }}
-                    className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-[#ff6ba8] focus:ring-[#ff2d78]/40"
+                    onChange={(event) => { setOverwriteExistingTranslation(event.target.checked); }}
+                    className="mt-0.5 h-4 w-4 rounded border-[rgba(255,20,100,0.30)] bg-transparent accent-[#ff1464]"
                   />
                   <span>Replace the current synced translation file for this track.</span>
                 </label>
               ) : null}
             </div>
 
-            <div className="rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Active model</p>
-              <p className="mt-2 font-mono text-xs text-slate-100">{aiModel}</p>
-              <p className="mt-3 text-xs leading-6 text-slate-400">
-                Lafz now stores literal, natural, and slang-aware alternatives per line, then runs a selector pass to
-                choose the safest final default for playback.
-              </p>
-            </div>
-
             {initialDraft?.songContext ? (
-              <div className="rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Song context</p>
-                <p className="mt-3 text-slate-100">{initialDraft.songContext.summary}</p>
-                <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">Tone</p>
-                <p className="mt-2 text-slate-200">{initialDraft.songContext.tone}</p>
+              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+                <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Song context</p>
+                <p className="mt-2 text-[#fff0f6]">{initialDraft.songContext.summary}</p>
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Tone</p>
+                <p className="mt-1.5">{initialDraft.songContext.tone}</p>
                 {initialDraft.songContext.themes.length > 0 ? (
                   <>
-                    <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">Themes</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Themes</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {initialDraft.songContext.themes.map((theme) => (
-                        <span key={theme} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-slate-200">
+                        <span key={theme} className="rounded-full border border-[rgba(160,60,255,0.20)] bg-[rgba(160,60,255,0.08)] px-3 py-1 text-[11px] text-[#c87eff]">
                           {theme}
                         </span>
                       ))}
@@ -603,15 +351,15 @@ export function AiDraftWorkspace({
             ) : null}
 
             {initialDraft?.artistMemory ? (
-              <div className="rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Artist memory</p>
-                <p className="mt-3 text-slate-100">{initialDraft.artistMemory.displayName}</p>
+              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+                <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Artist memory</p>
+                <p className="mt-2 text-[#fff0f6]">{initialDraft.artistMemory.displayName}</p>
                 {initialDraft.artistMemory.translationPreferences.length > 0 ? (
                   <>
-                    <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">Preferences</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Preferences</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {initialDraft.artistMemory.translationPreferences.map((preference) => (
-                        <span key={preference} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-slate-200">
+                        <span key={preference} className="rounded-full border border-[rgba(160,60,255,0.20)] bg-[rgba(160,60,255,0.08)] px-3 py-1 text-[11px] text-[#c87eff]">
                           {preference}
                         </span>
                       ))}
@@ -623,17 +371,27 @@ export function AiDraftWorkspace({
 
             <button
               type="button"
-              onClick={() => {
-                void handleGenerate();
-              }}
+              onClick={() => { void handleGenerate(); }}
               disabled={isGenerating}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-full bg-[linear-gradient(135deg,#a03cff,#ff1464)] py-3.5 text-[14px] font-bold text-white shadow-[0_0_24px_rgba(160,60,255,0.35)] transition hover:opacity-90 hover:shadow-[0_0_40px_rgba(160,60,255,0.55)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isGenerating ? "Generating draft..." : "Generate AI draft"}
+              {isGenerating ? "Generating draft..." : "Generate Draft"}
             </button>
+
+            {draftLines.length > 0 ? (
+              <a
+                href={`/library/track/${track.spotifyTrackId}/review`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.08)] py-3.5 text-[14px] font-bold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.16)] hover:shadow-[0_0_20px_rgba(255,20,100,0.25)]"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Review Lyrics
+              </a>
+            ) : null}
           </div>
         ) : (
-          <div className="mt-6 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-7 text-amber-100">
+          <div className="mt-5 rounded-[14px] border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] p-4 text-[13px] leading-[1.65] text-[#ffc87a]">
             {aiConfigured
               ? "Lafz needs readable original lyrics before it can generate a draft."
               : "Lafz could not initialize the AI provider yet."}
@@ -641,226 +399,6 @@ export function AiDraftWorkspace({
         )}
       </section>
 
-      <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel)] p-6 shadow-[0_24px_100px_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Draft review</p>
-            <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-white">
-              Review only the uncertain lines.
-            </h2>
-            <p className="mt-2 text-base text-slate-400">
-              Lafz keeps literal, natural, and slang-aware versions side by side, then bubbles low-confidence lines to the top so you can fix the risky ones first. Saving your edits also teaches Lafz track-level and artist-level preferred renderings for future drafts and re-runs the remaining lines with your corrected context.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-400">
-            <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
-              {draftLines.length} draft lines
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
-              {lowConfidenceCount} low confidence
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setShowLowConfidenceFirst((currentValue) => !currentValue);
-              }}
-              className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-slate-200 transition hover:bg-white/[0.1]"
-            >
-              {showLowConfidenceFirst ? "Low confidence first" : "Original order"}
-            </button>
-          </div>
-        </div>
-
-        {initialInspection.exists ? (
-          <div className="mt-5 rounded-[22px] border border-dashed border-white/12 bg-black/10 p-4 text-sm text-slate-300">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Local draft path</p>
-            <p className="mt-2 break-all font-mono text-xs text-slate-200">{initialInspection.filePath}</p>
-            <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">Last modified</p>
-            <p className="mt-2 text-slate-200">{formatUpdatedAt(initialInspection.lastModifiedAt)}</p>
-          </div>
-        ) : null}
-
-        {draftLines.length > 0 ? (
-          <>
-            <div className="mt-6 space-y-4">
-              {displayedDraftLines.map(({ line, duplicateCount }) => (
-                <article key={`${track.spotifyTrackId}-${line.order}`} className="rounded-[24px] border border-white/8 bg-black/10 p-5">
-                  {(() => {
-                    const matchingCount = getMatchingLines(line.order).length;
-                    const saveKey = normalizeReviewKey(line.original) || `line-${line.order}`;
-
-                    return (
-                      <>
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Line {line.order + 1}</p>
-                        {duplicateCount > 1 ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                            appears {duplicateCount} times
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-lg text-white">{line.original}</p>
-                    </div>
-                    <span className={`inline-flex rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${getConfidenceClasses(line.confidence)}`}>
-                      {line.confidence} confidence
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Literal</p>
-                      <p className="mt-2 text-sm leading-7 text-slate-200">{line.literal}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateMatchingDraftLines(line.order, (currentLine) =>
-                            applyManualReview(currentLine, {
-                              chosen: currentLine.literal
-                            })
-                          );
-                        }}
-                        className="mt-4 inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/10"
-                      >
-                        Use literal
-                      </button>
-                    </div>
-
-                    <div className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Natural</p>
-                      <p className="mt-2 text-sm leading-7 text-slate-200">{line.natural}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateMatchingDraftLines(line.order, (currentLine) =>
-                            applyManualReview(currentLine, {
-                              chosen: currentLine.natural
-                            })
-                          );
-                        }}
-                        className="mt-4 inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-xs font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
-                      >
-                        Use natural
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Slang-aware</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-200">{line.slangAware}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateMatchingDraftLines(line.order, (currentLine) =>
-                          applyManualReview(currentLine, {
-                            chosen: currentLine.slangAware
-                          })
-                        );
-                      }}
-                      className="mt-4 inline-flex items-center justify-center rounded-full border border-fuchsia-300/20 bg-fuchsia-300/10 px-4 py-2 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-300/15"
-                    >
-                      Use slang-aware
-                    </button>
-                  </div>
-
-                  <label className="mt-4 block">
-                    <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Chosen line</span>
-                    <textarea
-                      value={line.chosen}
-                      rows={2}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        updateMatchingDraftLines(line.order, (currentLine) =>
-                          applyManualReview(currentLine, {
-                            chosen: nextValue
-                          })
-                        );
-                      }}
-                      className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
-                    />
-                  </label>
-
-                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                    <label className="block">
-                      <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Transliteration</span>
-                      <input
-                        type="text"
-                        value={line.transliteration ?? ""}
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          updateMatchingDraftLines(line.order, (currentLine) =>
-                            applyManualReview(currentLine, {
-                              transliteration: nextValue || null
-                            })
-                          );
-                        }}
-                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Note</span>
-                      <textarea
-                        value={line.note ?? ""}
-                        rows={2}
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          updateMatchingDraftLines(line.order, (currentLine) =>
-                            applyManualReview(currentLine, {
-                              note: nextValue || null
-                            })
-                          );
-                        }}
-                        className="mt-3 w-full rounded-[18px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
-                      />
-                    </label>
-                  </div>
-
-                  {line.selectorReason ? (
-                    <div className="mt-4 rounded-[20px] border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] p-4 text-sm leading-7 text-[#fff0f6]">
-                      <p className="text-xs uppercase tracking-[0.22em] text-[#ffb3d0]/80">Selector reason</p>
-                      <p className="mt-2">{line.selectorReason}</p>
-                    </div>
-                  ) : null}
-
-                  {line.ambiguity ? (
-                    <div className="mt-4 rounded-[20px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-7 text-amber-100">
-                      <p className="text-xs uppercase tracking-[0.22em] text-amber-200/80">Ambiguity</p>
-                      <p className="mt-2">{line.ambiguity}</p>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleSaveLine(line.order);
-                      }}
-                      disabled={savingReviewKey === saveKey}
-                      className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {savingReviewKey === saveKey
-                        ? "Saving line..."
-                        : matchingCount > 1
-                          ? `Save all ${matchingCount} matching lines`
-                          : "Save line"}
-                    </button>
-                  </div>
-                      </>
-                    );
-                  })()}
-                </article>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="mt-5 rounded-[22px] border border-white/8 bg-white/[0.03] p-5 text-base leading-7 text-slate-300">
-            Generate a draft first, then Lafz will show the stronger review view here instead of only raw JSON.
-          </div>
-        )}
-      </section>
     </div>
   );
 }

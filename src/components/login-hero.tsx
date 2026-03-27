@@ -3,7 +3,6 @@
 import type { CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { AppTopBar } from "@/components/app-top-bar";
 
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "The Spotify sign-in attempt expired before the callback completed. Try connecting again.",
@@ -138,8 +137,6 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
       </div>
 
       <div className="relative z-10 mx-auto max-w-[430px] px-6 pb-16">
-        <AppTopBar className="lafz-home-fade-in mt-7" />
-
         <section className="relative pb-12 pt-14">
           <div className="pointer-events-none absolute right-[-8px] top-6 h-[210px] w-[165px]">
             {floatingCards.map((card, index) => (

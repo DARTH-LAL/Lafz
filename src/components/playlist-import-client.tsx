@@ -4,7 +4,6 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppTopBar } from "@/components/app-top-bar";
-import { StatePanel } from "@/components/state-panel";
 import type {
   LyricsAutoFetchResult,
   PlaylistImportApiResponse,
@@ -13,347 +12,265 @@ import type {
   TrackImportResult
 } from "@/features/spotify/types";
 
-function formatDuration(durationMs: number) {
-  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+type DetectedType = "playlist" | "track" | "unknown";
 
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+function detectInputType(input: string): DetectedType {
+  const trimmed = input.trim();
+  if (!trimmed) return "unknown";
+  if (trimmed.includes("spotify.com/playlist/") || trimmed.includes("playlist/")) return "playlist";
+  if (trimmed.includes("spotify.com/track/") || trimmed.includes("track/")) return "track";
+  return "unknown";
 }
 
 export function PlaylistImportClient() {
   const router = useRouter();
-  const [playlistInput, setPlaylistInput] = useState("");
-  const [playlistStatus, setPlaylistStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [playlistErrorMessage, setPlaylistErrorMessage] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+  const [manualType, setManualType] = useState<"playlist" | "track">("playlist");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [playlistSummary, setPlaylistSummary] = useState<PlaylistImportResult | null>(null);
-
-  const [trackInput, setTrackInput] = useState("");
-  const [trackStatus, setTrackStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [trackErrorMessage, setTrackErrorMessage] = useState<string | null>(null);
   const [trackSummary, setTrackSummary] = useState<TrackImportResult | null>(null);
   const [lyricsAutoFetch, setLyricsAutoFetch] = useState<LyricsAutoFetchResult | null>(null);
 
-  async function handlePlaylistSubmit(event: FormEvent<HTMLFormElement>) {
+  const detected = detectInputType(input);
+  const resolvedType: "playlist" | "track" = detected === "unknown" ? manualType : detected;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPlaylistStatus("submitting");
-    setPlaylistErrorMessage(null);
+    setStatus("submitting");
+    setErrorMessage(null);
+    setPlaylistSummary(null);
+    setTrackSummary(null);
+    setLyricsAutoFetch(null);
 
     try {
-      const response = await fetch("/api/library/import-playlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          playlistInput
-        })
-      });
-
-      const payload = (await response.json()) as PlaylistImportApiResponse;
-
-      if (!payload.success) {
-        throw new Error(payload.error);
+      if (resolvedType === "playlist") {
+        const response = await fetch("/api/library/import-playlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playlistInput: input })
+        });
+        const payload = (await response.json()) as PlaylistImportApiResponse;
+        if (!payload.success) throw new Error(payload.error);
+        setPlaylistSummary(payload.summary);
+        setStatus("success");
+      } else {
+        const response = await fetch("/api/library/import-track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trackInput: input })
+        });
+        const payload = (await response.json()) as TrackImportApiResponse;
+        if (!payload.success) throw new Error(payload.error);
+        setTrackSummary(payload.summary);
+        setLyricsAutoFetch(payload.lyricsAutoFetch);
+        setStatus("success");
+        router.push(`/library/track/${payload.summary.trackId}`);
       }
-
-      if (!response.ok) {
-        throw new Error("Playlist import failed.");
-      }
-
-      setPlaylistSummary(payload.summary);
-      setPlaylistStatus("success");
     } catch (error) {
-      setPlaylistSummary(null);
-      setPlaylistStatus("error");
-      setPlaylistErrorMessage(error instanceof Error ? error.message : "Playlist import failed.");
-    }
-  }
-
-  async function handleTrackSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setTrackStatus("submitting");
-    setTrackErrorMessage(null);
-
-    try {
-      const response = await fetch("/api/library/import-track", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          trackInput
-        })
-      });
-
-      const payload = (await response.json()) as TrackImportApiResponse;
-
-      if (!payload.success) {
-        throw new Error(payload.error);
-      }
-
-      if (!response.ok) {
-        throw new Error("Single-song import failed.");
-      }
-
-      setTrackSummary(payload.summary);
-      setLyricsAutoFetch(payload.lyricsAutoFetch);
-      setTrackStatus("success");
-      router.push(`/library/track/${payload.summary.trackId}`);
-    } catch (error) {
-      setTrackSummary(null);
-      setLyricsAutoFetch(null);
-      setTrackStatus("error");
-      setTrackErrorMessage(error instanceof Error ? error.message : "Single-song import failed.");
+      setStatus("error");
+      setErrorMessage(error instanceof Error ? error.message : "Import failed.");
     }
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-8 lg:px-10">
-      <AppTopBar connected className="mb-8" />
+    <main className="relative min-h-screen w-full overflow-x-hidden bg-[#060410] text-[#fff0f6]">
 
-      <header className="mb-8 border-b border-white/8 pb-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Lafz library tools</p>
-          <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-            Import a Spotify playlist or single song into a local Lafz song library.
+      {/* Background glows */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -right-40 -top-40 h-[700px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(255,20,100,0.18)_0%,transparent_60%)]" />
+        <div className="absolute -left-28 bottom-0 h-[450px] w-[500px] rounded-full bg-[radial-gradient(ellipse,rgba(160,20,255,0.10)_0%,transparent_65%)]" />
+      </div>
+
+      {/* Dot grid */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          backgroundImage: "radial-gradient(rgba(255,20,100,0.10) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)"
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
+        <AppTopBar connected className="mb-8" />
+
+        {/* Header */}
+        <header className="mb-10">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-0.5 w-7 rounded-full bg-[linear-gradient(90deg,#ff1464,transparent)] shadow-[0_0_8px_#ff1464]" />
+            <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464] [text-shadow:0_0_16px_rgba(255,20,100,0.6)]">
+              Lafz Library Tools
+            </p>
+          </div>
+          <h1 className="font-display text-5xl font-extrabold leading-[1.06] tracking-[-2px]">
+            Import your music
+            <br />
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff6aaa 25%,#ffffff 48%,#ff6aaa 68%,#ff1464 100%)",
+                backgroundSize: "250% 100%",
+                animation: "lafz-shimmer 3.5s linear infinite"
+              }}
+            >
+              into Lafz.
+            </span>
           </h1>
-        </div>
-      </header>
+          <div className="relative mt-8 h-px w-full">
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,20,100,0.5)_30%,rgba(255,20,100,0.8)_50%,rgba(255,20,100,0.5)_70%,transparent)]" />
+            <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff1464] shadow-[0_0_12px_#ff1464,0_0_24px_rgba(255,20,100,0.6)]" />
+          </div>
+        </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start">
-        <div className="space-y-6">
-          <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Playlist importer</p>
-            <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
-              Build a translation work queue from Spotify.
+        <div className="grid gap-6 lg:grid-cols-[440px_1fr] lg:items-start">
+
+          {/* Left: unified import form */}
+          <section className="rounded-[24px] border border-[rgba(255,20,100,0.16)] bg-[rgba(10,7,22,0.90)] p-7 shadow-[0_0_60px_rgba(255,20,100,0.05)] backdrop-blur-[24px]">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">Import</p>
+            <h2 className="mb-3 font-display text-[26px] font-extrabold leading-[1.15] tracking-[-0.8px]">
+              Paste a playlist or track link.
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-300">
-              Paste a Spotify playlist URL or raw playlist ID. Lafz will fetch the playlist tracks, deduplicate them,
-              save a local library JSON file, and automatically ensure each imported song has a local translation file in
-              <span className="ml-2 rounded bg-white/8 px-2 py-1 font-mono text-xs text-slate-200">data/translations/local</span>.
+            <p className="text-[14px] leading-[1.75] text-[#7a6890]">
+              Lafz automatically detects whether it&apos;s a playlist or a single song from the URL.
             </p>
 
-            <div className="mt-5 rounded-[22px] border border-amber-300/15 bg-amber-300/8 p-4 text-sm leading-7 text-amber-100">
-              Spotify's current Development Mode rules may block track imports from public playlists you do not own. If you
-              see a <span className="mx-1 rounded bg-black/20 px-2 py-1 font-mono text-xs">403 Forbidden</span> error,
-              copy that playlist into one of your own playlists or use a playlist you collaborate on, then import again.
+            <div className="mt-4 rounded-[16px] border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] p-4 text-[13px] leading-[1.65] text-[#ffc87a]">
+              ⚠ Spotify&apos;s Development Mode may block public playlists you don&apos;t own. If you see a{" "}
+              <code className="mx-1 rounded-[6px] bg-black/25 px-2 py-0.5 font-mono text-[11px]">403 Forbidden</code>
+              {" "}error, copy it to your own library first.
             </div>
 
-            <form className="mt-8 space-y-5" onSubmit={handlePlaylistSubmit}>
+            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <label className="block">
-                <span className="text-sm font-semibold text-slate-200">Playlist URL or ID</span>
+                <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">
+                  Spotify URL or ID
+                </span>
                 <input
-                  value={playlistInput}
-                  onChange={(event) => setPlaylistInput(event.target.value)}
-                  placeholder="https://open.spotify.com/playlist/... or 37i9dQZF..."
-                  className="mt-3 w-full rounded-[20px] border border-white/12 bg-black/20 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="https://open.spotify.com/playlist/… or /track/…"
+                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
                 />
               </label>
 
+              {/* Detection indicator */}
+              <div className="flex items-center gap-3">
+                {detected !== "unknown" ? (
+                  <div className="flex items-center gap-2 rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] px-3 py-1.5 text-[12px] font-semibold text-[#ff6aaa]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#ff1464] shadow-[0_0_6px_#ff1464]" />
+                    Detected: {detected === "playlist" ? "Playlist" : "Single track"}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] text-[#5a4870]">Import as:</span>
+                    <div className="flex rounded-full border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] p-0.5">
+                      {(["playlist", "track"] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setManualType(type)}
+                          className={`rounded-full px-4 py-1.5 text-[12px] font-semibold capitalize transition ${
+                            manualType === type
+                              ? "bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] text-white shadow-[0_0_12px_rgba(255,20,100,0.35)]"
+                              : "text-[#7a6890] hover:text-[#ff6aaa]"
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
-                disabled={playlistStatus === "submitting"}
-                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-6 py-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={status === "submitting" || !input.trim()}
+                className="w-full rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] py-3.5 text-[15px] font-bold text-white shadow-[0_0_28px_rgba(255,20,100,0.40)] transition hover:opacity-90 hover:shadow-[0_0_40px_rgba(255,20,100,0.60)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {playlistStatus === "submitting" ? "Importing playlist..." : "Import playlist"}
+                {status === "submitting"
+                  ? resolvedType === "playlist" ? "Importing playlist…" : "Importing & fetching lyrics…"
+                  : resolvedType === "playlist" ? "Import Playlist" : "Import Song"}
               </button>
             </form>
+
+            {status === "error" && errorMessage ? (
+              <div className="mt-4 rounded-[14px] border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.08)] p-4 text-[13px] text-[#ff6aaa]">
+                {errorMessage}
+              </div>
+            ) : null}
+
+            {playlistSummary ? (
+              <div className="mt-5 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-[2px] text-[rgba(255,20,100,0.65)]">Import complete — {playlistSummary.playlistName}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Tracks fetched", value: playlistSummary.totalTracksFetched },
+                    { label: "Imported", value: playlistSummary.importedCount },
+                    { label: "Skipped", value: playlistSummary.skippedCount },
+                    { label: "Files created", value: playlistSummary.translationFilesCreatedCount }
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-[14px] border border-[rgba(255,20,100,0.12)] bg-[rgba(255,20,100,0.05)] p-3">
+                      <p className="text-[10px] uppercase tracking-[1.5px] text-[rgba(255,20,100,0.55)]">{stat.label}</p>
+                      <p className="mt-1 text-[22px] font-extrabold text-[#ff4d96] [text-shadow:0_0_20px_rgba(255,20,100,0.4)]">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
 
-          <section className="rounded-[32px] border border-white/10 bg-[color:var(--lafz-panel-strong)] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ff6ba8]/80">Single-song import</p>
-            <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white">
-              Pull one track into Lafz without building a whole playlist first.
-            </h2>
-            <p className="mt-3 text-base leading-7 text-slate-300">
-              Paste a Spotify track URL or raw track ID. Lafz will fetch the song metadata, write a small local library
-              JSON file for that track, and automatically ensure a local translation file already exists for later lyrics work.
-            </p>
+          {/* Right: what happens */}
+          <div>
+            <div className="rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-7 backdrop-blur-[20px]">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">What happens when you import</p>
+              <h3 className="mb-2 text-[22px] font-bold tracking-[-0.5px]">Instant, local, private.</h3>
+              <p className="mb-6 text-[13px] leading-[1.7] text-[#7a6890]">
+                Everything stays on your machine. No data leaves Lafz except the Spotify API call to fetch track metadata.
+              </p>
 
-            <form className="mt-8 space-y-5" onSubmit={handleTrackSubmit}>
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-200">Track URL or ID</span>
-                <input
-                  value={trackInput}
-                  onChange={(event) => setTrackInput(event.target.value)}
-                  placeholder="https://open.spotify.com/track/... or 3n3Ppam7vgaVa1iaRUc9Lp"
-                  className="mt-3 w-full rounded-[20px] border border-white/12 bg-black/20 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
-                />
-              </label>
-
-              <button
-                type="submit"
-                disabled={trackStatus === "submitting"}
-                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-6 py-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {trackStatus === "submitting" ? "Importing & fetching lyrics…" : "Import song"}
-              </button>
-            </form>
-          </section>
-        </div>
-
-        <div className="space-y-5">
-          <StatePanel
-            eyebrow="Local output"
-            title="What Lafz writes"
-            description="Imports stay local. This page writes playlist library files, single-song library files, and auto-created local translation files."
-          >
-            <div className="grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
-              <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Playlist library file</p>
-                <p className="mt-2 font-mono text-xs text-slate-200">data/library/playlists/&lt;playlistId&gt;.json</p>
-              </div>
-              <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Single-song file</p>
-                <p className="mt-2 font-mono text-xs text-slate-200">data/library/playlists/single-track-&lt;spotifyTrackId&gt;.json</p>
-              </div>
-              <div className="rounded-[22px] border border-white/8 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Local translation files</p>
-                <p className="mt-2 font-mono text-xs text-slate-200">data/translations/local/&lt;spotifyTrackId&gt;.json</p>
-              </div>
-            </div>
-          </StatePanel>
-
-          {playlistStatus === "error" && playlistErrorMessage ? (
-            <StatePanel eyebrow="Import error" title="Lafz could not import that playlist" description={playlistErrorMessage} />
-          ) : null}
-
-          {trackStatus === "error" && trackErrorMessage ? (
-            <StatePanel eyebrow="Import error" title="Lafz could not import that song" description={trackErrorMessage} />
-          ) : null}
-
-          {playlistSummary ? (
-            <StatePanel
-              eyebrow="Playlist summary"
-              title={playlistSummary.playlistName}
-              description="The playlist import finished and Lafz wrote the normalized local files below."
-            >
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Total tracks fetched</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{playlistSummary.totalTracksFetched}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Imported count</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{playlistSummary.importedCount}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Skipped count</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{playlistSummary.skippedCount}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Translation files created</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{playlistSummary.translationFilesCreatedCount}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Existing files preserved</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{playlistSummary.translationFilesPreservedCount}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-[22px] border border-dashed border-white/12 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Playlist file path</p>
-                <p className="mt-2 break-all font-mono text-xs text-slate-200">{playlistSummary.playlistFilePath}</p>
-              </div>
-
-              <div className="mt-6 rounded-[22px] border border-white/8 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Skipped reasons</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <p className="text-slate-500">Duplicates</p>
-                    <p className="mt-1 text-lg text-white">{playlistSummary.skippedReasons.duplicate_track}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Local tracks</p>
-                    <p className="mt-1 text-lg text-white">{playlistSummary.skippedReasons.local_track}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Unavailable tracks</p>
-                    <p className="mt-1 text-lg text-white">{playlistSummary.skippedReasons.unavailable_track}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Unsupported items</p>
-                    <p className="mt-1 text-lg text-white">{playlistSummary.skippedReasons.unsupported_item}</p>
-                  </div>
-                </div>
-              </div>
-            </StatePanel>
-          ) : null}
-
-          {trackSummary ? (
-            <StatePanel
-              eyebrow="Single-song summary"
-              title={trackSummary.trackTitle}
-              description={`${trackSummary.trackArtist} • ${trackSummary.trackAlbum}`}
-            >
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Track ID</p>
-                  <p className="mt-2 break-all font-mono text-xs text-slate-200">{trackSummary.trackId}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Duration</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{formatDuration(trackSummary.trackDurationMs)}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Translation file</p>
-                  <p className="mt-2 text-2xl font-semibold text-white capitalize">{trackSummary.translationFileStatus}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Collection ID</p>
-                  <p className="mt-2 break-all font-mono text-xs text-slate-200">{trackSummary.syntheticLibraryId}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-[22px] border border-dashed border-white/12 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Single-song library file path</p>
-                <p className="mt-2 break-all font-mono text-xs text-slate-200">{trackSummary.libraryFilePath}</p>
-              </div>
-
-              <div className="mt-4 rounded-[22px] border border-dashed border-white/12 bg-black/10 p-4 text-sm text-slate-300">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Local translation file path</p>
-                <p className="mt-2 break-all font-mono text-xs text-slate-200">{trackSummary.translationFilePath}</p>
-              </div>
-
-              {lyricsAutoFetch ? (
-                <div
-                  className={`mt-4 rounded-[22px] border p-4 text-sm leading-6 ${
-                    lyricsAutoFetch.status === "fetched_synced"
-                      ? "border-[rgba(255,45,120,0.25)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
-                      : lyricsAutoFetch.status === "fetched_plain"
-                        ? "border-white/12 bg-white/[0.04] text-slate-200"
-                        : "border-amber-300/20 bg-amber-300/10 text-amber-100"
-                  }`}
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] opacity-70">
-                    {lyricsAutoFetch.status === "fetched_synced"
-                      ? "✓ Synced lyrics fetched"
-                      : lyricsAutoFetch.status === "fetched_plain"
-                        ? "✓ Plain lyrics fetched"
-                        : lyricsAutoFetch.status === "not_found"
-                          ? "Lyrics not found"
-                          : "Lyrics fetch error"}
-                  </p>
-                  <p className="mt-1">{lyricsAutoFetch.message}</p>
-                </div>
-              ) : null}
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                {trackSummary.trackUrl ? (
-                  <a
-                    href={trackSummary.trackUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+              <div className="space-y-3">
+                {[
+                  { icon: "🎵", title: "Tracks are fetched from Spotify", desc: "Lafz reads the playlist or track metadata using your connected Spotify account." },
+                  { icon: "🗂", title: "Duplicates are merged automatically", desc: "Songs appearing in multiple playlists are deduplicated by Spotify track ID." },
+                  { icon: "📝", title: "Translation files are created", desc: "A local translation stub is written for every new track, ready for lyric and AI work." },
+                  { icon: "✨", title: "Queue is ready immediately", desc: "Head to the Library Queue to see all imported songs and start translating." }
+                ].map((step) => (
+                  <div
+                    key={step.title}
+                    className="flex items-start gap-4 rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4 transition hover:border-[rgba(255,20,100,0.20)] hover:bg-[rgba(255,20,100,0.08)]"
                   >
-                    Open on Spotify
-                  </a>
-                ) : null}
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.12)] text-[16px]">
+                      {step.icon}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-bold text-[#fff0f6]">{step.title}</p>
+                      <p className="mt-0.5 text-[12px] leading-[1.6] text-[#7a6890]">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </StatePanel>
-          ) : null}
+
+              <div className="mt-5 space-y-2">
+                {[
+                  "Only playlists you own or collaborate on can be imported",
+                  "Existing translation files are never overwritten",
+                  "Single-song imports automatically fetch lyrics if available"
+                ].map((tip) => (
+                  <div key={tip} className="flex items-center gap-3 rounded-[12px] border border-white/[0.05] bg-white/[0.02] px-4 py-3 text-[12px] text-[#9a85b2]">
+                    <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#ff1464] shadow-[0_0_6px_#ff1464]" />
+                    {tip}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style>{`@keyframes lafz-shimmer { to { background-position: -250% 0; } }`}</style>
     </main>
   );
 }

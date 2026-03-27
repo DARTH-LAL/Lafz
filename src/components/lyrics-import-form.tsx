@@ -110,43 +110,34 @@ export function LyricsImportForm({ track, initialMessage, initialStatus }: Lyric
 
       {message ? (
         <div
-          className={`mt-5 rounded-[22px] p-4 text-sm leading-7 ${
+          className={`mt-4 rounded-[14px] p-4 text-[13px] leading-[1.65] ${
             messageTone === "error"
-              ? "border border-amber-300/20 bg-amber-300/10 text-amber-100"
-              : "border border-[rgba(255,45,120,0.2)] bg-[rgba(255,45,120,0.09)] text-[#fff0f6]"
+              ? "border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] text-[#ffc87a]"
+              : "border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.08)] text-[#ff6aaa]"
           }`}
         >
           {message}
         </div>
       ) : null}
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-4 space-y-3">
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Lyrics text</span>
+          <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">Lyrics text</span>
           <textarea
             value={lyricsText}
-            onChange={(event) => {
-              setLyricsText(event.target.value);
-            }}
-            rows={10}
-            placeholder={`[00:12.34] Example timed line
-[00:16.40] Another line
-
-or plain lyrics text
-
-or synced JSON`}
-            className="mt-3 w-full rounded-[22px] border border-white/12 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#ff2d78]/50"
+            onChange={(event) => { setLyricsText(event.target.value); }}
+            rows={8}
+            placeholder={`[00:12.34] Example timed line\n[00:16.40] Another line\n\nor plain lyrics text\n\nor synced JSON`}
+            className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 font-mono text-[13px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
           />
         </label>
         <button
           type="button"
-          onClick={() => {
-            void handleSubmit();
-          }}
+          onClick={() => { void handleSubmit(); }}
           disabled={isSubmitting || !lyricsText.trim()}
-          className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] py-3 text-[14px] font-bold text-white shadow-[0_0_20px_rgba(255,20,100,0.35)] transition hover:opacity-90 hover:shadow-[0_0_32px_rgba(255,20,100,0.55)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Importing lyrics..." : "Import local lyrics"}
+          {isSubmitting ? "Importing lyrics..." : "Save Lyrics"}
         </button>
       </div>
     </>
