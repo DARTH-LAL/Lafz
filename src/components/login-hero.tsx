@@ -113,17 +113,17 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
   const repeatedTicker = [...tickerItems, ...tickerItems];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070510] text-[#fff0f6] [font-family:var(--font-jakarta)]">
+    <main className="relative min-h-screen overflow-hidden bg-[#2a0d14] text-[#fff0f6] [font-family:var(--font-jakarta)]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -right-[240px] -top-[300px] h-[720px] w-[720px] rounded-full bg-[radial-gradient(circle,rgba(255,45,120,0.12)_0%,transparent_62%)]" />
         <div className="absolute -left-[190px] bottom-[20px] h-[360px] w-[520px] rotate-[-18deg] bg-[radial-gradient(ellipse,rgba(255,140,66,0.08)_0%,transparent_68%)]" />
         <div className="absolute -left-[70px] top-[48%] h-[330px] w-[330px] rounded-full bg-[radial-gradient(circle,rgba(120,50,210,0.07)_0%,transparent_68%)]" />
       </div>
 
-      <div className="lafz-home-fade-in relative z-10 overflow-hidden border-y border-white/6 bg-[rgba(13,11,26,0.54)] py-3 backdrop-blur-xl">
+      <div className="lafz-home-fade-in relative z-10 overflow-hidden border-y border-[rgba(255,20,100,0.20)] bg-[rgba(6,2,5,0.72)] py-3 backdrop-blur-xl">
         <div className="lafz-home-ticker flex w-max items-center">
           {repeatedTicker.map((item, index) => (
-            <div key={`${item.original}-${index}`} className="flex items-center gap-3 px-7 text-[13px] font-medium text-[#8f7ca7]">
+            <div key={`${item.original}-${index}`} className="flex items-center gap-3 px-7 text-[13px] font-medium text-white">
               <span className="rounded-full border border-white/8 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] text-[#ff9dbf]">
                 {item.language}
               </span>
@@ -142,7 +142,7 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
             {floatingCards.map((card, index) => (
               <div
                 key={card.title}
-                className="lafz-floating-card absolute h-[112px] w-[112px] overflow-hidden rounded-[20px] border border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
+                className="lafz-floating-card absolute h-[112px] w-[112px] overflow-hidden rounded-[20px] border border-[rgba(255,20,100,0.20)] shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
                 style={{
                   top: `${index * 34}px`,
                   right: index === 1 ? "44px" : index === 2 ? "10px" : "0px",
@@ -193,7 +193,7 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
               </span>
             </h1>
 
-            <p className="lafz-home-fade-up mt-5 text-[15px] leading-[1.72] font-light text-[#9a85b2]" style={{ animationDelay: "0.22s" }}>
+            <p className="lafz-home-fade-up mt-5 text-[15px] leading-[1.72] font-light text-white" style={{ animationDelay: "0.22s" }}>
               Lafz reads what&apos;s playing, brings your translations on screen in real time, and is already being shaped for both Spotify now and Apple Music sync next.
             </p>
           </div>
@@ -201,24 +201,24 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
 
         <section id="how-it-works" className="lafz-home-fade-up mt-1 space-y-1" style={{ animationDelay: "0.32s" }}>
           {steps.map((step, index) => (
-            <div key={step.title} className="flex gap-4 border-b border-white/7 py-5 last:border-b-0">
+            <div key={step.title} className="flex gap-4 border-b border-[rgba(255,20,100,0.12)] py-5 last:border-b-0">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border border-[#ff8c42]/25 bg-[linear-gradient(135deg,rgba(255,140,66,0.16)_0%,rgba(255,45,120,0.12)_100%)] text-[13px] font-extrabold text-[#ffb178] shadow-[0_10px_24px_rgba(255,140,66,0.08)]">
                 {index + 1}
               </div>
               <div>
                 <div className="text-[15px] font-bold tracking-[-0.3px] text-[#fff0f6]">{step.title}</div>
-                <div className="mt-1 text-[13px] leading-[1.6] font-light text-[#9a85b2]">{step.description}</div>
+                <div className="mt-1 text-[13px] leading-[1.6] font-light text-white">{step.description}</div>
               </div>
             </div>
           ))}
         </section>
 
-        <section className="lafz-home-fade-up mt-10 rounded-[28px] border border-white/8 bg-[rgba(13,11,26,0.82)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl" style={{ animationDelay: "0.42s" }}>
+        <section className="lafz-home-fade-up lafz-card mt-10 p-6" style={{ animationDelay: "0.42s" }}>
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-[2.2px] text-[#ff7fb4]">Choose your player</div>
           <h2 className="text-[24px] leading-[1.2] font-bold tracking-[-1px] text-[#fff0f6]">
             Start with Spotify today, keep Apple Music in the same Lafz flow tomorrow.
           </h2>
-          <p className="mt-3 text-[14px] leading-[1.75] font-light text-[#9a85b2]">
+          <p className="mt-3 text-[14px] leading-[1.75] font-light text-white">
             Spotify is fully live now. Apple Music support is already planned into the product language, library matching, and synced translation experience so your workflow stays familiar when it arrives.
           </p>
 
@@ -238,7 +238,7 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
               type="button"
               disabled
               aria-disabled="true"
-              className="inline-flex items-center justify-center gap-3 rounded-[20px] border border-white/12 bg-white/[0.03] px-5 py-[18px] text-[15px] font-semibold text-[#fff0f6]/65"
+              className="inline-flex items-center justify-center gap-3 rounded-[20px] border border-[rgba(255,255,255,0.10)] bg-[rgba(6,2,5,0.92)] px-5 py-[18px] text-[15px] font-semibold text-white/50"
             >
               <AppleMusicIcon />
               Apple Music sync coming soon
@@ -257,7 +257,7 @@ export function LoginHero({ canonicalAppOrigin }: LoginHeroProps) {
           ) : null}
         </section>
 
-        <section className="lafz-home-fade-up flex flex-wrap items-center gap-3 pt-8 text-[12px] font-medium text-[#9a85b2]" style={{ animationDelay: "0.52s" }}>
+        <section className="lafz-home-fade-up flex flex-wrap items-center gap-3 pt-8 text-[12px] font-medium text-white" style={{ animationDelay: "0.52s" }}>
           {trustItems.map((item, index) => (
             <div key={item} className="flex items-center gap-3">
               <div className="flex items-center gap-2">

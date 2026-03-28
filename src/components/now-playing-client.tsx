@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
 import { LyricsPanel } from "@/components/lyrics-panel";
 import { PlayerCard } from "@/components/player-card";
@@ -147,12 +148,8 @@ export function NowPlayingClient() {
   );
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden [font-family:var(--font-jakarta)]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -right-[360px] -top-[420px] h-[1080px] w-[1080px] rounded-full bg-[radial-gradient(circle,rgba(255,45,120,0.09)_0%,transparent_58%)]" />
-        <div className="absolute -left-[200px] bottom-[-160px] h-[460px] w-[720px] rotate-[-15deg] bg-[radial-gradient(ellipse,rgba(255,140,66,0.06)_0%,transparent_68%)]" />
-        <div className="absolute left-[20%] top-[30%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(120,60,200,0.05)_0%,transparent_66%)]" />
-      </div>
+    <main className="relative h-[100dvh] overflow-hidden text-[#fff0f6] [font-family:var(--font-jakarta)]">
+      <AnimatedBackground />
 
       <div className="relative z-10 grid h-full min-h-0 grid-rows-[84px_1fr] lg:grid-cols-[360px_1fr] lg:grid-rows-[84px_1fr]">
         <div className="col-span-full px-4 pt-4 lg:px-6 lg:pt-5">
@@ -160,60 +157,99 @@ export function NowPlayingClient() {
         </div>
 
         {status === "loading" && !payload ? (
-          <div className="col-span-full p-5 lg:p-8">
-            <StatePanel
-              eyebrow="Connecting"
-              title="Checking your Spotify playback"
-              description="Lafz is reading your saved Spotify session, fetching the current track, and looking for a matching local translation file."
-              className="h-full"
-            />
+          <div className="col-span-full flex items-center justify-center p-5 lg:p-8">
+            <div className="lafz-card flex flex-col items-center gap-4 p-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] text-2xl">
+                ⏳
+              </div>
+              <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464]">Connecting</p>
+              <p className="text-[20px] font-bold text-white">Checking your Spotify playback…</p>
+              <p className="max-w-sm text-[14px] leading-[1.7] text-white">Lafz is reading your session and looking for a matching translation file.</p>
+            </div>
           </div>
         ) : null}
 
         {status === "error" && !payload ? (
-          <div className="col-span-full p-5 lg:p-8">
-            <StatePanel
-              eyebrow="Playback error"
-              title="Lafz could not read Spotify right now"
-              description={errorMessage ?? "The playback snapshot could not be loaded yet."}
-              className="h-full"
-            >
+          <div className="col-span-full flex items-center justify-center p-5 lg:p-8">
+            <div className="lafz-card flex flex-col items-center gap-4 p-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(255,100,100,0.30)] bg-[rgba(255,70,70,0.10)] text-2xl">
+                ⚠️
+              </div>
+              <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464]">Connection issue</p>
+              <p className="text-[20px] font-bold text-white">Couldn't reach Spotify</p>
+              <p className="max-w-sm text-[14px] leading-[1.7] text-white">{errorMessage ?? "Something went wrong reading your playback. It might just be a blip."}</p>
               <button
                 type="button"
-                onClick={() => {
-                  void loadPlayback();
-                }}
-                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff8c42_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                onClick={() => { void loadPlayback(); }}
+                className="mt-2 inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-6 py-3 text-[14px] font-bold text-white shadow-[0_0_24px_rgba(255,20,100,0.35)] transition hover:opacity-90"
               >
-                Retry playback check
+                Try again
               </button>
-            </StatePanel>
+            </div>
           </div>
         ) : null}
 
         {payload && playback ? (
           <>
             {!playback.track ? (
-              <div className="col-span-full p-5 lg:p-8">
-                <StatePanel
-                  eyebrow="No active playback"
-                  title="Start a song in Spotify to begin syncing"
-                  description="Once Spotify is actively playing a track on one of your devices, Lafz will read the current progress, look up a matching local translation JSON file, and follow the song in real time."
-                  className="h-full"
-                >
-                  <form action="/api/spotify/logout" method="post" className="flex flex-wrap gap-3">
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-                    >
-                      Disconnect Spotify
-                    </button>
-                  </form>
-                </StatePanel>
+              <div className="col-span-full flex items-center justify-center p-5 lg:p-8">
+                <div className="w-full max-w-2xl">
+                  {/* Main idle card */}
+                  <div className="lafz-card p-10 text-center">
+                    {/* Pulsing icon */}
+                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.08)] text-4xl shadow-[0_0_32px_rgba(255,20,100,0.20)]">
+                      🎧
+                    </div>
+
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464] [text-shadow:0_0_16px_rgba(255,20,100,0.5)]">
+                      Ready &amp; listening
+                    </p>
+                    <h1 className="mb-3 text-[28px] font-extrabold tracking-[-1px] text-white [text-shadow:0_0_24px_rgba(255,255,255,0.20)]">
+                      Play something on Spotify
+                    </h1>
+                    <p className="mx-auto mb-8 max-w-md text-[14px] leading-[1.75] text-white">
+                      Lafz is watching your Spotify session. The moment you hit play on any device, it'll lock onto the song and show the translation in real time.
+                    </p>
+
+                    {/* Quick actions */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Link
+                        href="/library/queue"
+                        className="flex items-center gap-3 rounded-[16px] border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.06)] p-4 text-left transition hover:border-[rgba(255,20,100,0.35)] hover:bg-[rgba(255,20,100,0.12)]"
+                      >
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.12)] text-[16px]">📚</span>
+                        <div>
+                          <p className="text-[13px] font-bold text-[#fff0f6]">Browse library</p>
+                          <p className="text-[11px] text-white">View all imported songs</p>
+                        </div>
+                      </Link>
+                      <Link
+                        href="/library/import"
+                        className="flex items-center gap-3 rounded-[16px] border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.06)] p-4 text-left transition hover:border-[rgba(255,20,100,0.35)] hover:bg-[rgba(255,20,100,0.12)]"
+                      >
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.12)] text-[16px]">＋</span>
+                        <div>
+                          <p className="text-[13px] font-bold text-[#fff0f6]">Import music</p>
+                          <p className="text-[11px] text-white">Add a playlist or track</p>
+                        </div>
+                      </Link>
+                    </div>
+
+                    {/* Disconnect — subtle, at the bottom */}
+                    <form action="/api/spotify/logout" method="post" className="mt-6">
+                      <button
+                        type="submit"
+                        className="text-[12px] text-white underline-offset-2 transition hover:text-[#ff6aaa] hover:underline"
+                      >
+                        Disconnect Spotify
+                      </button>
+                    </form>
+                  </div>
+                </div>
               </div>
             ) : (
               <>
-                <div className="min-h-0 overflow-hidden border-b border-white/6 lg:border-b-0 lg:border-r">
+                <div className="min-h-0 overflow-hidden border-b border-[rgba(255,20,100,0.15)] lg:border-b-0 lg:border-r">
                   <PlayerCard playback={playback} visualProgressMs={visualProgressMs} onPlaybackCommand={handlePlaybackCommand} />
                 </div>
 
@@ -235,30 +271,24 @@ export function NowPlayingClient() {
                       trackHref={resolvedTrackDetailHref}
                     />
                   ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-8 p-5 lg:p-8">
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(255,45,120,0.1)] text-2xl">
-                          🎵
+                    <div className="flex h-full flex-col items-center justify-center gap-6 p-5 lg:p-8">
+                      <div className="lafz-card w-full max-w-sm p-6 text-center">
+                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] text-xl">
+                          {payload.aiDraft ? "✏️" : "🎵"}
                         </div>
-                        <h2 className="text-xl font-bold tracking-[-0.4px] text-white">
-                          {payload.aiDraft ? "Draft ready — sync coming soon" : "No translation yet"}
-                        </h2>
-                        <p className="max-w-[260px] text-sm leading-relaxed text-slate-400">
+                        <p className="text-[11px] font-bold uppercase tracking-[2px] text-[#ff1464]">Now playing</p>
+                        <p className="mt-2 truncate text-[16px] font-bold text-white">{playback.track.title}</p>
+                        <p className="mt-0.5 truncate text-[13px] text-[rgba(255,20,100,0.65)]">{playback.track.artist}</p>
+                        <p className="mt-4 text-[13px] leading-[1.65] text-white">
                           {payload.aiDraft
-                            ? "An AI draft exists for this song. Open the track page to review and sync it."
-                            : "This song hasn't been translated yet. Open the track page to get started."}
+                            ? "An AI draft exists — open the track page to review it and enable real-time sync."
+                            : "This song hasn't been translated yet. Head to the track page to get started."}
                         </p>
-                      </div>
-
-                      <div className="w-full max-w-[320px] rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Now playing</p>
-                        <p className="mt-2 truncate text-base font-semibold text-white">{playback.track.title}</p>
-                        <p className="mt-0.5 truncate text-sm text-slate-400">{playback.track.artist}</p>
                         <Link
                           href={resolvedTrackDetailHref}
-                          className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78,#ff8c42)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                          className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_0_20px_rgba(255,20,100,0.30)] transition hover:opacity-90"
                         >
-                          Open track
+                          Open track page
                         </Link>
                       </div>
                     </div>

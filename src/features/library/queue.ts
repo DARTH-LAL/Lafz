@@ -27,9 +27,8 @@ const studioStatusPriority = {
   needs_lyrics: 0,
   lyrics_ready: 1,
   needs_review: 2,
-  reviewed: 3,
-  synced: 4,
-  published: 5
+  unsynced: 3,
+  synced: 4
 } as const;
 
 type SearchParamsInput = Record<string, string | string[] | undefined>;
@@ -198,9 +197,8 @@ function buildQueueSummary(records: LibraryQueueRecord[]): LibraryQueueSummary {
       needs_lyrics: 0,
       lyrics_ready: 0,
       needs_review: 0,
-      reviewed: 0,
+      unsynced: 0,
       synced: 0,
-      published: 0,
       ready_to_publish: 0,
       total_needs_review: 0
     }
@@ -237,7 +235,6 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
     studio_status: studioStatus.status,
     studio_status_reason: studioStatus.reason,
     ready_to_publish: studioStatus.readyToPublish,
-    published: studioStatus.published,
     lyrics_kind: lyricsInspection.kind,
     lyrics_language: lyricsInspection.language,
     lyrics_line_count: lyricsInspection.kind === "plain" ? lyricsInspection.plainLyrics?.split(/\r?\n/).filter((line) => line.trim().length > 0).length ?? 0 : lyricsInspection.lineCount,
@@ -364,9 +361,8 @@ export function parseLibraryQueueFilters(searchParams: SearchParamsInput): Libra
       statusValue === "needs_lyrics" ||
       statusValue === "lyrics_ready" ||
       statusValue === "needs_review" ||
-      statusValue === "reviewed" ||
-      statusValue === "synced" ||
-      statusValue === "published"
+      statusValue === "unsynced" ||
+      statusValue === "synced"
         ? statusValue
         : "all",
     language: getFirstParamValue(searchParams.language),

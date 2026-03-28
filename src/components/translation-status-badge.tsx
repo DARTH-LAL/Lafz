@@ -5,18 +5,16 @@ const statusLabelMap: Record<StudioQueueStatus, string> = {
   needs_lyrics: "Needs lyrics",
   lyrics_ready: "Lyrics ready",
   needs_review: "Needs review",
-  reviewed: "Reviewed",
-  synced: "Synced",
-  published: "Published"
+  unsynced: "Unsynced",
+  synced: "Synced"
 };
 
 const statusClassMap: Record<StudioQueueStatus, string> = {
-  needs_lyrics: "border-[rgba(255,45,120,0.24)] bg-[rgba(255,45,120,0.09)] text-[#ffd2e4]",
-  lyrics_ready: "border-fuchsia-300/20 bg-fuchsia-300/10 text-fuchsia-100",
-  needs_review: "border-amber-300/25 bg-amber-300/10 text-amber-100",
-  reviewed: "border-sky-300/20 bg-sky-300/10 text-sky-100",
-  synced: "border-[rgba(255,140,66,0.24)] bg-[rgba(255,140,66,0.1)] text-[#ffd9b8]",
-  published: "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+  needs_lyrics: "border-[rgba(255,70,70,0.32)] bg-[rgba(255,70,70,0.10)] text-[#ff9999]",
+  lyrics_ready: "border-[rgba(64,232,255,0.28)] bg-[rgba(64,232,255,0.10)] text-[#40e8ff]",
+  needs_review: "border-[rgba(255,179,71,0.32)] bg-[rgba(255,179,71,0.10)] text-[#ffcc88]",
+  unsynced: "border-[rgba(162,89,255,0.32)] bg-[rgba(162,89,255,0.10)] text-[#c87eff]",
+  synced: "border-[rgba(63,255,170,0.32)] bg-[rgba(63,255,170,0.10)] text-[#3fffaa]"
 };
 
 type TranslationStatusBadgeProps = {

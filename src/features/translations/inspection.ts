@@ -27,22 +27,6 @@ function deriveLanguage(value: unknown) {
   return asString(value.sourceLanguage) ?? asString(value.language);
 }
 
-function derivePublished(value: unknown) {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  if (typeof value.published === "boolean") {
-    return value.published;
-  }
-
-  if (isRecord(value.studio) && typeof value.studio.published === "boolean") {
-    return value.studio.published;
-  }
-
-  return false;
-}
-
 export async function inspectTranslationFile(spotifyTrackId: string): Promise<TranslationFileInspection> {
   const filePath = getLocalTranslationFilePath(spotifyTrackId);
 
@@ -58,7 +42,6 @@ export async function inspectTranslationFile(spotifyTrackId: string): Promise<Tr
         filePath,
         kind: lineCount > 0 ? "translated" : "stub",
         lineCount,
-        published: derivePublished(parsedJson),
         lastModifiedAt: fileStats.mtime.toISOString(),
         language: deriveLanguage(parsedJson),
         preview: JSON.stringify(parsedJson, null, 2),
@@ -71,7 +54,6 @@ export async function inspectTranslationFile(spotifyTrackId: string): Promise<Tr
         filePath,
         kind: "malformed",
         lineCount: 0,
-        published: false,
         lastModifiedAt: fileStats.mtime.toISOString(),
         language: null,
         preview: fileContents,
@@ -86,7 +68,6 @@ export async function inspectTranslationFile(spotifyTrackId: string): Promise<Tr
         filePath,
         kind: "missing",
         lineCount: 0,
-        published: false,
         lastModifiedAt: null,
         language: null,
         preview: null,

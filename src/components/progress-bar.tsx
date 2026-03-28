@@ -93,7 +93,7 @@ export function ProgressBar({ currentMs, totalMs, onSeek }: ProgressBarProps) {
           <span className="absolute right-[-6px] top-1/2 h-[13px] w-[13px] -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_2.5px_#ff2d78,0_2px_10px_rgba(255,45,120,0.5)] transition-transform duration-150 group-active:scale-110" />
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px] font-medium tracking-[0.02em] text-[#8570a0]">
+      <div className="mt-3 flex items-center justify-between text-[11px] font-medium tracking-[0.02em] text-white">
         <span>{formatMilliseconds(displayCurrentMs)}</span>
         <span>{formatMilliseconds(totalMs)}</span>
       </div>

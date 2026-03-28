@@ -55,13 +55,6 @@ function RepeatIcon() {
   );
 }
 
-function SpotifyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-      <path d="M12 1.75A10.25 10.25 0 1 0 22.25 12 10.26 10.26 0 0 0 12 1.75Zm4.7 14.78a.64.64 0 0 1-.88.21 10.78 10.78 0 0 0-5.92-1.64 15.84 15.84 0 0 0-3.25.35.64.64 0 1 1-.27-1.26 17.16 17.16 0 0 1 3.52-.38 12.05 12.05 0 0 1 6.61 1.86.64.64 0 0 1 .19.86Zm1.26-2.42a.79.79 0 0 1-1.08.26 13.61 13.61 0 0 0-7.17-1.86 18.06 18.06 0 0 0-3.67.4.79.79 0 0 1-.32-1.55 19.26 19.26 0 0 1 3.99-.43 15.06 15.06 0 0 1 7.99 2.11.79.79 0 0 1 .26 1.07Zm.12-2.55a16.17 16.17 0 0 0-8.34-2.1 19.92 19.92 0 0 0-4.18.46.94.94 0 0 1-.4-1.84 21.65 21.65 0 0 1 4.56-.5 17.84 17.84 0 0 1 9.27 2.36.94.94 0 1 1-.91 1.61Z" />
-    </svg>
-  );
-}
 
 function TrackDetailIcon() {
   return (
@@ -118,9 +111,9 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden px-7 py-5">
-      <div className="relative mb-4 flex-shrink-0">
+      <div className="relative mb-4 min-h-0 flex-1">
         <div className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.3)_0%,rgba(255,140,66,0.14)_42%,transparent_72%)] blur-[18px]" />
-        <div className="relative aspect-square overflow-hidden rounded-[22px] border border-white/10 bg-[#130f20]">
+        <div className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.20)] bg-[#130f20]">
           {playback.track.albumArtUrl ? (
             <Image
               src={playback.track.albumArtUrl}
@@ -139,130 +132,144 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
             </div>
           )}
 
-          <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-[rgba(7,5,16,0.72)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#fff0f6] backdrop-blur-xl">
-            <span className="lafz-badge-ring h-1.5 w-1.5 rounded-full bg-[#ff2d78]" />
+          <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full border border-[rgba(255,20,100,0.65)] bg-[rgba(255,20,100,0.14)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff6ba8] shadow-[0_0_10px_rgba(255,20,100,0.35)] backdrop-blur-xl">
+            <span className="lafz-badge-ring h-1.5 w-1.5 rounded-full bg-[#ff1464] shadow-[0_0_6px_rgba(255,20,100,0.90)]" />
             {playback.isPlaying ? "Playing" : "Paused"}
           </div>
         </div>
       </div>
 
-      <div className="mb-3 flex-shrink-0">
-        <h1 className="text-[24px] font-extrabold leading-[1.1] tracking-[-0.9px] text-[#fff0f6]">{playback.track.title}</h1>
-        <p className="mt-1 text-[14px] font-normal text-[#8570a0]">{playback.track.artist}</p>
-        <p className="mt-1 text-[12px] font-light text-[#50445f]">{playback.track.album}</p>
-      </div>
-
-      <div className="mb-5 flex-shrink-0">
-        <ProgressBar
-          currentMs={visualProgressMs}
-          totalMs={playback.track.durationMs}
-          onSeek={async (positionMs) => {
-            await triggerCommand({ action: "seek", positionMs });
-          }}
-        />
-      </div>
-
-      <div className="mb-auto flex flex-shrink-0 items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            void triggerCommand({ action: "shuffle", enabled: !playback.shuffleEnabled });
-          }}
-          disabled={pendingAction !== null}
-          className={`inline-flex h-8.5 w-8.5 items-center justify-center rounded-full border transition ${
-            playback.shuffleEnabled
-              ? "border-[rgba(255,45,120,0.34)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_10px_30px_rgba(255,45,120,0.24)]"
-              : "border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)]"
-          } ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
-          aria-label="Shuffle"
-        >
-          <ShuffleIcon />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void triggerCommand({ action: "previous" });
-          }}
-          disabled={pendingAction !== null}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
-          aria-label="Previous"
-        >
-          <PrevIcon />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void triggerCommand({ action: playback.isPlaying ? "pause" : "play" });
-          }}
-          disabled={pendingAction !== null}
-          className="inline-flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_4px_24px_rgba(255,45,120,0.3)] transition hover:scale-[1.05] hover:shadow-[0_6px_32px_rgba(255,45,120,0.4)]"
-          aria-label={playback.isPlaying ? "Pause" : "Play"}
-        >
-          {playback.isPlaying ? <PauseIcon /> : <PlayIcon />}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void triggerCommand({ action: "next" });
-          }}
-          disabled={pendingAction !== null}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)] transition ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
-          aria-label="Next"
-        >
-          <NextIcon />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void triggerCommand({ action: "repeat", mode: nextRepeatMode });
-          }}
-          disabled={pendingAction !== null}
-          className={`inline-flex h-8.5 w-8.5 items-center justify-center rounded-full border transition ${
-            playback.repeatMode !== "off"
-              ? "border-[rgba(255,45,120,0.34)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] text-white shadow-[0_10px_30px_rgba(255,45,120,0.24)]"
-              : "border-[rgba(255,45,120,0.18)] bg-[linear-gradient(135deg,rgba(255,45,120,0.14)_0%,rgba(255,107,168,0.1)_100%)] text-[#ffb8d0] shadow-[0_8px_24px_rgba(255,45,120,0.08)]"
-          } ${pendingAction !== null ? "cursor-wait opacity-70" : "hover:scale-110 hover:border-[rgba(255,45,120,0.34)] hover:text-white hover:shadow-[0_10px_30px_rgba(255,45,120,0.18)]"}`}
-          aria-label="Repeat"
-        >
-          <RepeatIcon />
-        </button>
-      </div>
-
-      <div className="mt-5 flex-shrink-0">
-        <div className="mb-3 text-[12px] font-medium text-[#6f607f]">
-          Playing on <span className="text-[#fff0f6]">{playback.deviceName ?? "Spotify app"}</span>
+      {/* Single combined card */}
+      <div className="lafz-card flex-shrink-0 p-5">
+        <div className="mb-4">
+          <h1 className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white [text-shadow:0_0_20px_rgba(255,255,255,0.20)]">{playback.track.title}</h1>
+          <p className="mt-1 text-[13px] text-[rgba(255,20,100,0.80)]">{playback.track.artist}</p>
+          <p className="mt-0.5 text-[11px] text-white/50">{playback.track.album}</p>
         </div>
 
-        <div className="grid gap-2.5">
-          {playback.track.externalUrl ? (
-            <a
-              href={playback.track.externalUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
-            >
-              <SpotifyIcon />
-              Open in Spotify
-            </a>
-          ) : null}
+        <div className="mb-5">
+          <ProgressBar
+            currentMs={visualProgressMs}
+            totalMs={playback.track.durationMs}
+            onSeek={async (positionMs) => {
+              await triggerCommand({ action: "seek", positionMs });
+            }}
+          />
+        </div>
 
-          <Link
-            href={`/library/track/${playback.track.spotifyTrackId}`}
-            className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
+        <div className="flex items-center justify-center gap-3">
+          {/* Shuffle */}
+          <button
+            type="button"
+            onClick={() => { void triggerCommand({ action: "shuffle", enabled: !playback.shuffleEnabled }); }}
+            disabled={pendingAction !== null}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+            style={playback.shuffleEnabled ? {
+              background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+              border: "1px solid rgba(255,20,100,0.60)",
+              color: "#fff",
+              boxShadow: "0 0 12px rgba(255,20,100,0.55)"
+            } : {
+              background: "rgba(6,2,5,0.92)",
+              border: "1px solid rgba(255,20,100,0.35)",
+              color: "#ff9abf",
+              boxShadow: "0 0 6px rgba(255,20,100,0.15)"
+            }}
+            aria-label="Shuffle"
           >
-            <TrackDetailIcon />
-            Track detail
-          </Link>
+            <ShuffleIcon />
+          </button>
+          {/* Previous */}
+          <button
+            type="button"
+            onClick={() => { void triggerCommand({ action: "previous" }); }}
+            disabled={pendingAction !== null}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+            style={{ background: "rgba(6,2,5,0.92)", border: "1px solid rgba(255,20,100,0.35)", color: "#ff9abf", boxShadow: "0 0 6px rgba(255,20,100,0.15)" }}
+            aria-label="Previous"
+          >
+            <PrevIcon />
+          </button>
+          {/* Play/Pause */}
+          <button
+            type="button"
+            onClick={() => { void triggerCommand({ action: playback.isPlaying ? "pause" : "play" }); }}
+            disabled={pendingAction !== null}
+            className="inline-flex h-[52px] w-[52px] items-center justify-center rounded-full text-white transition hover:scale-[1.06]"
+            style={{
+              background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+              boxShadow: "0 0 0 1px rgba(255,20,100,0.20), 0 0 20px rgba(255,20,100,0.60), 0 0 40px rgba(255,20,100,0.25)"
+            }}
+            aria-label={playback.isPlaying ? "Pause" : "Play"}
+          >
+            {playback.isPlaying ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          {/* Next */}
+          <button
+            type="button"
+            onClick={() => { void triggerCommand({ action: "next" }); }}
+            disabled={pendingAction !== null}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+            style={{ background: "rgba(6,2,5,0.92)", border: "1px solid rgba(255,20,100,0.35)", color: "#ff9abf", boxShadow: "0 0 6px rgba(255,20,100,0.15)" }}
+            aria-label="Next"
+          >
+            <NextIcon />
+          </button>
+          {/* Repeat */}
+          <button
+            type="button"
+            onClick={() => { void triggerCommand({ action: "repeat", mode: nextRepeatMode }); }}
+            disabled={pendingAction !== null}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+            style={playback.repeatMode !== "off" ? {
+              background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+              border: "1px solid rgba(255,20,100,0.60)",
+              color: "#fff",
+              boxShadow: "0 0 12px rgba(255,20,100,0.55)"
+            } : {
+              background: "rgba(6,2,5,0.92)",
+              border: "1px solid rgba(255,20,100,0.35)",
+              color: "#ff9abf",
+              boxShadow: "0 0 6px rgba(255,20,100,0.15)"
+            }}
+            aria-label="Repeat"
+          >
+            <RepeatIcon />
+          </button>
+        </div>
 
-          <form action="/api/spotify/logout" method="post" className="w-full">
-            <button
-              type="submit"
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-[rgba(255,45,120,0.24)] bg-[linear-gradient(135deg,#ff2d78_0%,#ff5aa8_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_32px_rgba(255,45,120,0.18)] transition hover:translate-y-[-1px] hover:opacity-95"
+        {/* Playing on + action buttons */}
+        <div className="mt-5 border-t border-[rgba(255,20,100,0.15)] pt-4">
+          <p className="mb-3 text-[11px] font-medium text-white/50">
+            Playing on <span className="font-semibold text-white">{playback.deviceName ?? "Spotify app"}</span>
+          </p>
+          <div className="grid gap-2">
+            <Link
+              href={`/library/track/${playback.track.spotifyTrackId}`}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-[1px]"
+              style={{
+                border: "1px solid rgba(255,20,100,0.50)",
+                boxShadow: "0 0 8px rgba(255,20,100,0.25)",
+                textShadow: "0 0 10px rgba(255,20,100,0.55)"
+              }}
             >
-              <DisconnectIcon />
-              Disconnect
-            </button>
-          </form>
+              <TrackDetailIcon />
+              Track detail
+            </Link>
+            <form action="/api/spotify/logout" method="post" className="w-full">
+              <button
+                type="submit"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white/60 transition hover:-translate-y-[1px] hover:text-white"
+                style={{
+                  border: "1px solid rgba(255,20,100,0.22)",
+                  boxShadow: "0 0 5px rgba(255,20,100,0.10)"
+                }}
+              >
+                <DisconnectIcon />
+                Disconnect
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </section>

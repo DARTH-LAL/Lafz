@@ -222,14 +222,14 @@ function ExpandedRow({
           value={line.transliteration ?? ""}
           onChange={(e) => onUpdate({ transliteration: e.target.value || null })}
           placeholder="Transliteration (optional)"
-          className="rounded-[10px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-[#5a4870]"
+          className="rounded-[10px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-white"
         />
         <input
           type="text"
           value={line.note ?? ""}
           onChange={(e) => onUpdate({ note: e.target.value || null })}
           placeholder="Note (optional)"
-          className="rounded-[10px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-[#5a4870]"
+          className="rounded-[10px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-white"
         />
       </div>
 
@@ -553,7 +553,7 @@ export function TranslationEditor({ track, initialDraft, lastModifiedAt }: Trans
 
   if (lines.length === 0) {
     return (
-      <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-8 text-center text-[14px] text-[#7a6890]">
+      <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-8 text-center text-[14px] text-white">
         No draft available. Generate an AI translation from the track page first.
       </div>
     );
@@ -567,7 +567,7 @@ export function TranslationEditor({ track, initialDraft, lastModifiedAt }: Trans
       {glossaryForm !== null && (
         <div className="fixed inset-0 z-50 flex items-end justify-center pb-8 sm:items-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setGlossaryForm(null)} />
-          <div className="relative z-10 w-full max-w-md rounded-[20px] border border-[rgba(255,200,80,0.22)] bg-[#0e0820] p-6 shadow-2xl">
+          <div className="relative z-10 w-full max-w-md rounded-[20px] border border-[rgba(255,200,80,0.22)] bg-[rgba(6,2,5,0.96)] p-6 shadow-2xl">
             <p className="mb-4 text-[11px] font-bold uppercase tracking-[2px] text-[#ffc850]">Add to {track.artist}&apos;s glossary</p>
             <div className="space-y-3">
               <div>
@@ -577,7 +577,7 @@ export function TranslationEditor({ track, initialDraft, lastModifiedAt }: Trans
                   value={glossaryForm.term}
                   onChange={(e) => setGlossaryForm((f) => f ? { ...f, term: e.target.value } : f)}
                   placeholder="e.g. kataar"
-                  className="w-full rounded-[10px] border border-[rgba(255,200,80,0.25)] bg-[rgba(255,200,80,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,200,80,0.5)] placeholder:text-[#5a4870]"
+                  className="w-full rounded-[10px] border border-[rgba(255,200,80,0.25)] bg-[rgba(255,200,80,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,200,80,0.5)] placeholder:text-white"
                 />
               </div>
               <div>
@@ -586,7 +586,7 @@ export function TranslationEditor({ track, initialDraft, lastModifiedAt }: Trans
                   value={glossaryForm.meaning}
                   onChange={(e) => setGlossaryForm((f) => f ? { ...f, meaning: e.target.value } : f)}
                   placeholder="e.g. queue of people"
-                  className="w-full rounded-[10px] border border-[rgba(255,200,80,0.25)] bg-[rgba(255,200,80,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,200,80,0.5)] placeholder:text-[#5a4870]"
+                  className="w-full rounded-[10px] border border-[rgba(255,200,80,0.25)] bg-[rgba(255,200,80,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,200,80,0.5)] placeholder:text-white"
                 />
               </div>
             </div>
@@ -696,7 +696,7 @@ export function TranslationEditor({ track, initialDraft, lastModifiedAt }: Trans
 
                 {/* Original */}
                 <div className="flex items-start">
-                  <p className="text-[13px] leading-[1.55] text-[#c8b8d8]">{line.original}</p>
+                  <p className="text-[13px] leading-[1.55] text-white">{line.original}</p>
                 </div>
 
                 {/* Translation — click to edit */}

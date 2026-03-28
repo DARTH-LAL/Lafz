@@ -1,7 +1,7 @@
 import type { TranslationStatus } from "@/features/spotify/types";
 import type { LyricsInspectionKind } from "@/features/lyrics/types";
 
-export type StudioQueueStatus = "needs_lyrics" | "lyrics_ready" | "needs_review" | "reviewed" | "synced" | "published";
+export type StudioQueueStatus = "needs_lyrics" | "lyrics_ready" | "needs_review" | "unsynced" | "synced";
 export type QueueSortOption = "title" | "artist" | "recently_updated" | "status" | "needs_review";
 
 export type LibraryQueueWarning = {
@@ -28,7 +28,6 @@ export type LibraryQueueRecord = {
   studio_status: StudioQueueStatus;
   studio_status_reason: string;
   ready_to_publish: boolean;
-  published: boolean;
   lyrics_kind: LyricsInspectionKind;
   lyrics_language: string | null;
   lyrics_line_count: number;
@@ -56,9 +55,8 @@ export type LibraryQueueSummary = {
   needs_lyrics: number;
   lyrics_ready: number;
   needs_review: number;
-  reviewed: number;
+  unsynced: number;
   synced: number;
-  published: number;
   ready_to_publish: number;
   total_needs_review: number;
 };

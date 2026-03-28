@@ -29,7 +29,6 @@ export type TranslationFileInspection = {
   filePath: string;
   kind: TranslationFileKind;
   lineCount: number;
-  published: boolean;
   lastModifiedAt: string | null;
   language: string | null;
   preview: string | null;

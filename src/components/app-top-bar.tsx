@@ -52,8 +52,8 @@ function buildNavItemClass(isActive: boolean) {
   return [
     "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
     isActive
-      ? "border-[#ff2d78]/35 bg-[rgba(255,45,120,0.12)] text-[#fff0f6]"
-      : "border-white/12 bg-white/[0.02] text-[#8f7ca7] hover:border-white/18 hover:bg-white/5 hover:text-white"
+      ? "border-[rgba(255,20,100,0.80)] bg-[rgba(255,20,100,0.18)] text-white shadow-[0_0_0_1px_rgba(255,20,100,0.20),0_0_16px_rgba(255,20,100,0.70),0_0_36px_rgba(255,20,100,0.35)]"
+      : "border-white/10 bg-white/[0.03] text-white/40 hover:border-[rgba(255,20,100,0.30)] hover:bg-[rgba(255,20,100,0.07)] hover:text-[#ff9abf]"
   ].join(" ");
 }
 
@@ -63,21 +63,36 @@ export function AppTopBar({ connected = false, className }: AppTopBarProps) {
   return (
     <nav
       className={[
-        "flex items-center justify-between border border-white/8 bg-[rgba(7,5,16,0.78)] px-5 py-3 backdrop-blur-2xl",
-        "rounded-[24px] shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
+        "flex items-center justify-between px-5 py-3 backdrop-blur-2xl",
+        "rounded-[20px] border border-[rgba(255,20,100,0.60)] bg-[rgba(6,2,5,0.92)]",
+        "shadow-[0_0_0_1px_rgba(255,20,100,0.18),0_0_18px_rgba(255,20,100,0.45),0_0_48px_rgba(255,20,100,0.22),0_0_100px_rgba(255,20,100,0.10),0_6px_32px_rgba(0,0,0,0.70),inset_0_1px_0_rgba(255,20,100,0.18)]",
         className ?? ""
       ].join(" ")}
     >
-      <Link href={connected ? "/" : "/login"} className="text-[24px] font-extrabold tracking-[-1px] text-[#fff0f6]">
+      <Link href={connected ? "/" : "/login"} className="text-[24px] font-extrabold tracking-[-1px] text-[#fff0f6] [text-shadow:0_0_18px_rgba(255,255,255,0.12)]">
         la
-        <span className="bg-[linear-gradient(135deg,#ff2d78_0%,#ff6ba8_100%)] bg-clip-text text-transparent">F</span>
+        <span className="bg-[linear-gradient(135deg,#ff1464_0%,#ff6ba8_100%)] bg-clip-text text-transparent [filter:drop-shadow(0_0_8px_rgba(255,20,100,0.7))]">F</span>
         z
       </Link>
 
       <div className="flex items-center gap-2">
         {connected ? (
-          <div className="hidden items-center gap-2 rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-3 py-1.5 text-[11px] font-semibold text-[#ff6ba8] sm:inline-flex">
-            <span className="lafz-badge-ring h-1.5 w-1.5 rounded-full bg-[#ff2d78]" />
+          <div
+            className="hidden items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold tracking-[0.5px] text-[#ff6ba8] sm:inline-flex"
+            style={{
+              border: "1px solid rgba(255,20,100,0.55)",
+              background: "rgba(255,20,100,0.10)",
+              boxShadow: "0 0 0 1px rgba(255,20,100,0.12), 0 0 12px rgba(255,20,100,0.40), 0 0 28px rgba(255,20,100,0.18)",
+              textShadow: "0 0 12px rgba(255,20,100,0.70)"
+            }}
+          >
+            <span
+              className="h-2 w-2 rounded-full bg-[#ff1464]"
+              style={{
+                boxShadow: "0 0 6px 2px rgba(255,20,100,0.90), 0 0 14px rgba(255,20,100,0.60)",
+                animation: "lafz-pulse 2s ease-in-out infinite"
+              }}
+            />
             Spotify connected
           </div>
         ) : null}

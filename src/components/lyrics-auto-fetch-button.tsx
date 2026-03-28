@@ -100,7 +100,7 @@ export function LyricsAutoFetchButton({ track, alreadyHasLyrics }: LyricsAutoFet
           className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isSuccess
               ? "border border-[rgba(255,45,120,0.3)] bg-[rgba(255,45,120,0.12)] text-[#fff0f6]"
-              : "border border-white/12 bg-white/5 text-slate-100 hover:bg-white/10"
+              : "border border-[rgba(255,255,255,0.10)] bg-[rgba(6,2,5,0.92)] text-white hover:bg-[rgba(255,20,100,0.06)]"
           }`}
         >
           {fetchState === "loading" ? (

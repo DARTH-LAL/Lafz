@@ -1,4 +1,5 @@
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
+import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
 import { ArtistGlossaryCard } from "@/components/artist-glossary-card";
 import { GenerationHistory } from "@/components/generation-history";
@@ -47,20 +48,8 @@ export function LibraryTrackDetail({
 }: LibraryTrackDetailProps) {
   if (!record) {
     return (
-      <main className="relative min-h-screen w-full overflow-x-hidden bg-[#060410] text-[#fff0f6]">
-        <div className="pointer-events-none fixed inset-0 z-0">
-          <div className="absolute -right-40 -top-40 h-[700px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(255,20,100,0.18)_0%,transparent_60%)]" />
-          <div className="absolute -left-28 bottom-0 h-[450px] w-[500px] rounded-full bg-[radial-gradient(ellipse,rgba(160,20,255,0.10)_0%,transparent_65%)]" />
-        </div>
-        <div
-          className="pointer-events-none fixed inset-0 z-0"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,20,100,0.10) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-            maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
-            WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)"
-          }}
-        />
+      <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
+        <AnimatedBackground />
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
           <AppTopBar connected className="mb-8" />
           <StatePanel
@@ -74,25 +63,8 @@ export function LibraryTrackDetail({
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-x-hidden bg-[#060410] text-[#fff0f6]">
-
-      {/* Background glows */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -right-40 -top-40 h-[700px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(255,20,100,0.18)_0%,transparent_60%)]" />
-        <div className="absolute -left-28 bottom-0 h-[450px] w-[500px] rounded-full bg-[radial-gradient(ellipse,rgba(160,20,255,0.10)_0%,transparent_65%)]" />
-      </div>
-
-      {/* Dot grid */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          backgroundImage: "radial-gradient(rgba(255,20,100,0.10) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)"
-        }}
-      />
-
+    <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
+      <AnimatedBackground />
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
         <AppTopBar connected className="mb-8" />
 
@@ -107,11 +79,11 @@ export function LibraryTrackDetail({
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-display text-5xl font-extrabold leading-[1.02] tracking-[-3px]">
+              <h1 className="font-display text-5xl font-extrabold leading-[1.02] tracking-[-3px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
                 {record.title}
               </h1>
-              <p className="mt-3 text-[18px] text-[#c8b8d8]">{record.artist}</p>
-              <p className="mt-1 text-[13px] text-[#5a4870]">{record.album}</p>
+              <p className="mt-3 text-[18px] text-white [text-shadow:0_0_16px_rgba(255,255,255,0.55),0_0_40px_rgba(255,255,255,0.20)]">{record.artist}</p>
+              <p className="mt-1 text-[13px] text-white opacity-40">{record.album}</p>
             </div>
 
             {record.spotify_track_url ? (
@@ -126,10 +98,6 @@ export function LibraryTrackDetail({
             ) : null}
           </div>
 
-          <div className="relative mt-8 h-px w-full">
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,20,100,0.5)_30%,rgba(255,20,100,0.8)_50%,rgba(255,20,100,0.5)_70%,transparent)]" />
-            <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff1464] shadow-[0_0_12px_#ff1464,0_0_24px_rgba(255,20,100,0.6)]" />
-          </div>
         </header>
 
         {/* Status banners */}
@@ -158,11 +126,11 @@ export function LibraryTrackDetail({
         ) : null}
 
         {/* Info card */}
-        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.16)] bg-[rgba(10,7,22,0.90)] p-6 shadow-[0_0_60px_rgba(255,20,100,0.05)] backdrop-blur-[24px]">
+        <section className="mb-6 lafz-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <TranslationStatusBadge status={record.studio_status} />
-              <span className="text-[11px] uppercase tracking-[0.22em] text-[#5a4870]">
+              <span className="text-[11px] uppercase tracking-[0.22em] text-white">
                 {record.explicit_translation_status ?? "pending"}
               </span>
             </div>
@@ -185,7 +153,7 @@ export function LibraryTrackDetail({
           </div>
 
           {record.studio_status_reason ? (
-            <p className="mt-4 border-b border-[rgba(255,20,100,0.08)] pb-4 text-[13px] leading-[1.65] text-[#7a6890]">
+            <p className="mt-4 border-b border-[rgba(255,20,100,0.08)] pb-4 text-[13px] leading-[1.65] text-white">
               {record.studio_status_reason}
             </p>
           ) : null}
@@ -220,7 +188,7 @@ export function LibraryTrackDetail({
         </section>
 
         {/* Lyrics cache */}
-        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-6 backdrop-blur-[20px]">
+        <section className="mb-6 lafz-card p-6">
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">Original lyrics cache</p>
 
           {lyricsInspection.exists ? (
@@ -250,7 +218,7 @@ export function LibraryTrackDetail({
                 </div>
               ) : null}
 
-              <pre className="mt-4 max-h-[50vh] overflow-auto rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-black/30 p-5 text-[12px] leading-[1.7] text-[#c8b8d8]">
+              <pre className="mt-4 max-h-[50vh] overflow-auto rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-black/30 p-5 text-[12px] leading-[1.7] text-white">
                 {lyricsInspection.preview}
               </pre>
             </>
@@ -259,7 +227,7 @@ export function LibraryTrackDetail({
               eyebrow="No cached lyrics yet"
               title="Import local lyrics to start translating"
               description="Lafz keeps original lyrics in a local gitignored cache file so you can use them without storing the content in the repo."
-              className="mt-4 border-white/8 bg-white/[0.03] shadow-none"
+              className="mt-4 border-[rgba(255,20,100,0.15)] bg-[rgba(6,2,5,0.92)] shadow-none"
             />
           )}
         </section>
@@ -287,7 +255,7 @@ export function LibraryTrackDetail({
         />
 
         {/* Generation history */}
-        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-6 backdrop-blur-[20px]">
+        <section className="mb-6 lafz-card p-6">
           <div className="mb-4 flex items-center gap-3">
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 flex-shrink-0 fill-[rgba(255,20,100,0.6)]" aria-hidden="true">
               <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 3.5v4.25l3 1.5-.53 1.06-3.47-1.73V4.5h1z" />
@@ -300,7 +268,7 @@ export function LibraryTrackDetail({
         </section>
 
         {/* Artist glossary */}
-        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-6 backdrop-blur-[20px]">
+        <section className="mb-6 lafz-card p-6">
           <ArtistGlossaryCard
             artistKey={normalizeArtistKey(record.artist)}
             artistName={record.artist}

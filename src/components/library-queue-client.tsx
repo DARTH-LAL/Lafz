@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 
 import { BulkDeleteButton } from "@/components/bulk-delete-button";
 import { DeleteTrackButton } from "@/components/delete-track-button";
@@ -21,15 +21,15 @@ function formatUpdatedAt(value: string | null) {
 function artGradient(status: string) {
   switch (status) {
     case "synced":
-    case "published":
-      return "linear-gradient(145deg,#0c1a14 0%,#0b2b20 50%,#0a1e30 100%)";
-    case "needs_review":
-    case "reviewed":
+      return "linear-gradient(145deg,#071a10 0%,#0b2b1a 50%,#071a12 100%)";
+    case "unsynced":
       return "linear-gradient(145deg,#130c1e 0%,#1c0f30 50%,#0e0c24 100%)";
+    case "needs_review":
+      return "linear-gradient(145deg,#1a1200 0%,#2a1e00 50%,#1a1400 100%)";
     case "lyrics_ready":
-      return "linear-gradient(145deg,#071820 0%,#0a2030 50%,#0c1a28 100%)";
+      return "linear-gradient(145deg,#041820 0%,#062430 50%,#051a26 100%)";
     default: // needs_lyrics
-      return "linear-gradient(145deg,#180810 0%,#200a12 50%,#160810 100%)";
+      return "linear-gradient(145deg,#200608 0%,#300810 50%,#200608 100%)";
   }
 }
 
@@ -37,35 +37,65 @@ function artGradient(status: string) {
 function ribbonConfig(status: string) {
   switch (status) {
     case "synced":
-    case "published":
-      return { label: "TRANSLATED", color: "#3fffaa", border: "rgba(63,255,170,0.35)", bg: "rgba(63,255,170,0.12)" };
-    case "reviewed":
-      return { label: "REVIEWED", color: "#a259ff", border: "rgba(162,89,255,0.35)", bg: "rgba(162,89,255,0.12)" };
+      return { label: "SYNCED", color: "#3fffaa", border: "rgba(63,255,170,0.35)", bg: "rgba(63,255,170,0.12)" };
+    case "unsynced":
+      return { label: "UNSYNCED", color: "#c87eff", border: "rgba(162,89,255,0.35)", bg: "rgba(162,89,255,0.12)" };
     case "needs_review":
-      return { label: "NEEDS REVIEW", color: "#ffb347", border: "rgba(255,179,71,0.35)", bg: "rgba(255,179,71,0.12)" };
+      return { label: "NEEDS REVIEW", color: "#ffcc88", border: "rgba(255,179,71,0.35)", bg: "rgba(255,179,71,0.12)" };
     case "lyrics_ready":
-      return { label: "DRAFT", color: "#40e8ff", border: "rgba(64,232,255,0.35)", bg: "rgba(64,232,255,0.12)" };
+      return { label: "LYRICS READY", color: "#40e8ff", border: "rgba(64,232,255,0.35)", bg: "rgba(64,232,255,0.12)" };
     default:
-      return { label: "NO LYRICS", color: "#ff6464", border: "rgba(255,100,100,0.30)", bg: "rgba(255,80,80,0.10)" };
+      return { label: "NEEDS LYRICS", color: "#ff9999", border: "rgba(255,70,70,0.32)", bg: "rgba(255,70,70,0.10)" };
+  }
+}
+
+/** Per-status card border + glow */
+function cardGlow(status: string): React.CSSProperties {
+  switch (status) {
+    case "synced":
+      return {
+        border: "1px solid rgba(63,255,170,0.40)",
+        boxShadow: "0 0 0 1px rgba(63,255,170,0.10), 0 0 18px rgba(63,255,170,0.22), 0 0 50px rgba(63,255,170,0.08), 0 8px 32px rgba(0,0,0,0.55)"
+      };
+    case "unsynced":
+      return {
+        border: "1px solid rgba(162,89,255,0.40)",
+        boxShadow: "0 0 0 1px rgba(162,89,255,0.10), 0 0 18px rgba(162,89,255,0.22), 0 0 50px rgba(162,89,255,0.08), 0 8px 32px rgba(0,0,0,0.55)"
+      };
+    case "needs_review":
+      return {
+        border: "1px solid rgba(255,179,71,0.40)",
+        boxShadow: "0 0 0 1px rgba(255,179,71,0.10), 0 0 18px rgba(255,179,71,0.22), 0 0 50px rgba(255,179,71,0.08), 0 8px 32px rgba(0,0,0,0.55)"
+      };
+    case "lyrics_ready":
+      return {
+        border: "1px solid rgba(64,232,255,0.36)",
+        boxShadow: "0 0 0 1px rgba(64,232,255,0.08), 0 0 18px rgba(64,232,255,0.20), 0 0 50px rgba(64,232,255,0.07), 0 8px 32px rgba(0,0,0,0.55)"
+      };
+    default: // needs_lyrics
+      return {
+        border: "1px solid rgba(255,70,70,0.36)",
+        boxShadow: "0 0 0 1px rgba(255,70,70,0.08), 0 0 18px rgba(255,70,70,0.20), 0 0 50px rgba(255,70,70,0.07), 0 8px 32px rgba(0,0,0,0.55)"
+      };
   }
 }
 
 /** Translation progress bar fill colour + pct */
 function progressConfig(record: LibraryQueueRecord) {
-  if (record.studio_status === "synced" || record.studio_status === "published") {
+  if (record.studio_status === "synced") {
     return { pct: 100, color: "#3fffaa", glow: "rgba(63,255,170,0.45)" };
   }
-  if (record.studio_status === "reviewed") {
-    return { pct: 100, color: "#a259ff", glow: "rgba(162,89,255,0.45)" };
+  if (record.studio_status === "unsynced") {
+    return { pct: 100, color: "#c87eff", glow: "rgba(162,89,255,0.45)" };
   }
   if (record.ai_draft_exists) {
     const pct = Math.round((record.review_completion_ratio ?? 0) * 100);
-    return { pct: Math.max(pct, 8), color: "#a259ff", glow: "rgba(162,89,255,0.35)" };
+    return { pct: Math.max(pct, 8), color: "#ffcc88", glow: "rgba(255,179,71,0.35)" };
   }
-  if (record.studio_status === "lyrics_ready" || record.studio_status === "needs_review") {
-    return { pct: 12, color: "#40e8ff", glow: "rgba(64,232,255,0.35)" };
+  if (record.studio_status === "lyrics_ready") {
+    return { pct: 8, color: "#40e8ff", glow: "rgba(64,232,255,0.35)" };
   }
-  return { pct: 0, color: "#ff4d64", glow: "" };
+  return { pct: 0, color: "#ff9999", glow: "" };
 }
 
 /* ─── Music note placeholder ────────────────────────────────────────────── */
@@ -90,8 +120,13 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
   const playlist = record.source_playlists[0];
   const resolvedArt = artUrl ?? null;
 
+  const glow = cardGlow(record.studio_status);
+
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.07)] bg-[rgba(12,8,24,0.85)] shadow-[0_4px_32px_rgba(0,0,0,0.4)] transition-all duration-200 hover:-translate-y-1 hover:border-[rgba(255,20,100,0.22)] hover:shadow-[0_8px_48px_rgba(255,20,100,0.10)]">
+    <div
+      className="group relative flex flex-col overflow-hidden rounded-[20px] bg-[rgba(6,2,5,0.92)] transition-all duration-200 hover:-translate-y-1"
+      style={glow}
+    >
 
       {/* Art area */}
       <div
@@ -144,7 +179,7 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
           <p className="line-clamp-1 font-display text-[14px] font-semibold text-[#fff0f6] transition-colors group-hover:text-[#ffb0d0]">
             {record.title}
           </p>
-          <p className="mt-0.5 line-clamp-1 text-[12px] text-[#7a6890]">{record.artist}</p>
+          <p className="mt-0.5 line-clamp-1 text-[12px] text-[rgba(255,20,100,0.65)]">{record.artist}</p>
         </div>
 
         {/* Translation progress bar */}
@@ -198,11 +233,11 @@ function ListRow({ record }: { record: LibraryQueueRecord }) {
         <p className="font-display text-[15px] font-semibold text-[#fff0f6] transition-colors group-hover:text-[#ffb0d0]">
           {record.title}
         </p>
-        <p className="mt-1 text-[13px] text-[#9a85b2]">{record.artist}</p>
-        <p className="mt-1 text-[11px] text-[#5a4870]">{record.album} · {formatMilliseconds(record.duration_ms)}</p>
+        <p className="mt-1 text-[13px] text-[rgba(255,20,100,0.65)]">{record.artist}</p>
+        <p className="mt-1 text-[11px] text-white">{record.album} · {formatMilliseconds(record.duration_ms)}</p>
       </td>
       <td className="px-6 py-5">
-        <p className="text-[13px] capitalize text-[#c8b8d8]">{record.language}</p>
+        <p className="text-[13px] capitalize text-white">{record.language}</p>
       </td>
       <td className="px-6 py-5">
         <TranslationStatusBadge status={record.studio_status} />
@@ -224,7 +259,7 @@ function ListRow({ record }: { record: LibraryQueueRecord }) {
           ))}
         </div>
         {formatUpdatedAt(record.translation_last_modified_at) ? (
-          <p className="mt-2 text-[11px] text-[#5a4870]">{formatUpdatedAt(record.translation_last_modified_at)}</p>
+          <p className="mt-2 text-[11px] text-white">{formatUpdatedAt(record.translation_last_modified_at)}</p>
         ) : null}
       </td>
       <td className="px-6 py-5">
@@ -248,16 +283,24 @@ function ListRow({ record }: { record: LibraryQueueRecord }) {
 /* ─── Toggle button ─────────────────────────────────────────────────────── */
 function ViewToggle({ view, onChange }: { view: "grid" | "list"; onChange: (v: "grid" | "list") => void }) {
   return (
-    <div className="flex items-center rounded-full border border-[rgba(255,255,255,0.09)] bg-[rgba(255,255,255,0.04)] p-1 gap-0.5">
+    <div
+      className="flex items-center gap-0.5 rounded-full p-1"
+      style={{
+        border: "1px solid rgba(255,20,100,0.40)",
+        background: "rgba(6,2,5,0.92)",
+        boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 12px rgba(255,20,100,0.25), 0 0 28px rgba(255,20,100,0.10)"
+      }}
+    >
       {/* Grid */}
       <button
         onClick={() => onChange("grid")}
         title="Grid view"
-        className={`inline-flex items-center justify-center rounded-full p-2 transition ${
-          view === "grid"
-            ? "bg-[rgba(255,20,100,0.22)] text-[#ff6aaa] shadow-[0_0_10px_rgba(255,20,100,0.25)]"
-            : "text-[rgba(255,255,255,0.3)] hover:text-[rgba(255,255,255,0.6)]"
-        }`}
+        className="inline-flex items-center justify-center rounded-full p-2 transition"
+        style={view === "grid" ? {
+          background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+          color: "#fff",
+          boxShadow: "0 0 14px rgba(255,20,100,0.55)"
+        } : { color: "rgba(255,255,255,0.50)" }}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden="true">
           <rect x="1" y="1" width="6" height="6" rx="1.2" />
@@ -270,11 +313,12 @@ function ViewToggle({ view, onChange }: { view: "grid" | "list"; onChange: (v: "
       <button
         onClick={() => onChange("list")}
         title="List view"
-        className={`inline-flex items-center justify-center rounded-full p-2 transition ${
-          view === "list"
-            ? "bg-[rgba(255,20,100,0.22)] text-[#ff6aaa] shadow-[0_0_10px_rgba(255,20,100,0.25)]"
-            : "text-[rgba(255,255,255,0.3)] hover:text-[rgba(255,255,255,0.6)]"
-        }`}
+        className="inline-flex items-center justify-center rounded-full p-2 transition"
+        style={view === "list" ? {
+          background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+          color: "#fff",
+          boxShadow: "0 0 14px rgba(255,20,100,0.55)"
+        } : { color: "rgba(255,255,255,0.50)" }}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden="true">
           <rect x="1" y="2" width="14" height="2.2" rx="1.1" />
@@ -327,7 +371,7 @@ export function LibraryQueueClient({
 
       {/* List view */}
       {view === "list" && (
-        <section className="overflow-hidden rounded-[24px] border border-[rgba(255,20,100,0.12)] shadow-[0_0_80px_rgba(255,20,100,0.05)] backdrop-blur-xl">
+        <section className="overflow-hidden lafz-card">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
               <thead>

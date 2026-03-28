@@ -112,7 +112,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
 
   const opacity = loading ? 0.5 : 1;
 
-  const BG = "#060410";
+  const BG = "rgba(6,2,5,0.92)";
   const PINK = "#ff1464";
   const PINK_LIGHT = "#ff4d96";
   const VIOLET = "#a259ff";
