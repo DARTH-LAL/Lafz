@@ -18,19 +18,17 @@ export function BulkDeleteButton({ spotifyTrackIds, label }: BulkDeleteButtonPro
     setDeleting(true);
     setProgress({ done: 0, total: spotifyTrackIds.length });
 
-    for (let i = 0; i < spotifyTrackIds.length; i++) {
-      try {
-        await fetch("/api/library/delete-track", {
-          method: "DELETE",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ spotifyTrackId: spotifyTrackIds[i] })
-        });
-      } catch {
-        // continue on individual failures
-      }
-      setProgress({ done: i + 1, total: spotifyTrackIds.length });
+    try {
+      await fetch("/api/library/bulk-delete-tracks", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ spotifyTrackIds })
+      });
+    } catch {
+      // non-fatal
     }
 
+    setProgress({ done: spotifyTrackIds.length, total: spotifyTrackIds.length });
     router.refresh();
     setDeleting(false);
     setConfirming(false);
