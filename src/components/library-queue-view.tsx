@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppTopBar } from "@/components/app-top-bar";
+import { DeleteTrackButton } from "@/components/delete-track-button";
 import { StatePanel } from "@/components/state-panel";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
 import type { LibraryQueueFilters, LibraryQueueRecord, LibraryQueueResult } from "@/features/library/types";
@@ -269,12 +270,18 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
                         ) : null}
                       </td>
                       <td className="px-6 py-5">
-                        <Link
-                          href={`/library/track/${record.spotify_track_id}`}
-                          className="inline-flex items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] px-5 py-2 text-[12px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.22)] hover:text-[#fff0f6] hover:shadow-[0_0_20px_rgba(255,20,100,0.35)]"
-                        >
-                          Open
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/library/track/${record.spotify_track_id}`}
+                            className="inline-flex items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] px-5 py-2 text-[12px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.22)] hover:text-[#fff0f6] hover:shadow-[0_0_20px_rgba(255,20,100,0.35)]"
+                          >
+                            Open
+                          </Link>
+                          <DeleteTrackButton
+                            spotifyTrackId={record.spotify_track_id}
+                            trackTitle={record.title}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
