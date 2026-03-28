@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppTopBar } from "@/components/app-top-bar";
+import { BulkDeleteButton } from "@/components/bulk-delete-button";
 import { DeleteTrackButton } from "@/components/delete-track-button";
 import { StatePanel } from "@/components/state-panel";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
@@ -218,6 +219,18 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             description="Try widening your search, changing the status filter, or importing more playlists into Lafz first."
           />
         ) : (
+          <>
+            {/* Bulk actions bar — only shown when there are needs_lyrics tracks visible */}
+            {records.some((r) => r.studio_status === "needs_lyrics") && (
+              <div className="mb-4 flex items-center justify-end">
+                <BulkDeleteButton
+                  spotifyTrackIds={records
+                    .filter((r) => r.studio_status === "needs_lyrics")
+                    .map((r) => r.spotify_track_id)}
+                  label="Delete all — Needs Lyrics"
+                />
+              </div>
+            )}
           <section className="overflow-hidden rounded-[24px] border border-[rgba(255,20,100,0.12)] shadow-[0_0_80px_rgba(255,20,100,0.05)] backdrop-blur-xl">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left">
@@ -289,6 +302,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
               </table>
             </div>
           </section>
+          </>
         )}
       </div>
 
