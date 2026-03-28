@@ -1,0 +1,80 @@
+[
+  {
+    "id": "48a6d831-e737-4adb-a7d5-8b14be6e9e4a",
+    "timestamp": "2026-03-28T14:18:59.196Z",
+    "spotifyTrackId": "7eQoMQdE4JqngwYDOqLBU0",
+    "title": "Superstar",
+    "artist": "dox, JASKARAN, Rita Kim",
+    "sourceLanguage": "Punjabi-English mix",
+    "totalLines": 51,
+    "winnerDistribution": {
+      "generatorA": 34,
+      "generatorB": 17,
+      "blended": 0
+    },
+    "confidenceBreakdown": {
+      "high": 50,
+      "medium": 1,
+      "low": 0
+    },
+    "generatorA": {
+      "model": "gpt-5.1",
+      "inputTokens": 11220,
+      "outputTokens": 4080,
+      "durationMs": 56100
+    },
+    "generatorB": {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 11730,
+      "outputTokens": 4335,
+      "durationMs": 76500
+    },
+    "judge": {
+      "model": "gemini-2.5-flash",
+      "inputTokens": 24480,
+      "outputTokens": 2040,
+      "durationMs": 19380
+    },
+    "pipelineDurationMs": 151980,
+    "backfilled": true
+  },
+  {
+    "id": "e3f1c5f1-ecb2-4b58-9b68-8f89b8bca11d",
+    "timestamp": "2026-03-28T14:44:19.203Z",
+    "spotifyTrackId": "3FqtduiaqnFYvBgKuc6QWQ",
+    "title": "Winning Speech",
+    "artist": "Karan Aujla, Seshnolan",
+    "sourceLanguage": "Punjabi",
+    "totalLines": 89,
+    "winnerDistribution": {
+      "generatorA": 77,
+      "generatorB": 10,
+      "blended": 2
+    },
+    "confidenceBreakdown": {
+      "high": 64,
+      "medium": 25,
+      "low": 0
+    },
+    "generatorA": {
+      "model": "gpt-5.1",
+      "inputTokens": 19580,
+      "outputTokens": 7120,
+      "durationMs": 97900
+    },
+    "generatorB": {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 20470,
+      "outputTokens": 7565,
+      "durationMs": 133500
+    },
+    "judge": {
+      "model": "gemini-2.5-flash",
+      "inputTokens": 42720,
+      "outputTokens": 3560,
+      "durationMs": 33820
+    },
+    "pipelineDurationMs": 265220,
+    "backfilled": true
+  }
+]
