@@ -38,6 +38,7 @@ type SpotifyTrackResponse = {
   }>;
   album?: {
     name?: string;
+    images?: Array<{ url?: string; width?: number; height?: number }>;
   };
 };
 
@@ -156,6 +157,7 @@ function normalizeSpotifyTrack(track: SpotifyTrackResponse, syntheticLibraryId: 
     title: track.name ?? "Unknown track",
     artist: artistNames.join(", ") || "Unknown artist",
     album: track.album?.name ?? "Unknown album",
+    album_art_url: track.album?.images?.[0]?.url ?? null,
     duration_ms: track.duration_ms ?? 0,
     source_playlist_id: syntheticLibraryId,
     source_playlist_name: singleTrackCollectionLabel,

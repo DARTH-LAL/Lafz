@@ -1,4 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
@@ -39,6 +40,7 @@ type RequestAiTranslationDraftOptions = BasePromptOptions & {
     groupIndex?: number;
     groupText?: string;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -86,6 +88,7 @@ type RequestAiTranslationRefinementOptions = BasePromptOptions & {
       chosen: string;
     }>;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -126,6 +129,7 @@ type RequestAiTranslationSelectionOptions = BasePromptOptions & {
       chosen: string;
     }>;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -148,7 +152,13 @@ export function getOpenAiBaseUrl() {
 
 export function getOpenAiGeneratorAModel() {
   const value = process.env.OPENAI_GENERATOR_A_MODEL ?? process.env.OPENAI_MODEL;
-  return value && value.trim().length > 0 ? value.trim() : DEFAULT_OPENAI_GENERATOR_A_MODEL;
+  if (value && value.trim().length > 0) return value.trim();
+  try {
+    const { readSettingsSync } = require("@/features/settings/repository") as { readSettingsSync: () => { generatorAModel: string } };
+    const model = readSettingsSync().generatorAModel;
+    if (model) return model;
+  } catch {}
+  return DEFAULT_OPENAI_GENERATOR_A_MODEL;
 }
 
 export function getOpenAiModel() {
@@ -369,6 +379,9 @@ export function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
     "Do not invent scenes, emotions, or metaphors that are not present in the original line.",
     "Use nearby context, verse group context, song context, artist memory, and glossary hints to disambiguate meaning.",
     "If a line includes correction examples, treat them as strong guidance for similar phrasing unless the current context clearly changes the meaning.",
+    "If a line includes previousTranslation, use it as a reference baseline — think independently but maintain terminology and tone consistency with previous high-confidence choices.",
+    "If previousTranslation.manuallyReviewed is true, treat that choice as user-approved and preserve it unless you identify a clear semantic error.",
+    "If previousTranslation.confidence is low, that line previously struggled — pay extra attention and try to produce a clearly better result.",
     "If the meaning is uncertain, keep chosen conservative and explain uncertainty in ambiguity or note instead of guessing confidently.",
     options.includeTransliteration
       ? "Return transliteration only when it adds value. If the original line is already in Latin characters or transliteration would be redundant, return null."
@@ -411,6 +424,7 @@ export function buildRefinementSystemPrompt(options: RequestAiTranslationRefinem
     "Your main goals are semantic accuracy, slang correctness, and consistency across repeated phrases or recurring terms.",
     "If a repeated original line appears multiple times, keep its translation candidates consistent unless the local context clearly changes the meaning.",
     "If manual correction examples are provided for a line, preserve their corrected meaning and style for similar phrasing unless the current context clearly changes it.",
+    "If a line includes previousTranslation, use it as a reference — maintain consistency with previous high-confidence choices, give extra attention to improving low-confidence ones, and preserve manually-reviewed choices unless there is a clear error.",
     "Do not invent imagery, emotional emphasis, or cultural detail that is not present in the original lyric.",
     "If the draft is uncertain, keep chosen conservative, lower the confidence, and explain ambiguity instead of guessing.",
     options.includeTransliteration
@@ -443,6 +457,7 @@ export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectio
     "Choose among the candidate translations by prioritizing semantic accuracy first, then slang correctness, then lyrical naturalness.",
     "Use song context, artist memory, glossary hints, and nearby chosen lines to keep the whole song consistent.",
     "If manual correction examples are provided for a line, treat them as strong guidance and stay aligned with their corrected meaning unless the current context clearly changes it.",
+    "If a line includes previousTranslation, factor it into your selection — prefer consistency with previous high-confidence choices, prioritise improving low-confidence ones, and treat manually-reviewed choices as near-final unless there is a clear error.",
     "Do not rewrite the original meaning into something flashier than the lyric actually says.",
     "If the candidates are all weak, choose the most conservative one, reduce confidence, and explain ambiguity or note instead of guessing.",
     buildSharedContextHints(options, options.sourceLanguage),
@@ -480,7 +495,8 @@ export function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
         contextAfter: line.contextAfter ?? [],
         groupIndex: line.groupIndex ?? null,
         groupText: line.groupText ?? null,
-        matchingCorrections: line.matchingCorrections ?? []
+        matchingCorrections: line.matchingCorrections ?? [],
+        previousTranslation: line.previousTranslation ?? null
       }))
     },
     null,
@@ -554,7 +570,8 @@ export function buildRefinementUserPrompt(options: RequestAiTranslationRefinemen
         },
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
-        matchingCorrections: line.matchingCorrections ?? []
+        matchingCorrections: line.matchingCorrections ?? [],
+        previousTranslation: line.previousTranslation ?? null
       }))
     },
     null,
@@ -623,7 +640,8 @@ export function buildSelectionUserPrompt(options: RequestAiTranslationSelectionO
         },
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
-        matchingCorrections: line.matchingCorrections ?? []
+        matchingCorrections: line.matchingCorrections ?? [],
+        previousTranslation: line.previousTranslation ?? null
       }))
     },
     null,

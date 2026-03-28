@@ -77,6 +77,7 @@ export type LafzLibraryTrack = {
   title: string;
   artist: string;
   album: string;
+  album_art_url: string | null;
   duration_ms: number;
   source_playlist_id: string;
   source_playlist_name: string;

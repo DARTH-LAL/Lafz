@@ -61,6 +61,7 @@ type SpotifyPlaylistTrackItem = {
     }>;
     album?: {
       name?: string;
+      images?: Array<{ url?: string; width?: number; height?: number }>;
     };
   } | null;
   track?: {
@@ -77,6 +78,7 @@ type SpotifyPlaylistTrackItem = {
     }>;
     album?: {
       name?: string;
+      images?: Array<{ url?: string; width?: number; height?: number }>;
     };
   } | null;
 };
@@ -237,12 +239,16 @@ function normalizePlaylistTrack(
     .map((artist) => artist.name)
     .filter((name): name is string => Boolean(name));
 
+  // Pick the largest image (Spotify sorts images descending by size)
+  const albumArtUrl = track.album?.images?.[0]?.url ?? null;
+
   return {
     track: {
       spotify_track_id: track.id,
       title: track.name ?? "Unknown track",
       artist: artistNames.join(", ") || "Unknown artist",
       album: track.album?.name ?? "Unknown album",
+      album_art_url: albumArtUrl,
       duration_ms: track.duration_ms ?? 0,
       source_playlist_id: sourcePlaylistId,
       source_playlist_name: sourcePlaylistName,
@@ -274,7 +280,7 @@ async function fetchSpotifyPlaylistTracks(accessToken: string, playlistId: strin
       limit: "50",
       offset: offset.toString(),
       fields:
-        "items(is_local,item(id,type,name,duration_ms,is_playable,external_urls.spotify,artists(name),album(name))),limit,next,offset,total"
+        "items(is_local,item(id,type,name,duration_ms,is_playable,external_urls.spotify,artists(name),album(name,images)),track(id,type,name,duration_ms,is_playable,external_urls.spotify,artists(name),album(name,images))),limit,next,offset,total"
     });
 
     let page: SpotifyPlaylistTracksPageResponse;

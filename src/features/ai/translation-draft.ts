@@ -9,13 +9,14 @@ import {
   requestProviderSongContext,
   requestProviderTranslationDraft,
   requestProviderTranslationRefinement,
-  requestProviderTranslationSelection
+  requestProviderTranslationSelection,
+  type PreviousTranslationRef
 } from "@/features/ai/provider";
 import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
 import { requestGeminiDraftComparison } from "@/features/ai/gemini";
 import { requestOpenAiTranslationDraft } from "@/features/ai/openai";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
-import { writeAiTranslationDraftFile } from "@/features/ai/repository";
+import { getAiTranslationDraftByTrackId, writeAiTranslationDraftFile } from "@/features/ai/repository";
 import { calcModelCost, recordAiUsageRun } from "@/features/ai/usage-tracker";
 import type {
   AiCostSummary,
@@ -821,11 +822,28 @@ function sampleSongContextLines(sourceLines: SourceDraftLine[], maxLines = SONG_
     .filter((line): line is SourceDraftLine => Boolean(line));
 }
 
-async function generateSongContext(options: GenerateAiTranslationOptions, sourceLines: SourceDraftLine[]) {
+async function generateSongContext(
+  options: GenerateAiTranslationOptions,
+  sourceLines: SourceDraftLine[],
+  previousSongContext?: AiSongContext | null
+) {
   const requestedSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
   const { memory: artistMemory, preferredRenderings, correctionExamples: artistCorrectionExamples } =
     await getAiArtistMemory(options.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(options.spotifyTrackId).catch(() => []);
+
+  // Reuse previous song context if available — saves an API call and keeps analysis stable
+  if (previousSongContext) {
+    return {
+      artistMemory,
+      preferredRenderings,
+      artistCorrectionExamples,
+      trackCorrectionExamples,
+      sourceLanguage: requestedSourceLanguage,
+      songContext: previousSongContext
+    };
+  }
+
   const sampledLines = sampleSongContextLines(
     sourceLines,
     sourceLines.length >= LARGE_TRACK_LINE_COUNT ? 14 : SONG_CONTEXT_MAX_LINES
@@ -973,7 +991,8 @@ async function generateDraftLinesInBatches(
   trackCorrectionExamples: AiCorrectionExample[],
   normalizedSourceLookup: Map<number, NormalizedSourceLine>,
   meaningLines: MeaningAnalysisLine[],
-  requestDraft: DraftRequester = requestProviderTranslationDraft
+  requestDraft: DraftRequester = requestProviderTranslationDraft,
+  previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -1040,7 +1059,8 @@ async function generateDraftLinesInBatches(
             ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
             ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
             includeGroupText ? group?.text ?? "" : ""
-          ])
+          ]),
+          previousTranslation: previousDraftLookup?.get(line.order) ?? null
         };
       })
     });
@@ -1100,7 +1120,8 @@ async function refineDraftLinesInBatches(
   trackCorrectionExamples: AiCorrectionExample[],
   lockedOrders?: Set<number>,
   currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
-  normalizedSourceLookup?: Map<number, NormalizedSourceLine>
+  normalizedSourceLookup?: Map<number, NormalizedSourceLine>,
+  previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
   const batchSize = getRefinementBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -1180,7 +1201,8 @@ async function refineDraftLinesInBatches(
           line.natural,
           line.slangAware,
           line.chosen
-        ])
+        ]),
+        previousTranslation: previousDraftLookup?.get(line.order) ?? null
       }))
     });
 
@@ -1250,7 +1272,8 @@ async function selectDraftLinesInBatches(
   trackCorrectionExamples: AiCorrectionExample[],
   lockedOrders?: Set<number>,
   currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
-  normalizedSourceLookup?: Map<number, NormalizedSourceLine>
+  normalizedSourceLookup?: Map<number, NormalizedSourceLine>,
+  previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
   const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -1330,7 +1353,8 @@ async function selectDraftLinesInBatches(
           draftLines[line.order]?.chosen ?? "",
           ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
           ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
-        ])
+        ]),
+        previousTranslation: previousDraftLookup?.get(line.order) ?? null
       }))
     });
 
@@ -1423,7 +1447,8 @@ async function evaluateDraftAlternativesInBatches(
   normalizedSourceLookup: Map<number, NormalizedSourceLine>,
   generatorALines: AiDraftLine[],
   generatorBLines: AiDraftLine[],
-  usageSink?: { inputTokens: number; outputTokens: number }
+  usageSink?: { inputTokens: number; outputTokens: number },
+  previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
   const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -1500,7 +1525,8 @@ async function evaluateDraftAlternativesInBatches(
             generatorBLines[line.order]?.chosen ?? "",
             ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
             ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
-          ])
+          ]),
+          previousTranslation: previousDraftLookup?.get(line.order) ?? null
         };
       })
     }, usageSink);
@@ -1720,6 +1746,12 @@ export function applyManualCorrectionPropagation(
 export async function generateAiTranslationDraft(
   options: GenerateAiTranslationOptions
 ): Promise<GenerateAiTranslationResult> {
+  const generationStartMs = Date.now();
+
+  // Load previous draft for reference context (non-blocking — generation continues even if this fails)
+  const previousDraft = await getAiTranslationDraftByTrackId(options.spotifyTrackId).catch(() => null);
+  const previousDraftLookup = buildPreviousDraftLookup(previousDraft);
+
   const lyricsCache = await getLyricsCacheByTrackId(options.spotifyTrackId);
 
   if (!lyricsCache) {
@@ -1738,7 +1770,7 @@ export async function generateAiTranslationDraft(
   }
 
   const targetLanguage = normalizeLanguage(options.targetLanguage);
-  const contextResponse = await generateSongContext(options, sourceLines);
+  const contextResponse = await generateSongContext(options, sourceLines, previousDraft?.songContext ?? null);
   const meaningResponse = await generateMeaningLinesInBatches(
     options,
     sourceLines,
@@ -1799,7 +1831,8 @@ export async function generateAiTranslationDraft(
         contextResponse.trackCorrectionExamples,
         normalizedSourceLookup,
         meaningResponse.lines,
-        openAiRequester
+        openAiRequester,
+        previousDraftLookup
       ),
       generateDraftLinesInBatches(
         options,
@@ -1813,7 +1846,8 @@ export async function generateAiTranslationDraft(
         contextResponse.trackCorrectionExamples,
         normalizedSourceLookup,
         meaningResponse.lines,
-        anthropicRequester
+        anthropicRequester,
+        previousDraftLookup
       )
     ]);
 
@@ -1831,7 +1865,8 @@ export async function generateAiTranslationDraft(
       normalizedSourceLookup,
       generatorAInitialDraft.lines,
       generatorBInitialDraft.lines,
-      usageSinkG
+      usageSinkG,
+      previousDraftLookup
     );
     genGDurationMs = Date.now() - geminiT0;
     const pipelineDurationMs = Date.now() - pipelineStartMs;
@@ -1907,7 +1942,9 @@ export async function generateAiTranslationDraft(
       contextResponse.artistCorrectionExamples,
       contextResponse.trackCorrectionExamples,
       normalizedSourceLookup,
-      meaningResponse.lines
+      meaningResponse.lines,
+      undefined,
+      previousDraftLookup
     );
     const refinedDraft = skipRefinement
       ? null
@@ -1924,7 +1961,8 @@ export async function generateAiTranslationDraft(
           contextResponse.trackCorrectionExamples,
           undefined,
           [],
-          normalizedSourceLookup
+          normalizedSourceLookup,
+          previousDraftLookup
         ).catch(() => null);
     const selectedDraft = await selectDraftLinesInBatches(
       options,
@@ -1939,7 +1977,8 @@ export async function generateAiTranslationDraft(
       contextResponse.trackCorrectionExamples,
       undefined,
       [],
-      normalizedSourceLookup
+      normalizedSourceLookup,
+      previousDraftLookup
     ).catch(() => null);
 
     aiResponse = {
@@ -1972,6 +2011,7 @@ export async function generateAiTranslationDraft(
   const draftFilePath = await writeAiTranslationDraftFile(draftFile);
 
   if (lyricsCache.kind === "plain") {
+    void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "draft_only_plain");
     return {
       status: "draft_only_plain",
       draftFilePath,
@@ -1983,6 +2023,7 @@ export async function generateAiTranslationDraft(
   const translationInspection = await inspectTranslationFile(options.spotifyTrackId);
 
   if (shouldPreserveExistingTranslationFile(translationInspection.kind, options.overwriteExistingTranslation)) {
+    void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "draft_only_preserved");
     return {
       status: "draft_only_preserved",
       draftFilePath,
@@ -2010,6 +2051,7 @@ export async function generateAiTranslationDraft(
 
   const translationFilePath = await writeTrackTranslationFile(translationFile);
 
+  void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "saved_translation");
   return {
     status: "saved_translation",
     draftFilePath,
@@ -2017,4 +2059,55 @@ export async function generateAiTranslationDraft(
     lineCount: draftFile.lines.length,
     costSummary: pipelineCostSummary
   };
+}
+
+// ── Previous draft lookup ─────────────────────────────────────────────────
+
+function buildPreviousDraftLookup(
+  previousDraft: AiTranslationDraftFile | null | undefined
+): Map<number, PreviousTranslationRef> {
+  const lookup = new Map<number, PreviousTranslationRef>();
+  if (!previousDraft) return lookup;
+  for (const line of previousDraft.lines) {
+    lookup.set(line.order, {
+      chosen: line.chosen,
+      confidence: line.confidence,
+      manuallyReviewed: line.selectorReason === "Manually reviewed in Lafz."
+    });
+  }
+  return lookup;
+}
+
+// ── Generation log helper ─────────────────────────────────────────────────
+
+async function recordGenerationLog(
+  spotifyTrackId: string,
+  draftFile: AiTranslationDraftFile,
+  costSummary: import("@/features/ai/types").AiCostSummary | undefined,
+  startMs: number,
+  resultStatus: string
+): Promise<void> {
+  try {
+    const { appendGenerationLogEntry } = await import("@/features/ai/generation-log");
+    const now = Date.now();
+    const lines = draftFile.lines;
+    await appendGenerationLogEntry(spotifyTrackId, {
+      id: `${spotifyTrackId}-${now}`,
+      timestampMs: now,
+      startedAt: new Date(startMs).toISOString(),
+      durationMs: now - startMs,
+      model: draftFile.generator.model,
+      provider: draftFile.generator.provider,
+      lineCount: lines.length,
+      lowCount: lines.filter((l) => l.confidence === "low").length,
+      mediumCount: lines.filter((l) => l.confidence === "medium").length,
+      highCount: lines.filter((l) => l.confidence === "high").length,
+      sourceLanguage: draftFile.sourceLanguage,
+      targetLanguage: draftFile.targetLanguage,
+      resultStatus,
+      costSummary: costSummary ?? null,
+    });
+  } catch {
+    // Non-fatal
+  }
 }

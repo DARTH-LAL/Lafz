@@ -5,6 +5,7 @@ import {
   buildUserPrompt,
   parseGeneratedLines
 } from "@/features/ai/openai";
+import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
@@ -48,6 +49,7 @@ type RequestAnthropicTranslationDraftOptions = {
     groupIndex?: number;
     groupText?: string;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -144,7 +146,13 @@ export function getAnthropicBaseUrl() {
 
 export function getAnthropicGeneratorBModel() {
   const value = process.env.ANTHROPIC_GENERATOR_B_MODEL?.trim();
-  return value && value.length > 0 ? value : DEFAULT_ANTHROPIC_GENERATOR_B_MODEL;
+  if (value && value.length > 0) return value;
+  try {
+    const { readSettingsSync } = require("@/features/settings/repository") as { readSettingsSync: () => { generatorBModel: string } };
+    const model = readSettingsSync().generatorBModel;
+    if (model) return model;
+  } catch {}
+  return DEFAULT_ANTHROPIC_GENERATOR_B_MODEL;
 }
 
 export function isAnthropicConfigured() {

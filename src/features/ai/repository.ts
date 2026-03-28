@@ -289,6 +289,11 @@ export function getAiTranslationDraftFilePath(spotifyTrackId: string) {
 export async function writeAiTranslationDraftFile(draftFile: AiTranslationDraftFile) {
   await mkdir(aiTranslationDraftsRoot, { recursive: true });
   const filePath = getAiTranslationDraftFilePath(draftFile.spotifyTrackId);
+
+  // Snapshot the existing draft before overwriting
+  const { backupDraftBeforeOverwrite } = await import("@/features/ai/versioning");
+  await backupDraftBeforeOverwrite(draftFile.spotifyTrackId, filePath);
+
   await writeFile(filePath, `${JSON.stringify(draftFile, null, 2)}\n`, "utf8");
   return filePath;
 }

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { AppTopBar } from "@/components/app-top-bar";
-import { AiDraftReview } from "@/components/ai-draft-review";
+import { TranslationEditor } from "@/components/translation-editor";
+import { VersionHistory } from "@/components/version-history";
 import { getAiTranslationDraftByTrackId, inspectAiTranslationDraftFile } from "@/features/ai/repository";
 import { getLibraryTrackRecord } from "@/features/library/queue";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
@@ -44,7 +45,7 @@ export default async function DraftReviewPage({ params }: ReviewPageProps) {
         }}
       />
 
-      <div className="relative z-10 mx-auto max-w-4xl px-6 py-8 lg:px-10">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
         <AppTopBar connected className="mb-8" />
 
         {/* Back link + track info */}
@@ -67,20 +68,24 @@ export default async function DraftReviewPage({ params }: ReviewPageProps) {
               <p className="mt-2 text-[16px] text-[#c8b8d8]">{record.artist}</p>
             </>
           )}
-          <div className="relative mt-6 h-px w-full">
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,20,100,0.5)_30%,rgba(255,20,100,0.8)_50%,rgba(255,20,100,0.5)_70%,transparent)]" />
-            <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff1464] shadow-[0_0_12px_#ff1464]" />
+          <div className="relative mt-6 flex items-center justify-between gap-4">
+            <div className="relative flex-1 h-px">
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,20,100,0.5)_30%,rgba(255,20,100,0.8)_50%,rgba(255,20,100,0.5)_70%,transparent)]" />
+              <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff1464] shadow-[0_0_12px_#ff1464]" />
+            </div>
+            <VersionHistory
+              spotifyTrackId={spotifyTrackId}
+              currentGeneratedAt={aiDraftInspection.lastModifiedAt}
+            />
           </div>
         </header>
 
         <div className="rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.82)] p-6 backdrop-blur-[20px]">
-          <AiDraftReview
+          <TranslationEditor
             track={{
               spotifyTrackId,
               title: record?.title ?? "",
               artist: record?.artist ?? "",
-              album: record?.album ?? "",
-              durationMs: record?.duration_ms ?? 0
             }}
             initialDraft={aiDraft}
             lastModifiedAt={aiDraftInspection.lastModifiedAt}

@@ -39,6 +39,7 @@ type QueueRecordSeed = {
   title: string;
   artist: string;
   album: string;
+  album_art_url: string | null;
   duration_ms: number;
   source_playlists: Map<string, LibrarySourcePlaylist>;
   language: string | null;
@@ -116,6 +117,7 @@ function parseLibraryTrack(value: unknown, filePath: string, index: number): Laf
     title,
     artist,
     album,
+    album_art_url: asNullableString(value.album_art_url),
     duration_ms,
     source_playlist_id,
     source_playlist_name,
@@ -227,6 +229,7 @@ async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRe
     title: seed.title,
     artist: seed.artist,
     album: seed.album,
+    album_art_url: seed.album_art_url,
     duration_ms: seed.duration_ms,
     source_playlists: [...seed.source_playlists.values()].sort((left, right) => compareStrings(left.playlist_name, right.playlist_name)),
     language: normalizeDisplayLanguage(translationInspection.language ?? seed.language),
@@ -287,6 +290,7 @@ export async function buildLibraryQueue(): Promise<LibraryQueueResult> {
             title: track.title,
             artist: track.artist,
             album: track.album,
+            album_art_url: track.album_art_url,
             duration_ms: track.duration_ms,
             source_playlists: new Map([[sourcePlaylist.playlist_id, sourcePlaylist]]),
             language: track.language,

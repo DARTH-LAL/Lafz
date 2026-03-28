@@ -1,4 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
@@ -45,6 +46,7 @@ type GeminiDraftComparisonLine = {
     chosen: string;
   }>;
   matchingCorrections?: AiCorrectionHint[];
+  previousTranslation?: PreviousTranslationRef | null;
 };
 
 type RequestGeminiDraftComparisonOptions = {
@@ -123,6 +125,7 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
     "Do not reward flashier wording if it drifts away from the original meaning.",
     "You may choose Generator A, choose Generator B, or synthesize a blended line only if the blend stays grounded in the original lyric.",
     "Use song context, glossary hints, artist memory, nearby lines, and manual correction hints to stay consistent.",
+    "If a line includes previousTranslation, factor it in when evaluating — prefer consistency with previous high-confidence choices, prioritise meaningful improvement for low-confidence ones, and treat manually-reviewed choices as near-final unless a candidate clearly corrects an error.",
     "If both candidates are weak, choose the more conservative option or synthesize a conservative correction.",
     "Return only JSON with detectedSourceLanguage and lines. Each line must include winner, chosen, confidence, ambiguity, note, and selectorReason.",
     "winner must be one of: generator_a, generator_b, blended."
@@ -167,7 +170,13 @@ export function getGeminiBaseUrl() {
 
 export function getGeminiEvaluatorModel() {
   const value = process.env.GEMINI_EVALUATOR_MODEL?.trim();
-  return value && value.length > 0 ? value : DEFAULT_GEMINI_EVALUATOR_MODEL;
+  if (value && value.length > 0) return value;
+  try {
+    const { readSettingsSync } = require("@/features/settings/repository") as { readSettingsSync: () => { judgeModel: string } };
+    const model = readSettingsSync().judgeModel;
+    if (model) return model;
+  } catch {}
+  return DEFAULT_GEMINI_EVALUATOR_MODEL;
 }
 
 export function isGeminiConfigured() {

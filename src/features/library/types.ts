@@ -20,6 +20,7 @@ export type LibraryQueueRecord = {
   title: string;
   artist: string;
   album: string;
+  album_art_url: string | null;
   duration_ms: number;
   source_playlists: LibrarySourcePlaylist[];
   language: string;

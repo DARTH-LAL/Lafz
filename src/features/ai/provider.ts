@@ -29,6 +29,12 @@ import {
 } from "@/features/ai/openai";
 import { getAnthropicGeneratorBModel, isAnthropicConfigured } from "@/features/ai/anthropic";
 import { getGeminiEvaluatorModel, isGeminiConfigured } from "@/features/ai/gemini";
+export type PreviousTranslationRef = {
+  chosen: string;
+  confidence: "low" | "medium" | "high";
+  manuallyReviewed: boolean;
+};
+
 type RequestAiTranslationDraftOptions = {
   title: string;
   artist: string;
@@ -53,6 +59,7 @@ type RequestAiTranslationDraftOptions = {
     groupIndex?: number;
     groupText?: string;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -110,6 +117,7 @@ type RequestAiTranslationRefinementOptions = {
       chosen: string;
     }>;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -160,6 +168,7 @@ type RequestAiTranslationSelectionOptions = {
       chosen: string;
     }>;
     matchingCorrections?: AiCorrectionHint[];
+    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 

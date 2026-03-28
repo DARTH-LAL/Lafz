@@ -1,25 +1,16 @@
-import Link from "next/link";
-
 import { AppTopBar } from "@/components/app-top-bar";
-import { BulkDeleteButton } from "@/components/bulk-delete-button";
-import { DeleteTrackButton } from "@/components/delete-track-button";
+import { LibraryQueueClient } from "@/components/library-queue-client";
 import { StatePanel } from "@/components/state-panel";
-import { TranslationStatusBadge } from "@/components/translation-status-badge";
 import type { LibraryQueueFilters, LibraryQueueRecord, LibraryQueueResult } from "@/features/library/types";
-import { formatMilliseconds } from "@/lib/utils";
-
-function formatUpdatedAt(value: string | null) {
-  if (!value) return null;
-  return new Date(value).toLocaleString();
-}
 
 type LibraryQueueViewProps = {
   queue: LibraryQueueResult;
   records: LibraryQueueRecord[];
   filters: LibraryQueueFilters;
+  artMap?: Record<string, string | null>;
 };
 
-export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewProps) {
+export function LibraryQueueView({ queue, records, filters, artMap }: LibraryQueueViewProps) {
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden bg-[#060410] text-[#fff0f6]">
 
@@ -211,7 +202,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
           </div>
         ) : null}
 
-        {/* Track table */}
+        {/* Track grid / list */}
         {records.length === 0 ? (
           <StatePanel
             eyebrow="No matches"
@@ -219,90 +210,7 @@ export function LibraryQueueView({ queue, records, filters }: LibraryQueueViewPr
             description="Try widening your search, changing the status filter, or importing more playlists into Lafz first."
           />
         ) : (
-          <>
-            {/* Bulk actions bar — only shown when there are needs_lyrics tracks visible */}
-            {records.some((r) => r.studio_status === "needs_lyrics") && (
-              <div className="mb-4 flex items-center justify-end">
-                <BulkDeleteButton
-                  spotifyTrackIds={records
-                    .filter((r) => r.studio_status === "needs_lyrics")
-                    .map((r) => r.spotify_track_id)}
-                  label="Delete all — Needs Lyrics"
-                />
-              </div>
-            )}
-          <section className="overflow-hidden rounded-[24px] border border-[rgba(255,20,100,0.12)] shadow-[0_0_80px_rgba(255,20,100,0.05)] backdrop-blur-xl">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead>
-                  <tr className="border-b border-[rgba(255,20,100,0.12)] bg-[rgba(255,20,100,0.05)] text-[10px] font-bold uppercase tracking-[2px] text-[rgba(255,20,100,0.65)]">
-                    <th className="px-6 py-4">Track</th>
-                    <th className="px-6 py-4">Language</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Playlist</th>
-                    <th className="px-6 py-4">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((record) => (
-                    <tr
-                      key={record.spotify_track_id}
-                      className="group border-b border-[rgba(255,255,255,0.04)] bg-[rgba(6,4,16,0.65)] align-top transition-all last:border-b-0 hover:bg-[rgba(255,20,100,0.05)] [border-left:3px_solid_transparent] hover:[border-left-color:#ff1464]"
-                    >
-                      <td className="px-6 py-5">
-                        <p className="font-display text-[15px] font-semibold text-[#fff0f6] transition-colors group-hover:text-[#ffb0d0]">
-                          {record.title}
-                        </p>
-                        <p className="mt-1 text-[13px] text-[#9a85b2]">{record.artist}</p>
-                        <p className="mt-1 text-[11px] text-[#5a4870]">{record.album} · {formatMilliseconds(record.duration_ms)}</p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="text-[13px] capitalize text-[#c8b8d8]">{record.language}</p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <TranslationStatusBadge status={record.studio_status} />
-                        {!record.translation_file_exists && record.ai_draft_exists ? (
-                          <p className="mt-2 text-[11px] leading-5 text-[#ff6aaa]">
-                            AI draft: {record.ai_draft_line_count} lines ({record.ai_draft_mode})
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-wrap gap-1.5">
-                          {record.source_playlists.map((playlist) => (
-                            <span
-                              key={`${record.spotify_track_id}-${playlist.playlist_id}`}
-                              className="rounded-full border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.06)] px-3 py-1 text-[11px] text-[#ff6aaa]"
-                            >
-                              {playlist.playlist_name}
-                            </span>
-                          ))}
-                        </div>
-                        {formatUpdatedAt(record.translation_last_modified_at) ? (
-                          <p className="mt-2 text-[11px] text-[#5a4870]">{formatUpdatedAt(record.translation_last_modified_at)}</p>
-                        ) : null}
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/library/track/${record.spotify_track_id}`}
-                            className="inline-flex items-center justify-center rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.10)] px-5 py-2 text-[12px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.22)] hover:text-[#fff0f6] hover:shadow-[0_0_20px_rgba(255,20,100,0.35)]"
-                          >
-                            Open
-                          </Link>
-                          <DeleteTrackButton
-                            spotifyTrackId={record.spotify_track_id}
-                            trackTitle={record.title}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          </>
+          <LibraryQueueClient records={records} artMap={artMap} />
         )}
       </div>
 

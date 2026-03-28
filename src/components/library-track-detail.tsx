@@ -1,5 +1,6 @@
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AppTopBar } from "@/components/app-top-bar";
+import { GenerationHistory } from "@/components/generation-history";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { LyricsCacheInspection } from "@/features/lyrics/types";
@@ -282,6 +283,19 @@ export function LibraryTrackDetail({
           initialMessage={aiMessage}
           initialStatus={aiStatus}
         />
+
+        {/* Generation history */}
+        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-6 backdrop-blur-[20px]">
+          <div className="mb-4 flex items-center gap-3">
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 flex-shrink-0 fill-[rgba(255,20,100,0.6)]" aria-hidden="true">
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 3.5v4.25l3 1.5-.53 1.06-3.47-1.73V4.5h1z" />
+            </svg>
+            <p className="text-[11px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">
+              Generation history
+            </p>
+          </div>
+          <GenerationHistory spotifyTrackId={record.spotify_track_id} />
+        </section>
       </div>
 
       <style>{`@keyframes lafz-shimmer { to { background-position: -250% 0; } }`}</style>
