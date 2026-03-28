@@ -1,5 +1,6 @@
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AppTopBar } from "@/components/app-top-bar";
+import { ArtistGlossaryCard } from "@/components/artist-glossary-card";
 import { GenerationHistory } from "@/components/generation-history";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
@@ -7,6 +8,7 @@ import type { LyricsCacheInspection } from "@/features/lyrics/types";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
 import type { LibraryQueueRecord } from "@/features/library/types";
 import type { TranslationFileInspection } from "@/features/translations/types";
+import { normalizeArtistKey } from "@/features/ai/glossary-repository";
 import { formatMilliseconds } from "@/lib/utils";
 
 function formatUpdatedAt(value: string | null) {
@@ -295,6 +297,16 @@ export function LibraryTrackDetail({
             </p>
           </div>
           <GenerationHistory spotifyTrackId={record.spotify_track_id} />
+        </section>
+
+        {/* Artist glossary */}
+        <section className="mb-6 rounded-[24px] border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.75)] p-6 backdrop-blur-[20px]">
+          <ArtistGlossaryCard
+            artistKey={normalizeArtistKey(record.artist)}
+            artistName={record.artist}
+            fullPageHref={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
+            spotifyTrackIds={[record.spotify_track_id]}
+          />
         </section>
       </div>
 

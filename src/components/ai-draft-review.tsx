@@ -84,6 +84,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
   const router = useRouter();
   const [showLowConfidenceFirst, setShowLowConfidenceFirst] = useState(true);
   const [savingReviewKey, setSavingReviewKey] = useState<string | null>(null);
+  const [regeneratingKey, setRegeneratingKey] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [draftLines, setDraftLines] = useState<EditableDraftLine[]>(() =>
     initialDraft ? initialDraft.lines.map(toEditableDraftLine) : []
@@ -175,6 +176,69 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
       setToast({ message: error instanceof Error ? error.message : "Could not save changes.", tone: "error" });
     } finally {
       setSavingReviewKey(null);
+    }
+  };
+
+  const handleRegenerateLine = async (order: number) => {
+    const matchingLines = getMatchingLines(order);
+    if (matchingLines.length === 0) return;
+    const reviewKey = normalizeReviewKey(matchingLines[0].original) || `line-${order}`;
+    setRegeneratingKey(reviewKey);
+
+    try {
+      const response = await fetch("/api/ai/regenerate-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spotifyTrackId: track.spotifyTrackId, lineOrder: order })
+      });
+
+      const payload = (await response.json()) as {
+        success?: boolean;
+        updatedLines?: Array<{
+          order: number;
+          literal: string;
+          natural: string;
+          slangAware: string;
+          chosen: string;
+          transliteration: string | null;
+          note: string | null;
+          ambiguity: string | null;
+          confidence: "low" | "medium" | "high";
+          selectorReason: string | null;
+        }>;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error ?? "Regeneration failed.");
+      }
+
+      if (payload.updatedLines && payload.updatedLines.length > 0) {
+        const updateMap = new Map(payload.updatedLines.map((l) => [l.order, l]));
+        setDraftLines((current) =>
+          current.map((l) => {
+            const updated = updateMap.get(l.order);
+            if (!updated) return l;
+            return {
+              ...l,
+              literal: updated.literal,
+              natural: updated.natural,
+              slangAware: updated.slangAware,
+              chosen: updated.chosen,
+              transliteration: updated.transliteration,
+              note: updated.note,
+              ambiguity: updated.ambiguity,
+              confidence: updated.confidence,
+              selectorReason: updated.selectorReason
+            };
+          })
+        );
+        setToast({ message: "Line regenerated. Review and save when ready.", tone: "success" });
+      }
+    } catch (error) {
+      setToast({ message: error instanceof Error ? error.message : "Regeneration failed.", tone: "error" });
+    } finally {
+      setRegeneratingKey(null);
     }
   };
 
@@ -313,8 +377,26 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
                 </div>
               ) : null}
 
-              <div className="mt-4">
-                <button type="button" onClick={() => { void handleSaveLine(line.order); }} disabled={savingReviewKey === saveKey}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { void handleRegenerateLine(line.order); }}
+                  disabled={regeneratingKey === saveKey || savingReviewKey === saveKey}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.07)] px-5 py-2.5 text-[12px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.14)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {regeneratingKey === saveKey ? (
+                    <>
+                      <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[#ff6aaa] border-t-transparent" />
+                      Regenerating…
+                    </>
+                  ) : (
+                    <>
+                      <span>↻</span>
+                      {matchingCount > 1 ? `Regenerate all ${matchingCount}` : "Regenerate line"}
+                    </>
+                  )}
+                </button>
+                <button type="button" onClick={() => { void handleSaveLine(line.order); }} disabled={savingReviewKey === saveKey || regeneratingKey === saveKey}
                   className="rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-6 py-2.5 text-[13px] font-bold text-white shadow-[0_0_16px_rgba(255,20,100,0.35)] transition hover:opacity-90 hover:shadow-[0_0_28px_rgba(255,20,100,0.55)] disabled:cursor-not-allowed disabled:opacity-50">
                   {savingReviewKey === saveKey ? "Saving..." : matchingCount > 1 ? `Save all ${matchingCount} matching lines` : "Save line"}
                 </button>
