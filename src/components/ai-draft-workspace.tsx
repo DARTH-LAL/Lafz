@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FloatingToast } from "@/components/floating-toast";
-import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
+import type { AiCostSummary, AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
 import type { TranslationFileKind } from "@/features/translations/types";
 
 type AiDraftWorkspaceProps = {
@@ -70,6 +70,7 @@ export function AiDraftWorkspace({
   const [message, setMessage] = useState(initialMessage);
   const [messageTone, setMessageTone] = useState<"success" | "error">(initialStatus === "error" ? "error" : "success");
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [costSummary, setCostSummary] = useState<AiCostSummary | null>(null);
   const [draftLines, setDraftLines] = useState<EditableDraftLine[]>(() => (initialDraft ? initialDraft.lines.map(toEditableDraftLine) : []));
 
   const canGenerate = aiConfigured && (lyricsKind === "synced" || lyricsKind === "plain");
@@ -191,6 +192,7 @@ export function AiDraftWorkspace({
             status: "running" | "succeeded" | "failed";
             message: string | null;
             detail: string | null;
+            costSummary: AiCostSummary | null;
           };
         };
 
@@ -209,6 +211,9 @@ export function AiDraftWorkspace({
         const nextMessage = statusPayload.job.message ?? "Lafz generated the AI draft.";
         setMessage(nextMessage);
         setMessageTone("success");
+        if (statusPayload.job.costSummary) {
+          setCostSummary(statusPayload.job.costSummary);
+        }
         setToast({
           message: nextMessage,
           tone: "success"
@@ -257,6 +262,29 @@ export function AiDraftWorkspace({
             }`}
           >
             {message}
+          </div>
+        ) : null}
+
+        {costSummary ? (
+          <div className="mt-3 rounded-[16px] border border-[rgba(63,255,170,0.15)] bg-[rgba(63,255,170,0.04)] p-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(63,255,170,0.6)]">This generation cost</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: costSummary.generatorA.model.replace("gpt-", "GPT-"), color: "#ff4d96", cost: costSummary.generatorA.costUsd, input: costSummary.generatorA.inputTokens, output: costSummary.generatorA.outputTokens },
+                { label: costSummary.generatorB.model.split("-")[0] === "claude" ? "Claude" : costSummary.generatorB.model, color: "#a259ff", cost: costSummary.generatorB.costUsd, input: costSummary.generatorB.inputTokens, output: costSummary.generatorB.outputTokens },
+                { label: costSummary.judge.model.includes("gemini") ? "Gemini" : costSummary.judge.model, color: "#40e8ff", cost: costSummary.judge.costUsd, input: costSummary.judge.inputTokens, output: costSummary.judge.outputTokens },
+              ].map(({ label, color, cost, input, output }) => (
+                <div key={label} className="rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: `${color}99` }}>{label}</p>
+                  <p className="mt-1 text-[18px] font-bold" style={{ color }}>${cost.toFixed(4)}</p>
+                  <p className="mt-0.5 text-[10px] text-[rgba(255,255,255,0.3)]">{(input + output).toLocaleString()} tokens</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-3">
+              <span className="text-[12px] text-[rgba(255,255,255,0.35)]">Total</span>
+              <span className="text-[18px] font-bold text-[#3fffaa]">${costSummary.totalCostUsd.toFixed(4)}</span>
+            </div>
           </div>
         ) : null}
 

@@ -135,23 +135,33 @@ export type GenerateAiTranslationOptions = {
   overwriteExistingTranslation: boolean;
 };
 
+export type AiCostSummary = {
+  generatorA: { model: string; inputTokens: number; outputTokens: number; costUsd: number };
+  generatorB: { model: string; inputTokens: number; outputTokens: number; costUsd: number };
+  judge:      { model: string; inputTokens: number; outputTokens: number; costUsd: number };
+  totalCostUsd: number;
+};
+
 export type GenerateAiTranslationResult =
   | {
       status: "saved_translation";
       draftFilePath: string;
       translationFilePath: string;
       lineCount: number;
+      costSummary?: AiCostSummary;
     }
   | {
       status: "draft_only_plain";
       draftFilePath: string;
       lineCount: number;
+      costSummary?: AiCostSummary;
     }
   | {
       status: "draft_only_preserved";
       draftFilePath: string;
       translationFilePath: string;
       lineCount: number;
+      costSummary?: AiCostSummary;
     }
   | {
       status: "missing_lyrics";
@@ -162,7 +172,7 @@ export type GenerateAiTranslationResult =
   | {
       status: "provider_unavailable";
     }
-    | {
+  | {
       status: "model_missing";
     };
 

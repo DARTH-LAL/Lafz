@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { generateAiTranslationDraft } from "@/features/ai/translation-draft";
-import type { GenerateAiTranslationOptions } from "@/features/ai/types";
+import type { AiCostSummary, GenerateAiTranslationOptions } from "@/features/ai/types";
 
 type AiGenerationJobStatus = "running" | "succeeded" | "failed";
 
@@ -15,6 +15,7 @@ export type AiGenerationJob = {
   resultStatus: string | null;
   message: string | null;
   detail: string | null;
+  costSummary: AiCostSummary | null;
 };
 
 type AiGenerationJobInternal = AiGenerationJob;
@@ -76,7 +77,8 @@ export function startAiGenerationJob(options: GenerateAiTranslationOptions) {
     completedAt: null,
     resultStatus: null,
     message: "Lafz started generating the AI draft.",
-    detail: null
+    detail: null,
+    costSummary: null
   };
 
   getJobStore().set(id, initialJob);
@@ -90,7 +92,8 @@ export function startAiGenerationJob(options: GenerateAiTranslationOptions) {
         completedAt: new Date().toISOString(),
         resultStatus: result.status,
         message: formatStatusMessage(result.status),
-        detail: null
+        detail: null,
+        costSummary: "costSummary" in result ? (result.costSummary ?? null) : null
       }));
     })
     .catch((error) => {

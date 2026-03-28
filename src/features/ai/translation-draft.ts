@@ -16,8 +16,9 @@ import { requestGeminiDraftComparison } from "@/features/ai/gemini";
 import { requestOpenAiTranslationDraft } from "@/features/ai/openai";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
-import { recordAiUsageRun } from "@/features/ai/usage-tracker";
+import { calcModelCost, recordAiUsageRun } from "@/features/ai/usage-tracker";
 import type {
+  AiCostSummary,
   AiDraftLine,
   AiCorrectionExample,
   AiCorrectionHint,
@@ -1756,6 +1757,7 @@ export async function generateAiTranslationDraft(
     sourceLanguage: string;
     lines: AiDraftLine[];
   };
+  let pipelineCostSummary: AiCostSummary | undefined;
 
   if (useThreeModelPipeline) {
     const pipelineStartMs = Date.now();
@@ -1856,7 +1858,18 @@ export async function generateAiTranslationDraft(
       else confLow++;
     }
 
-    // Record the usage run asynchronously (don't await to avoid delaying response)
+    // Build cost summary for immediate display
+    const costA = calcModelCost("openai",    usageSinkA.inputTokens, usageSinkA.outputTokens);
+    const costB = calcModelCost("anthropic", usageSinkB.inputTokens, usageSinkB.outputTokens);
+    const costG = calcModelCost("gemini",    usageSinkG.inputTokens, usageSinkG.outputTokens);
+    pipelineCostSummary = {
+      generatorA: { model: genAModel,          inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, costUsd: costA },
+      generatorB: { model: genBModel,          inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, costUsd: costB },
+      judge:      { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, costUsd: costG },
+      totalCostUsd: costA + costB + costG,
+    };
+
+    // Record the usage run (non-fatal)
     try {
       recordAiUsageRun({
         timestamp: new Date().toISOString(),
@@ -1867,24 +1880,9 @@ export async function generateAiTranslationDraft(
         totalLines: evalLines.length,
         winnerDistribution: { generatorA: winnerA, generatorB: winnerB, blended: winnerBlend },
         confidenceBreakdown: { high: confHigh, medium: confMed, low: confLow },
-        generatorA: {
-          model: genAModel,
-          inputTokens: usageSinkA.inputTokens,
-          outputTokens: usageSinkA.outputTokens,
-          durationMs: genADurationMs
-        },
-        generatorB: {
-          model: genBModel,
-          inputTokens: usageSinkB.inputTokens,
-          outputTokens: usageSinkB.outputTokens,
-          durationMs: genBDurationMs
-        },
-        judge: {
-          model: evaluatedDraft.model,
-          inputTokens: usageSinkG.inputTokens,
-          outputTokens: usageSinkG.outputTokens,
-          durationMs: genGDurationMs
-        },
+        generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, durationMs: genADurationMs },
+        generatorB: { model: genBModel, inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, durationMs: genBDurationMs },
+        judge:      { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, durationMs: genGDurationMs },
         pipelineDurationMs
       });
     } catch {
@@ -1977,7 +1975,8 @@ export async function generateAiTranslationDraft(
     return {
       status: "draft_only_plain",
       draftFilePath,
-      lineCount: draftFile.lines.length
+      lineCount: draftFile.lines.length,
+      costSummary: pipelineCostSummary
     };
   }
 
@@ -1988,7 +1987,8 @@ export async function generateAiTranslationDraft(
       status: "draft_only_preserved",
       draftFilePath,
       translationFilePath: translationInspection.filePath,
-      lineCount: draftFile.lines.length
+      lineCount: draftFile.lines.length,
+      costSummary: pipelineCostSummary
     };
   }
 
@@ -2014,6 +2014,7 @@ export async function generateAiTranslationDraft(
     status: "saved_translation",
     draftFilePath,
     translationFilePath,
-    lineCount: draftFile.lines.length
+    lineCount: draftFile.lines.length,
+    costSummary: pipelineCostSummary
   };
 }
