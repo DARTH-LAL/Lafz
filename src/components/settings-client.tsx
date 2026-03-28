@@ -34,7 +34,7 @@ function Card({ children, danger = false }: { children: React.ReactNode; danger?
       "mb-3 rounded-[20px] p-6 backdrop-blur-xl",
       danger
         ? "border border-[rgba(255,80,80,0.15)] bg-[rgba(255,50,80,0.04)]"
-        : "border border-[rgba(255,20,100,0.12)] bg-[rgba(10,7,22,0.9)]"
+        : "lafz-card"
     ].join(" ")}>
       {children}
     </div>
@@ -53,7 +53,7 @@ function Label({ title, desc, children }: { title: string; desc?: string; childr
   return (
     <div className="flex-1">
       <p className="text-[14px] font-semibold text-[#fff0f6]">{title}</p>
-      {desc && <p className="mt-1 text-[12px] leading-[1.6] text-[#7a6890]">{desc}</p>}
+      {desc && <p className="mt-1 text-[12px] leading-[1.6] text-white">{desc}</p>}
       {children}
     </div>
   );
@@ -242,13 +242,9 @@ export function SettingsClient({
             Lafz.
           </span>
         </h1>
-        <p className="mt-3 text-[15px] leading-[1.7] text-[#7a6890]">
+        <p className="mt-3 text-[15px] leading-[1.7] text-white">
           Manage your AI models, translation preferences, budgets and account.
         </p>
-        <div className="relative mt-6 h-px w-full">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,20,100,0.5)_30%,rgba(255,20,100,0.8)_50%,rgba(255,20,100,0.5)_70%,transparent)]" />
-          <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff1464] shadow-[0_0_12px_#ff1464]" />
-        </div>
       </header>
 
       {/* ── AI Pipeline ── */}

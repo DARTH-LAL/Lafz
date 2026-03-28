@@ -249,7 +249,7 @@ export function AiDraftWorkspace({
         <h2 className="mt-3 text-[22px] font-bold tracking-[-0.5px]">
           Generate a translation draft.
         </h2>
-        <p className="mt-2 text-[13px] leading-[1.7] text-[#7a6890]">
+        <p className="mt-2 text-[13px] leading-[1.7] text-white">
           Two models translate in parallel. A third evaluates and picks the best line by line — literal, natural, and slang-aware options included.
         </p>
 
@@ -288,7 +288,7 @@ export function AiDraftWorkspace({
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+        <div className="mt-4 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
           <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Current AI behavior</p>
           <p className="mt-2">
             {lyricsKind === "synced"
@@ -299,7 +299,7 @@ export function AiDraftWorkspace({
           </p>
         </div>
 
-        <div className="mt-3 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+        <div className="mt-3 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
           <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">AI provider</p>
           <p className="mt-2">
             Provider: <span className="text-[#fff0f6]">{getAiProviderLabel(aiProviderStatus.provider)}</span>
@@ -325,7 +325,7 @@ export function AiDraftWorkspace({
                   value={sourceLanguage}
                   onChange={(event) => { setSourceLanguage(event.target.value); }}
                   placeholder="Auto-detect from lyrics"
-                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
+                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-white focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
                 />
               </label>
 
@@ -335,12 +335,12 @@ export function AiDraftWorkspace({
                   type="text"
                   value={targetLanguage}
                   onChange={(event) => { setTargetLanguage(event.target.value); }}
-                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
+                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-white focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
                 />
               </label>
             </div>
 
-            <div className="space-y-3 rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4 text-[13px] text-[#c8b8d8]">
+            <div className="space-y-3 rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4 text-[13px] text-white">
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -375,7 +375,7 @@ export function AiDraftWorkspace({
             </div>
 
             {initialDraft?.songContext ? (
-              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
                 <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Song context</p>
                 <p className="mt-2 text-[#fff0f6]">{initialDraft.songContext.summary}</p>
                 <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Tone</p>
@@ -396,7 +396,7 @@ export function AiDraftWorkspace({
             ) : null}
 
             {initialDraft?.artistMemory ? (
-              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-[#c8b8d8]">
+              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
                 <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Artist memory</p>
                 <p className="mt-2 text-[#fff0f6]">{initialDraft.artistMemory.displayName}</p>
                 {initialDraft.artistMemory.translationPreferences.length > 0 ? (

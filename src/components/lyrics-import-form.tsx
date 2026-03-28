@@ -128,7 +128,7 @@ export function LyricsImportForm({ track, initialMessage, initialStatus }: Lyric
             onChange={(event) => { setLyricsText(event.target.value); }}
             rows={8}
             placeholder={`[00:12.34] Example timed line\n[00:16.40] Another line\n\nor plain lyrics text\n\nor synced JSON`}
-            className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 font-mono text-[13px] text-white outline-none transition placeholder:text-[#4a3860] focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
+            className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 font-mono text-[13px] text-white outline-none transition placeholder:text-white focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
           />
         </label>
         <button

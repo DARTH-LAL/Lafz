@@ -244,7 +244,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
 
   if (draftLines.length === 0) {
     return (
-      <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-6 text-[13px] leading-[1.7] text-[#7a6890]">
+      <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-6 text-[13px] leading-[1.7] text-white">
         No draft available yet. Generate a draft from the track detail page first.
       </div>
     );
@@ -259,11 +259,11 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">Draft Review</p>
           <h2 className="mt-2 text-[22px] font-bold tracking-[-0.5px]">Review the uncertain lines.</h2>
-          <p className="mt-1.5 text-[13px] leading-[1.7] text-[#7a6890]">
+          <p className="mt-1.5 text-[13px] leading-[1.7] text-white">
             Low-confidence lines bubble to the top. Fixes apply across all matching lines automatically.
           </p>
           {lastModifiedAt ? (
-            <p className="mt-2 text-[11px] text-[#5a4870]">Last updated: {formatUpdatedAt(lastModifiedAt)}</p>
+            <p className="mt-2 text-[11px] text-white">Last updated: {formatUpdatedAt(lastModifiedAt)}</p>
           ) : null}
         </div>
 
@@ -312,7 +312,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.55)]">Literal</p>
-                  <p className="mt-2 text-[13px] leading-[1.65] text-[#c8b8d8]">{line.literal}</p>
+                  <p className="mt-2 text-[13px] leading-[1.65] text-white">{line.literal}</p>
                   <button type="button" onClick={() => updateMatchingDraftLines(line.order, (l) => applyManualReview(l, { chosen: l.literal }))}
                     className="mt-3 inline-flex rounded-full border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.08)] px-4 py-1.5 text-[11px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.16)]">
                     Use literal
@@ -321,7 +321,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
 
                 <div className="rounded-[16px] border border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.04)] p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.55)]">Natural</p>
-                  <p className="mt-2 text-[13px] leading-[1.65] text-[#c8b8d8]">{line.natural}</p>
+                  <p className="mt-2 text-[13px] leading-[1.65] text-white">{line.natural}</p>
                   <button type="button" onClick={() => updateMatchingDraftLines(line.order, (l) => applyManualReview(l, { chosen: l.natural }))}
                     className="mt-3 inline-flex rounded-full border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.09)] px-4 py-1.5 text-[11px] font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,20,100,0.16)]">
                     Use natural
@@ -331,7 +331,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
 
               <div className="mt-3 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4">
                 <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Slang-aware</p>
-                <p className="mt-2 text-[13px] leading-[1.65] text-[#c8b8d8]">{line.slangAware}</p>
+                <p className="mt-2 text-[13px] leading-[1.65] text-white">{line.slangAware}</p>
                 <button type="button" onClick={() => updateMatchingDraftLines(line.order, (l) => applyManualReview(l, { chosen: l.slangAware }))}
                   className="mt-3 inline-flex rounded-full border border-[rgba(160,60,255,0.22)] bg-[rgba(160,60,255,0.10)] px-4 py-1.5 text-[11px] font-semibold text-[#c87eff] transition hover:bg-[rgba(160,60,255,0.18)]">
                   Use slang-aware
@@ -366,7 +366,7 @@ export function AiDraftReview({ track, initialDraft, lastModifiedAt }: AiDraftRe
               {line.selectorReason ? (
                 <div className="mt-3 rounded-[14px] border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.07)] p-4 text-[13px] leading-[1.65]">
                   <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.60)]">Selector reason</p>
-                  <p className="text-[#c8b8d8]">{line.selectorReason}</p>
+                  <p className="text-white">{line.selectorReason}</p>
                 </div>
               ) : null}
 

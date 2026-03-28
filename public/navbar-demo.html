@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blob Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff0f6; background: #2a0d14; min-height: 100vh; overflow-x: hidden; }
+
+  /* dot grid */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 1;
+    background-image: radial-gradient(rgba(255,20,100,0.14) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* ── Blobs ── */
+  .blob { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
+
+  /* Large, top-right */
+  #b1 { width:720px; height:720px; top:-200px; right:-180px;
+    background: radial-gradient(circle, rgba(255,20,100,0.58) 0%, transparent 55%);
+    filter: blur(52px); animation: drift1 13s ease-in-out infinite alternate; }
+
+  /* Medium-large, bottom-left */
+  #b2 { width:560px; height:560px; bottom:-130px; left:-100px;
+    background: radial-gradient(circle, rgba(230,10,70,0.50) 0%, transparent 55%);
+    filter: blur(50px); animation: drift2 17s ease-in-out infinite alternate; }
+
+  /* Small, upper-left */
+  #b3 { width:280px; height:280px; top:12%; left:8%;
+    background: radial-gradient(circle, rgba(255,40,100,0.36) 0%, transparent 60%);
+    filter: blur(38px); animation: drift3 21s ease-in-out infinite alternate; }
+
+  /* Medium oval, center-right */
+  #b4 { width:420px; height:320px; top:38%; right:5%;
+    background: radial-gradient(ellipse, rgba(255,20,80,0.30) 0%, transparent 60%);
+    filter: blur(44px); animation: drift4 19s ease-in-out infinite alternate; }
+
+  /* Small, lower-center */
+  #b5 { width:240px; height:240px; bottom:18%; left:42%;
+    background: radial-gradient(circle, rgba(255,60,120,0.28) 0%, transparent 60%);
+    filter: blur(36px); animation: drift5 25s ease-in-out infinite alternate; }
+
+  @keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(-70px,80px) scale(1.12); } }
+  @keyframes drift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(80px,-70px) scale(1.18); } }
+  @keyframes drift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(50px,90px) scale(0.88); } }
+  @keyframes drift4 { from { transform: translate(0,0) scale(1); } to { transform: translate(-60px,-50px) scale(1.10); } }
+  @keyframes drift5 { from { transform: translate(0,0) scale(1); } to { transform: translate(70px,-60px) scale(1.15); } }
+
+  /* ── Page content ── */
+  .page { position: relative; z-index: 2; max-width: 900px; margin: 0 auto; padding: 48px 40px; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-radius: 20px;
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,20,100,0.60);
+    background: rgba(6,2,5,0.92);
+    box-shadow: 0 0 0 1px rgba(255,20,100,0.18), 0 0 18px rgba(255,20,100,0.45), 0 0 48px rgba(255,20,100,0.22), 0 0 100px rgba(255,20,100,0.10), 0 6px 32px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,20,100,0.18);
+    margin-bottom: 40px;
+  }
+  .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: #fff0f6; text-decoration: none; }
+  .logo span { background: linear-gradient(135deg,#ff1464 0%,#ff6ba8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px rgba(255,20,100,0.7)); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #ff6ba8; border: 1px solid rgba(255,45,120,0.22); background: rgba(255,45,120,0.09); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff2d78; }
+  .icons { display: flex; align-items: center; gap: 8px; }
+  .icons a { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.03); color: #8f7ca7; text-decoration: none; font-size: 15px; }
+  .icons a.active { border-color: rgba(255,20,100,0.55); background: rgba(255,20,100,0.14); color: #fff0f6; box-shadow: 0 0 12px rgba(255,20,100,0.25); }
+
+  .card { border-radius: 20px; border: 1px solid rgba(255,20,100,0.12); background: rgba(10,3,7,0.60); padding: 28px; backdrop-filter: blur(12px); margin-bottom: 20px; }
+  .card-title { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+  .card-sub { font-size: 13px; color: rgba(255,255,255,0.38); line-height: 1.8; }
+  .pill { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; margin-right: 6px; margin-top: 14px; }
+  .pill-pink { background: rgba(255,20,100,0.15); color: #ff6ba8; border: 1px solid rgba(255,20,100,0.25); }
+  .pill-violet { background: rgba(162,89,255,0.15); color: #c87eff; border: 1px solid rgba(162,89,255,0.25); }
+  .pill-cyan { background: rgba(64,232,255,0.12); color: #40e8ff; border: 1px solid rgba(64,232,255,0.20); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .mini-card { border-radius: 16px; border: 1px solid rgba(255,20,100,0.10); background: rgba(10,3,7,0.55); padding: 20px; backdrop-filter: blur(12px); }
+  .mini-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .mini-sub { font-size: 11px; color: rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+
+<div class="blob" id="b1"></div>
+<div class="blob" id="b2"></div>
+<div class="blob" id="b3"></div>
+<div class="blob" id="b4"></div>
+<div class="blob" id="b5"></div>
+
+<div class="page">
+  <nav>
+    <a href="#" class="logo">la<span>F</span>z</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="badge"><span class="dot"></span>Spotify connected</div>
+      <div class="icons">
+        <a href="#" class="active">⌂</a>
+        <a href="#">☰</a>
+        <a href="#">＋</a>
+        <a href="#">▐</a>
+        <a href="#">⚙</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="card">
+    <div class="card-title">Wavy — Karan Aujla</div>
+    <div class="card-sub">47 lines · Last generated 2 hours ago · High confidence 68%</div>
+    <span class="pill pill-pink">HIGH 68%</span>
+    <span class="pill pill-violet">3-model pipeline</span>
+    <span class="pill pill-cyan">Punjabi → English</span>
+  </div>
+
+  <div class="grid">
+    <div class="mini-card"><div class="mini-title">Catalog</div><div class="mini-sub">12 tracks translated</div></div>
+    <div class="mini-card"><div class="mini-title">Last session</div><div class="mini-sub">2h ago · 3 lines edited</div></div>
+    <div class="mini-card"><div class="mini-title">Artist glossary</div><div class="mini-sub">Karan Aujla · 8 terms</div></div>
+    <div class="mini-card"><div class="mini-title">Generation cost</div><div class="mini-sub">$0.042 this month</div></div>
+  </div>
+</div>
+
+</body>
+</html>

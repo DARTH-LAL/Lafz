@@ -267,7 +267,7 @@ export function VersionHistory({ spotifyTrackId, currentGeneratedAt }: VersionHi
                             key={i}
                             className="grid grid-cols-[1fr_1fr_60px] gap-3 border-b border-[rgba(255,255,255,0.04)] px-5 py-2.5 last:border-b-0"
                           >
-                            <p className="text-[12px] leading-[1.5] text-[#9a85b2]">{line.original}</p>
+                            <p className="text-[12px] leading-[1.5] text-white">{line.original}</p>
                             <p className="text-[12px] leading-[1.5] text-[#fff0f6]">{line.chosen}</p>
                             <div className="flex items-center">
                               <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: confColor }} />

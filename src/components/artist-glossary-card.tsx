@@ -115,7 +115,7 @@ function GlossaryForm({
             value={form.term}
             onChange={(e) => set("term", e.target.value)}
             placeholder="e.g. kataar"
-            className="w-full rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.5)] placeholder:text-[#5a4870]"
+            className="w-full rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.5)] placeholder:text-white"
           />
         </div>
         <div>
@@ -124,7 +124,7 @@ function GlossaryForm({
             value={form.meaning}
             onChange={(e) => set("meaning", e.target.value)}
             placeholder="e.g. queue of people"
-            className="w-full rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.5)] placeholder:text-[#5a4870]"
+            className="w-full rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.5)] placeholder:text-white"
           />
         </div>
         <div>
@@ -145,7 +145,7 @@ function GlossaryForm({
             value={form.note}
             onChange={(e) => set("note", e.target.value)}
             placeholder="Context or usage note"
-            className="w-full rounded-[10px] border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-[#5a4870]"
+            className="w-full rounded-[10px] border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[rgba(255,20,100,0.35)] placeholder:text-white"
           />
         </div>
       </div>
