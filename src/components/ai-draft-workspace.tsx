@@ -154,11 +154,28 @@ export function AiDraftWorkspace({
         throw new Error("Lafz could not start the AI draft job.");
       }
 
-      setMessage("Lafz is generating the AI draft...");
+      setMessage("Running 3-model pipeline — GPT-5.1 drafting...");
       setMessageTone("success");
 
-      for (let attempt = 0; attempt < 180; attempt += 1) {
-        await sleep(1500);
+      const pipelineMessages = [
+        "Running 3-model pipeline — GPT-5.1 drafting...",
+        "Generator A (GPT-5.1) processing lyrics...",
+        "Handing off to Generator B (Claude Sonnet)...",
+        "Generator B (Claude) refining translations...",
+        "Sending both drafts to Gemini judge...",
+        "Gemini evaluating and selecting best lines...",
+        "Almost done — finalising translation...",
+        "Still working — large tracks take a few minutes...",
+        "Wrapping up the 3-model evaluation..."
+      ];
+
+      // 400 attempts × 2s = 800s (~13 min) — enough for the full 3-model pipeline
+      for (let attempt = 0; attempt < 400; attempt += 1) {
+        await sleep(2000);
+
+        // Update the status message every ~30s to show progress
+        const messageIndex = Math.min(Math.floor(attempt / 15), pipelineMessages.length - 1);
+        setMessage(pipelineMessages[messageIndex]);
 
         const statusResponse = await fetch(`/api/ai/generate-translation/status?jobId=${encodeURIComponent(payload.jobId)}`, {
           headers: {
@@ -200,7 +217,7 @@ export function AiDraftWorkspace({
         return;
       }
 
-      throw new Error("The AI draft is taking longer than expected. Please check again in a moment.");
+      throw new Error("The AI draft timed out after 13 minutes. The track may have too many lines — try again or check the server logs.");
     } catch (error) {
       const nextMessage = error instanceof Error ? error.message : "Could not generate the AI draft.";
       setMessage(nextMessage);

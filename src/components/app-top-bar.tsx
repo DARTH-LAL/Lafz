@@ -32,6 +32,14 @@ function ImportIcon() {
   );
 }
 
+function AnalyticsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+      <path d="M5 20h2v-8H5v8zm4 0h2V4H9v16zm4 0h2v-4h-2v4zm4 0h2v-12h-2v12z" />
+    </svg>
+  );
+}
+
 function buildNavItemClass(isActive: boolean) {
   return [
     "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
@@ -82,6 +90,13 @@ export function AppTopBar({ connected = false, className }: AppTopBarProps) {
           aria-label="Import music"
         >
           <ImportIcon />
+        </Link>
+        <Link
+          href="/analytics"
+          className={buildNavItemClass(pathname === "/analytics")}
+          aria-label="AI analytics"
+        >
+          <AnalyticsIcon />
         </Link>
       </div>
     </nav>

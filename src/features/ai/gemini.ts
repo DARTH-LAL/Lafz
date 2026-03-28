@@ -179,6 +179,7 @@ async function callGeminiJson<T>(options: {
   systemPrompt: string;
   userPrompt: string;
   errorLabel: string;
+  usageSink?: { inputTokens: number; outputTokens: number };
 }): Promise<T> {
   const response = await fetch(
     `${getGeminiBaseUrl()}/models/${encodeURIComponent(options.model)}:generateContent?key=${encodeURIComponent(getGeminiApiKey())}`,
@@ -213,6 +214,12 @@ async function callGeminiJson<T>(options: {
     throw new Error(extractGeminiErrorMessage(payload, `${options.errorLabel} failed with status ${response.status}.`));
   }
 
+  if (options.usageSink && isRecord(payload) && isRecord(payload.usageMetadata)) {
+    const meta = payload.usageMetadata;
+    if (typeof meta.promptTokenCount === "number") options.usageSink.inputTokens += meta.promptTokenCount;
+    if (typeof meta.candidatesTokenCount === "number") options.usageSink.outputTokens += meta.candidatesTokenCount;
+  }
+
   const outputText = getGeminiResponseText(payload);
 
   if (!outputText) {
@@ -227,7 +234,8 @@ async function callGeminiJson<T>(options: {
 }
 
 export async function requestGeminiDraftComparison(
-  options: RequestGeminiDraftComparisonOptions
+  options: RequestGeminiDraftComparisonOptions,
+  usageSink?: { inputTokens: number; outputTokens: number }
 ): Promise<{
   model: string;
   sourceLanguage: string;
@@ -239,23 +247,31 @@ export async function requestGeminiDraftComparison(
     note: string | null;
     selectorReason: string | null;
   }>;
+  usage: { inputTokens: number; outputTokens: number };
 }> {
   if (options.lines.length === 0) {
     throw new Error("No lyric lines were provided to the Gemini evaluator.");
   }
 
+  const localSink = { inputTokens: 0, outputTokens: 0 };
   const model = getGeminiEvaluatorModel();
   const parsed = await callGeminiJson<unknown>({
     model,
     systemPrompt: buildGeminiComparisonSystemPrompt(options),
     userPrompt: buildGeminiComparisonUserPrompt(options),
-    errorLabel: "Gemini evaluator request"
+    errorLabel: "Gemini evaluator request",
+    usageSink: localSink
   });
 
   const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
 
   if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.lines) || parsed.lines.length !== options.lines.length) {
     throw new Error("Gemini returned an invalid comparison shape or changed the lyric line count.");
+  }
+
+  if (usageSink) {
+    usageSink.inputTokens += localSink.inputTokens;
+    usageSink.outputTokens += localSink.outputTokens;
   }
 
   return {
@@ -283,6 +299,7 @@ export async function requestGeminiDraftComparison(
         note: normalizeNullableString(line.note),
         selectorReason: normalizeNullableString(line.selectorReason)
       };
-    })
+    }),
+    usage: localSink
   };
 }

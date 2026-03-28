@@ -156,6 +156,7 @@ async function callAnthropicJson<T>(options: {
   systemPrompt: string;
   userPrompt: string;
   errorLabel: string;
+  usageSink?: { inputTokens: number; outputTokens: number };
 }): Promise<T> {
   const response = await fetch(`${getAnthropicBaseUrl()}/messages`, {
     method: "POST",
@@ -184,6 +185,12 @@ async function callAnthropicJson<T>(options: {
     throw new Error(extractAnthropicErrorMessage(payload, `${options.errorLabel} failed with status ${response.status}.`));
   }
 
+  if (options.usageSink && isRecord(payload) && isRecord(payload.usage)) {
+    const usage = payload.usage;
+    if (typeof usage.input_tokens === "number") options.usageSink.inputTokens += usage.input_tokens;
+    if (typeof usage.output_tokens === "number") options.usageSink.outputTokens += usage.output_tokens;
+  }
+
   const rawText = extractAnthropicText(payload);
 
   if (!rawText) {
@@ -210,24 +217,33 @@ function buildAnthropicSystemPrompt(options: RequestAnthropicTranslationDraftOpt
 }
 
 export async function requestAnthropicTranslationDraft(
-  options: RequestAnthropicTranslationDraftOptions
-): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
+  options: RequestAnthropicTranslationDraftOptions,
+  usageSink?: { inputTokens: number; outputTokens: number }
+): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[]; usage: { inputTokens: number; outputTokens: number } }> {
   if (options.lines.length === 0) {
     throw new Error("No lyric lines were provided to Anthropic Generator B.");
   }
 
+  const localSink = { inputTokens: 0, outputTokens: 0 };
   const model = getAnthropicGeneratorBModel();
   const parsed = await callAnthropicJson<unknown>({
     model,
     systemPrompt: buildAnthropicSystemPrompt(options),
     userPrompt: buildUserPrompt(options),
-    errorLabel: "Anthropic translation request"
+    errorLabel: "Anthropic translation request",
+    usageSink: localSink
   });
   const normalized = parseGeneratedLines(parsed, options.lines.length, "Anthropic");
+
+  if (usageSink) {
+    usageSink.inputTokens += localSink.inputTokens;
+    usageSink.outputTokens += localSink.outputTokens;
+  }
 
   return {
     model,
     sourceLanguage: normalized.sourceLanguage,
-    lines: normalized.lines
+    lines: normalized.lines,
+    usage: localSink
   };
 }

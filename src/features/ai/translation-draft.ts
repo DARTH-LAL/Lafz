@@ -16,6 +16,7 @@ import { requestGeminiDraftComparison } from "@/features/ai/gemini";
 import { requestOpenAiTranslationDraft } from "@/features/ai/openai";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { writeAiTranslationDraftFile } from "@/features/ai/repository";
+import { recordAiUsageRun } from "@/features/ai/usage-tracker";
 import type {
   AiDraftLine,
   AiCorrectionExample,
@@ -1420,7 +1421,8 @@ async function evaluateDraftAlternativesInBatches(
   trackCorrectionExamples: AiCorrectionExample[],
   normalizedSourceLookup: Map<number, NormalizedSourceLine>,
   generatorALines: AiDraftLine[],
-  generatorBLines: AiDraftLine[]
+  generatorBLines: AiDraftLine[],
+  usageSink?: { inputTokens: number; outputTokens: number }
 ) {
   const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
@@ -1500,7 +1502,7 @@ async function evaluateDraftAlternativesInBatches(
           ])
         };
       })
-    });
+    }, usageSink);
 
     model = aiResponse.model || model;
 
@@ -1756,6 +1758,32 @@ export async function generateAiTranslationDraft(
   };
 
   if (useThreeModelPipeline) {
+    const pipelineStartMs = Date.now();
+    const usageSinkA = { inputTokens: 0, outputTokens: 0 };
+    const usageSinkB = { inputTokens: 0, outputTokens: 0 };
+    const usageSinkG = { inputTokens: 0, outputTokens: 0 };
+    let genAModel = "";
+    let genBModel = "";
+    let genADurationMs = 0;
+    let genBDurationMs = 0;
+    let genGDurationMs = 0;
+
+    const openAiRequester: DraftRequester = async (opts) => {
+      const t0 = Date.now();
+      const result = await requestOpenAiTranslationDraft(opts, usageSinkA);
+      genADurationMs += Date.now() - t0;
+      genAModel = result.model;
+      return result;
+    };
+
+    const anthropicRequester: DraftRequester = async (opts) => {
+      const t0 = Date.now();
+      const result = await requestAnthropicTranslationDraft(opts, usageSinkB);
+      genBDurationMs += Date.now() - t0;
+      genBModel = result.model;
+      return result;
+    };
+
     const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
       generateDraftLinesInBatches(
         options,
@@ -1769,7 +1797,7 @@ export async function generateAiTranslationDraft(
         contextResponse.trackCorrectionExamples,
         normalizedSourceLookup,
         meaningResponse.lines,
-        requestOpenAiTranslationDraft
+        openAiRequester
       ),
       generateDraftLinesInBatches(
         options,
@@ -1783,10 +1811,11 @@ export async function generateAiTranslationDraft(
         contextResponse.trackCorrectionExamples,
         normalizedSourceLookup,
         meaningResponse.lines,
-        requestAnthropicTranslationDraft
+        anthropicRequester
       )
     ]);
 
+    const geminiT0 = Date.now();
     const evaluatedDraft = await evaluateDraftAlternativesInBatches(
       options,
       sourceLines,
@@ -1799,8 +1828,68 @@ export async function generateAiTranslationDraft(
       contextResponse.trackCorrectionExamples,
       normalizedSourceLookup,
       generatorAInitialDraft.lines,
-      generatorBInitialDraft.lines
+      generatorBInitialDraft.lines,
+      usageSinkG
     );
+    genGDurationMs = Date.now() - geminiT0;
+    const pipelineDurationMs = Date.now() - pipelineStartMs;
+
+    // Count winner distribution and confidence breakdown from evaluated lines
+    const evalLines = evaluatedDraft.lines;
+    let winnerA = 0, winnerB = 0, winnerBlend = 0;
+    let confHigh = 0, confMed = 0, confLow = 0;
+    for (const line of evalLines) {
+      if (line.selectorReason != null) {
+        // Use confidence to approximate winner - we don't have winner per line in AiDraftLine
+        // We track based on chosen vs generatorA chosen
+        const aChosen = generatorAInitialDraft.lines[evalLines.indexOf(line)]?.chosen ?? "";
+        const bChosen = generatorBInitialDraft.lines[evalLines.indexOf(line)]?.chosen ?? "";
+        if (line.chosen === aChosen && line.chosen !== bChosen) winnerA++;
+        else if (line.chosen === bChosen && line.chosen !== aChosen) winnerB++;
+        else if (line.chosen !== aChosen && line.chosen !== bChosen) winnerBlend++;
+        else winnerA++; // fallback
+      } else {
+        winnerA++;
+      }
+      if (line.confidence === "high") confHigh++;
+      else if (line.confidence === "medium") confMed++;
+      else confLow++;
+    }
+
+    // Record the usage run asynchronously (don't await to avoid delaying response)
+    try {
+      recordAiUsageRun({
+        timestamp: new Date().toISOString(),
+        spotifyTrackId: options.spotifyTrackId,
+        title: options.title,
+        artist: options.artist,
+        sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+        totalLines: evalLines.length,
+        winnerDistribution: { generatorA: winnerA, generatorB: winnerB, blended: winnerBlend },
+        confidenceBreakdown: { high: confHigh, medium: confMed, low: confLow },
+        generatorA: {
+          model: genAModel,
+          inputTokens: usageSinkA.inputTokens,
+          outputTokens: usageSinkA.outputTokens,
+          durationMs: genADurationMs
+        },
+        generatorB: {
+          model: genBModel,
+          inputTokens: usageSinkB.inputTokens,
+          outputTokens: usageSinkB.outputTokens,
+          durationMs: genBDurationMs
+        },
+        judge: {
+          model: evaluatedDraft.model,
+          inputTokens: usageSinkG.inputTokens,
+          outputTokens: usageSinkG.outputTokens,
+          durationMs: genGDurationMs
+        },
+        pipelineDurationMs
+      });
+    } catch {
+      // Non-fatal: don't fail the translation if analytics recording fails
+    }
 
     aiResponse = {
       model: `${getThreeModelPipelineLabel()} | Selected:${evaluatedDraft.model}`,

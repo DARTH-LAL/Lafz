@@ -664,6 +664,7 @@ async function callOpenAiJson<T>(options: {
   systemPrompt: string;
   userPrompt: string;
   errorLabel: string;
+  usageSink?: { inputTokens: number; outputTokens: number };
 }): Promise<T> {
   const response = await fetch(`${getOpenAiBaseUrl()}/chat/completions`, {
     method: "POST",
@@ -696,6 +697,12 @@ async function callOpenAiJson<T>(options: {
 
   if (!response.ok) {
     throw new Error(extractOpenAiErrorMessage(payload, `${options.errorLabel} failed with status ${response.status}.`));
+  }
+
+  if (options.usageSink && isRecord(payload) && isRecord(payload.usage)) {
+    const usage = payload.usage;
+    if (typeof usage.prompt_tokens === "number") options.usageSink.inputTokens += usage.prompt_tokens;
+    if (typeof usage.completion_tokens === "number") options.usageSink.outputTokens += usage.completion_tokens;
   }
 
   const choices = Array.isArray((payload as { choices?: unknown }).choices)
@@ -995,12 +1002,14 @@ export async function requestOpenAiMeaningAnalysis(
 }
 
 export async function requestOpenAiTranslationDraft(
-  options: RequestAiTranslationDraftOptions
-): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
+  options: RequestAiTranslationDraftOptions,
+  usageSink?: { inputTokens: number; outputTokens: number }
+): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[]; usage: { inputTokens: number; outputTokens: number } }> {
   if (options.lines.length === 0) {
     throw new Error("No lyric lines were provided to the AI translation generator.");
   }
 
+  const localSink = { inputTokens: 0, outputTokens: 0 };
   const model = getOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
@@ -1008,14 +1017,21 @@ export async function requestOpenAiTranslationDraft(
     schema: buildDraftSchema(options.lines.length),
     systemPrompt: buildSystemPrompt(options),
     userPrompt: buildUserPrompt(options),
-    errorLabel: "OpenAI translation request"
+    errorLabel: "OpenAI translation request",
+    usageSink: localSink
   });
   const normalized = parseGeneratedLines(parsed, options.lines.length, "OpenAI");
+
+  if (usageSink) {
+    usageSink.inputTokens += localSink.inputTokens;
+    usageSink.outputTokens += localSink.outputTokens;
+  }
 
   return {
     model,
     sourceLanguage: normalized.sourceLanguage,
-    lines: normalized.lines
+    lines: normalized.lines,
+    usage: localSink
   };
 }
 
