@@ -1,0 +1,77 @@
+{
+  "spotifyTrackId": "4d2jV5fmX6hbRwaRbY39dt",
+  "entries": [
+    {
+      "id": "4d2jV5fmX6hbRwaRbY39dt-1774719038927",
+      "timestampMs": 1774719038927,
+      "startedAt": "2026-03-28T17:25:15.693Z",
+      "durationMs": 323234,
+      "model": "A:gpt-5.1 | B:claude-sonnet-4-20250514 | Eval:gemini-2.5-flash | Selected:gemini-2.5-flash",
+      "provider": "multi",
+      "lineCount": 58,
+      "lowCount": 0,
+      "mediumCount": 11,
+      "highCount": 47,
+      "sourceLanguage": "Punjabi (with some English)",
+      "targetLanguage": "English",
+      "resultStatus": "draft_only_preserved",
+      "costSummary": {
+        "generatorA": {
+          "model": "gpt-5.1",
+          "inputTokens": 18558,
+          "outputTokens": 12276,
+          "costUsd": 0.135324
+        },
+        "generatorB": {
+          "model": "claude-sonnet-4-20250514",
+          "inputTokens": 23765,
+          "outputTokens": 14171,
+          "costUsd": 0.28386
+        },
+        "judge": {
+          "model": "gemini-2.5-flash",
+          "inputTokens": 35224,
+          "outputTokens": 10031,
+          "costUsd": 0.011302199999999998
+        },
+        "totalCostUsd": 0.4304862
+      }
+    },
+    {
+      "id": "4d2jV5fmX6hbRwaRbY39dt-1774718941032",
+      "timestampMs": 1774718941032,
+      "startedAt": "2026-03-28T17:23:33.227Z",
+      "durationMs": 327805,
+      "model": "A:gpt-5.1 | B:claude-sonnet-4-20250514 | Eval:gemini-2.5-flash | Selected:gemini-2.5-flash",
+      "provider": "multi",
+      "lineCount": 58,
+      "lowCount": 0,
+      "mediumCount": 4,
+      "highCount": 54,
+      "sourceLanguage": "Punjabi (with English)",
+      "targetLanguage": "English",
+      "resultStatus": "saved_translation",
+      "costSummary": {
+        "generatorA": {
+          "model": "gpt-5.1",
+          "inputTokens": 18884,
+          "outputTokens": 12341,
+          "costUsd": 0.136496
+        },
+        "generatorB": {
+          "model": "claude-sonnet-4-20250514",
+          "inputTokens": 24089,
+          "outputTokens": 14280,
+          "costUsd": 0.286467
+        },
+        "judge": {
+          "model": "gemini-2.5-flash",
+          "inputTokens": 35497,
+          "outputTokens": 7874,
+          "costUsd": 0.010048950000000001
+        },
+        "totalCostUsd": 0.43301195000000003
+      }
+    }
+  ]
+}

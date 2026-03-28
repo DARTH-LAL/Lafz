@@ -1,5 +1,422 @@
 {
-  "spotify_track_id": "4d2jV5fmX6hbRwaRbY39dt",
-  "language": "unknown",
-  "lines": []
+  "spotifyTrackId": "4d2jV5fmX6hbRwaRbY39dt",
+  "title": "Wavy",
+  "artist": "Karan Aujla, Jay Trak",
+  "sourceLanguage": "Punjabi (with English)",
+  "targetLanguage": "English",
+  "lines": [
+    {
+      "startMs": 4480,
+      "endMs": 5849,
+      "original": "Yeah, Aujla",
+      "translated": "Yeah, Aujla",
+      "note": "Standard artist self-introduction."
+    },
+    {
+      "startMs": 5850,
+      "endMs": 8349,
+      "original": "Pichhe dekh ke kataar, naddhi karke pyaar",
+      "translated": "Look behind, there’s a whole line, and this slim girl’s acting all in love.",
+      "note": "“Naddhi” is slang for an attractive, often slim, girl. “Kataar” means queue/line, implying many people."
+    },
+    {
+      "startMs": 8350,
+      "endMs": 9769,
+      "original": "Kehndi... (haha!)",
+      "translated": "She’s like… (laughs)",
+      "note": "Sets up a direct quote, with the laugh indicating a mocking or ironic tone."
+    },
+    {
+      "startMs": 9770,
+      "endMs": 12519,
+      "original": "Hun neend nahi aundi, pachhtaundi",
+      "translated": "Now she can’t sleep, she’s regretting it.",
+      "note": "This is the girl's direct quote, expressing her sleeplessness and regret after getting involved with 'jatt boys.'"
+    },
+    {
+      "startMs": 12520,
+      "endMs": 15109,
+      "original": "Tu laa ke yaari jattan de munde naa' phire rondi",
+      "translated": "You linked up with jatt boys and now you’re out here crying.",
+      "note": "“Yaari” implies a deep, loyal association, not just casual friendship. “Jattan de munde” refers to tough Punjabi/Jatt guys."
+    },
+    {
+      "startMs": 15110,
+      "endMs": 19209,
+      "original": "Ni gaddiyaan track 'te, munde toliyan bana ke, sandh back 'te",
+      "translated": "Cars line up on the track, the boys roll in packs with bulls at their back.",
+      "note": "“Toli” means a group or pack. “Sandh” (bull) is a metaphor for strong, aggressive men, here implying powerful backup or a strong presence."
+    },
+    {
+      "startMs": 19210,
+      "endMs": 21939,
+      "original": "Ni thukda nahi modhe ton, spit karaan mic 'te",
+      "translated": "I don't waste spit on the streets; I spit bars on the mic.",
+      "note": "This line uses wordplay on 'spit,' contrasting literal spitting (implying disrespect or carelessness) with 'spitting bars' (rapping) on the microphone."
+    },
+    {
+      "startMs": 21940,
+      "endMs": 24359,
+      "original": "Laggi meri mag te main hikkan vich vajjda",
+      "translated": "My influence has taken hold, I’m echoing in people’s chests.",
+      "note": "“Hikkan vich vajjda” literally means 'striking in chests,' implying a deep, powerful impact on listeners."
+    },
+    {
+      "startMs": 24360,
+      "endMs": 27619,
+      "original": "Eh bhaunkde aan back 'te, kyon samajh nahi aundi?",
+      "translated": "They’re barking from the back; why don’t you get it?",
+      "note": "“Bhaunkde” (barking) is slang for talking trash or gossiping from a distance, implying cowardice."
+    },
+    {
+      "startMs": 27620,
+      "endMs": 30419,
+      "original": "Pata chaundi, tu laake yaari jattan de munde naa'",
+      "translated": "You’re finding out what it means now that you went and made yaari with jatt boys.",
+      "note": "“Pata chaundi” implies she is now realizing the consequences or true nature of her involvement. “Yaari” signifies a deep, loyal association."
+    },
+    {
+      "startMs": 30420,
+      "endMs": 32529,
+      "original": "Hun kehndi phire, \"Neend nahi aundi\"",
+      "translated": "Now she goes around saying, “I can’t sleep.”",
+      "note": "This is a recurring refrain, highlighting the girl's public expression of sleeplessness and regret."
+    },
+    {
+      "startMs": 32530,
+      "endMs": 35309,
+      "original": "Chhakkan roti vand ke te vairi rakkhan chand ke",
+      "translated": "We break bread with our own, and we keep our enemies counted.",
+      "note": "“Roti vand ke” means sharing food, symbolizing generosity and loyalty within their circle. “Vairi rakkhan chand ke” means keeping enemies few and closely monitored."
+    },
+    {
+      "startMs": 35310,
+      "endMs": 37769,
+      "original": "Bade saanu nind'de te bade saanu bhand'de",
+      "translated": "Plenty hate on us, and plenty try to stir things up against us.",
+      "note": "“Nind'de” implies criticism or envy. “Bhand'de” refers to defaming, exposing secrets, or stirring up trouble."
+    },
+    {
+      "startMs": 37770,
+      "endMs": 38919,
+      "original": "Eh yaar mere sandh",
+      "translated": "My boys are straight bulls",
+      "note": "“Sandh” (bull) is a common metaphor for strong, aggressive, and loyal men."
+    },
+    {
+      "startMs": 38920,
+      "endMs": 41729,
+      "original": "Te zubaan saambhe yaariyan, te vairi thalle dand de",
+      "translated": "We guard our word and our friendships, and we keep our enemies under our teeth.",
+      "note": "“Zubaan saambhe” means to keep one's word. “Vairi thalle dand de” literally means 'enemies under teeth,' a strong idiom for dominating or crushing enemies."
+    },
+    {
+      "startMs": 41730,
+      "endMs": 44529,
+      "original": "Aivein nahi jama launde (launde), na hi aunde",
+      "translated": "We don't just pull up random or start beef for clout",
+      "transliteration": "aivein nahi jama launde, na hi aunde",
+      "note": "“Aivein” means 'for no reason' or 'just like that.' “Jama launde” can refer to gathering a crowd or initiating confrontations."
+    },
+    {
+      "startMs": 44530,
+      "endMs": 47179,
+      "original": "Gale 'ch baanhaan kitthe, eh taan hath nahi phadaunde",
+      "translated": "They don’t put their arms around your neck; these guys don’t even let you hold their hand.",
+      "transliteration": "gale ’ch baanhaan kitthe eh taan hath ni phadaunde",
+      "note": "This emphasizes the tough, emotionally distant nature of 'jatt boys,' contrasting with typical romantic gestures."
+    },
+    {
+      "startMs": 47180,
+      "endMs": 50649,
+      "original": "Tu hath nahi chhadaundi, pata chaundi, tu laa ke yaari",
+      "translated": "You’re the one who won’t let go of their hand, you want their attention, you’re the one who went and made yaari with them.",
+      "transliteration": "tu hath ni chhadaundi pata chaundi tu laa ke yaari",
+      "note": "The singer is blaming the girl for her persistent pursuit and choice to get involved with 'jatt boys.' “Yaari” implies a deep, loyal association."
+    },
+    {
+      "startMs": 50650,
+      "endMs": 53989,
+      "original": "Jattan de munde naa' hun kehndi phire, \"Neend nahi aundi\"",
+      "translated": "Now after being with jatt boys, she goes around saying, “I can’t sleep.”",
+      "transliteration": "jattan de munde naa' hun kehndi phire, 'neend ni aundi'",
+      "note": "This is a key recurring line, emphasizing the girl's regret and restlessness after her involvement with 'jatt boys.'"
+    },
+    {
+      "startMs": 53990,
+      "endMs": 56639,
+      "original": "Hath paye aan udhde, rakaane, baahle rough ne",
+      "translated": "My hands are tied up with debts, accounts are pending, and the surroundings are rough",
+      "note": "“Hath paye aan udhde” implies being busy or burdened with unresolved issues. “Rakaane” refers to accounts or tallies, often implying debts or pending matters."
+    },
+    {
+      "startMs": 56640,
+      "endMs": 59189,
+      "original": "Time thode tough ne, utte nu taanhi cuff ne",
+      "translated": "Times are a bit tough, that’s why there are cuffs on my wrists.",
+      "note": "“Cuffs” refers to handcuffs, implying arrests or legal troubles as part of his tough lifestyle."
+    },
+    {
+      "startMs": 59190,
+      "endMs": 62069,
+      "original": "Karaai aan palm reading'an, na khed'de bluff ne",
+      "translated": "I get my palm read, but we don't play bluffing games",
+      "note": "Contrasts a belief in fate (palm reading) with a straightforward, no-nonsense attitude in real life (not bluffing or faking)."
+    },
+    {
+      "startMs": 62070,
+      "endMs": 64589,
+      "original": "Nature'an de jogi aan te jholiyan 'ch sapp ne",
+      "translated": "We’re yogis of nature, and there are snakes in our bags.",
+      "transliteration": "nature’an de jogi aan te jholiyan ’ch sapp ne",
+      "note": "This is a powerful metaphor: appearing calm or spiritual on the surface, but concealing danger or lethal capabilities (snakes in bags)."
+    },
+    {
+      "startMs": 64590,
+      "endMs": 67579,
+      "original": "Nehle aale dekhe aa, tu dehle aale dekhe nahi",
+      "translated": "I’ve seen the nehle types; you haven’t seen the dehle types.",
+      "transliteration": "nehle aale dekhe ae, tu dehle aale dekhe ni",
+      "note": "“Nehle” and “dehle” are card ranks in Punjabi slang, used metaphorically to describe different levels of dangerous or sharp individuals. The singer implies he has experience with higher-stakes situations than the addressee."
+    },
+    {
+      "startMs": 67580,
+      "endMs": 69899,
+      "original": "Hun aale dekhe aa, tu pehle aale dekhe nahi",
+      "translated": "I’ve seen the ones from now; you haven’t seen the ones from before.",
+      "transliteration": "hun aale dekhe ae tu pehle aale dekhe ni"
+    },
+    {
+      "startMs": 69900,
+      "endMs": 72529,
+      "original": "Sohniye, Ghurale ton America mere yaar ne",
+      "translated": "Beautiful one, my friends run from Ghurala all the way to America.",
+      "transliteration": "sohniye ghurale ton america mere yaar ne",
+      "note": "“Sohniye” is an affectionate address meaning ‘beautiful one.’ Ghurala is a Punjabi place name symbolizing his roots."
+    },
+    {
+      "startMs": 72530,
+      "endMs": 75169,
+      "original": "Punjab aale dekhe aa, tu LA aale dekhe nahi",
+      "translated": "I’ve seen the Punjab ones; you haven’t seen the LA ones.",
+      "transliteration": "punjab aale dekhe ae tu la aale dekhe ni"
+    },
+    {
+      "startMs": 75170,
+      "endMs": 77959,
+      "original": "Naqaab gore rang 'te tu laave gulkand de",
+      "translated": "On your fair complexion you put on a mask of gulkand.",
+      "transliteration": "naqaab gore rang ’te tu laave gulkand de",
+      "note": "“Naqaab” is a covering or mask; “gulkand” is a sweet rose petal preserve, used here as a lush, ornamental image."
+    },
+    {
+      "startMs": 77960,
+      "endMs": 80559,
+      "original": "Vairi nu hara ke karaan chawl, biba, khand de",
+      "translated": "After defeating my enemies I’ll make you rice with sugar, dear girl.",
+      "transliteration": "vairi nu hara ke karaan chawl biba khand de",
+      "note": "“Biba” is an affectionate term for a girl. Rice with sugar is a simple celebratory/sweet dish."
+    },
+    {
+      "startMs": 80560,
+      "endMs": 81809,
+      "original": "Ni taan vi rehnde bhand'de",
+      "translated": "Otherwise we would still remain empty-handed.",
+      "transliteration": "ni taan vi rehnde bhand’de",
+      "note": "“Bhand’de” literally ‘empty,’ often used to mean broke or having nothing."
+    },
+    {
+      "startMs": 81810,
+      "endMs": 84639,
+      "original": "Ni saanu baad 'ch milda, pehlaan ne yaar vand'de",
+      "translated": "We get ours later; first we share it out among the friends.",
+      "transliteration": "ni saanu baad ’ch milda pehlaan ne yaar vand’de"
+    },
+    {
+      "startMs": 84640,
+      "endMs": 87219,
+      "original": "Mahaul poora wavy, haaye, wavy",
+      "translated": "The whole atmosphere is completely wavy—wavy.",
+      "transliteration": "mahaul poora wavy haaye wavy",
+      "note": "“Wavy” is English slang for a cool, flowing, often intoxicated vibe or atmosphere."
+    },
+    {
+      "startMs": 87220,
+      "endMs": 89869,
+      "original": "Tu paave kaala suit, kade-kade paave navy",
+      "translated": "Sometimes you wear a black suit, sometimes a navy one."
+    },
+    {
+      "startMs": 89870,
+      "endMs": 92409,
+      "original": "Tu roz azmaundi, pata chaundi",
+      "translated": "Every day you test me, trying to figure things out."
+    },
+    {
+      "startMs": 92410,
+      "endMs": 94449,
+      "original": "Tu laa ke yaari jattan de munde naa'",
+      "translated": "You went and got involved with jatt boys.",
+      "note": "“Yaari” is close, loyal friendship/attachment, often implying romantic or deep involvement here."
+    },
+    {
+      "startMs": 94450,
+      "endMs": 96579,
+      "original": "Hun kehndi phire, \"Neend nahi aundi\"",
+      "translated": "Now she goes around saying, “I can’t sleep.”",
+      "note": "This is a recurring refrain, highlighting the girl's public expression of sleeplessness and regret."
+    },
+    {
+      "startMs": 96580,
+      "endMs": 99029,
+      "original": "Tapaavaan siddha border'an ton round'an diyan gaagaran",
+      "translated": "I got heat straight from the borders, those round clips",
+      "note": "Tapaavaan is slang for guns/heaters; gaagaran refers to ammunition containers"
+    },
+    {
+      "startMs": 99030,
+      "endMs": 101989,
+      "original": "Na, main na karaan qadraan, na, main na mannan order'an",
+      "translated": "Nah, I don't give respect, nah, I don't take orders"
+    },
+    {
+      "startMs": 101990,
+      "endMs": 104449,
+      "original": "Jitthe raat pai jaave, bichha ke saunjaan chaadaraan",
+      "translated": "Wherever night falls, I just spread out sheets and sleep there."
+    },
+    {
+      "startMs": 104450,
+      "endMs": 107259,
+      "original": "Ni botal ki shai aa? Laa ke deek pee jaan saagaran",
+      "translated": "What's a bottle to us? Bring it, we'll drink it like oceans",
+      "note": "Emphasizes their heavy drinking capacity and party lifestyle"
+    },
+    {
+      "startMs": 107260,
+      "endMs": 109909,
+      "original": "Jean'an pauna chhad gayi, chunni 'te laundi sippiyan",
+      "translated": "She’s stopped wearing jeans; now she decorates her chunni with shells.",
+      "note": "“Chunni” is a long scarf/veil worn with traditional South Asian outfits; shells are a common decorative element."
+    },
+    {
+      "startMs": 109910,
+      "endMs": 112479,
+      "original": "Sikkhi mere karke Punjabi diyan lippiyan",
+      "translated": "Because of me, she learned the Punjabi scripts.",
+      "note": "“Lippiyan” refers to writing systems (like Gurmukhi, Shahmukhi) used for Punjabi."
+    },
+    {
+      "startMs": 112480,
+      "endMs": 115169,
+      "original": "Matthe da tikka bhull gayi, rakaane, mere pyaar 'ch",
+      "translated": "Lost in my love, dear, she even forgot to put the tikka on her forehead.",
+      "note": "A “tikka” (or “tikka/bindi”) is a decorative mark or ornament worn on the forehead, often as part of dressing up."
+    },
+    {
+      "startMs": 115170,
+      "endMs": 117889,
+      "original": "Ni kivein yaad kariyan tu bindiyan te tippiyan?",
+      "translated": "So how could you remember your bindis and little dots?",
+      "note": "“Bindiyan te tippiyan” refers to small forehead/face decorations, including bindis and tiny beauty dots."
+    },
+    {
+      "startMs": 117890,
+      "endMs": 120509,
+      "original": "Saari na raat saundi gun gaundi",
+      "translated": "She doesn’t sleep all night; she keeps singing on and on.",
+      "note": "“Gun gaundi” literally means “she sings,” often with a sense of repeatedly voicing something (like praises or laments)."
+    },
+    {
+      "startMs": 120510,
+      "endMs": 123199,
+      "original": "Main hath nahi phadaunda, tu hath nahi chhadaundi",
+      "translated": "I don’t let go of your hand, and you don’t pull your hand away."
+    },
+    {
+      "startMs": 123200,
+      "endMs": 125919,
+      "original": "Tu booha khadkaundi, pata chaundi",
+      "translated": "You keep banging on the door, trying to find out.",
+      "note": "Shows her persistent, desperate attempts to get his attention"
+    },
+    {
+      "startMs": 125920,
+      "endMs": 127789,
+      "original": "Tu laa ke yaari jattan de munde naa'",
+      "translated": "You went and got involved with jatt boys.",
+      "note": "“Yaari” is close, loyal friendship/attachment, often implying romantic or deep involvement here."
+    },
+    {
+      "startMs": 127790,
+      "endMs": 131159,
+      "original": "Hun kehndi phire, \"Neend nahi aundi,\" pachhtaundi",
+      "translated": "Now she goes around saying 'I can't sleep,' full of regret",
+      "transliteration": "Hun kehndi phire, 'Neend nahi aundi,' pachhtaundi",
+      "note": "The speaker is describing the girl's restless, regretful state after her involvement with jatt boys"
+    },
+    {
+      "startMs": 131160,
+      "endMs": 133819,
+      "original": "Tu laa ke yaari jattan de munde naa' phire rondi",
+      "translated": "You linked up with jatt boys and now you’re out here crying.",
+      "note": "“Yaari” implies a deep, loyal association, not just casual friendship. “Jattan de munde” refers to tough Punjabi/Jatt guys."
+    },
+    {
+      "startMs": 133820,
+      "endMs": 137829,
+      "original": "Ni gaddiyaan track 'te, munde toliyan bana ke, sandh back 'te",
+      "translated": "Cars line up on the track, the boys roll in packs with bulls at their back.",
+      "note": "“Toli” means a group or pack. “Sandh” (bull) is a metaphor for strong, aggressive men, here implying powerful backup or a strong presence."
+    },
+    {
+      "startMs": 137830,
+      "endMs": 140659,
+      "original": "Main thukda nahi modhe ton, spit karaan mic 'te",
+      "translated": "I don't just talk trash, I spit bars on the mic",
+      "note": "Contrasts casual disrespect with serious musical expression; 'spit' is rap terminology"
+    },
+    {
+      "startMs": 140660,
+      "endMs": 143299,
+      "original": "Laggi meri mag te main hikkan vich vajjda",
+      "translated": "My influence has taken hold, I’m echoing in people’s chests.",
+      "note": "“Hikkan vich vajjda” literally means 'striking in chests,' implying a deep, powerful impact on listeners."
+    },
+    {
+      "startMs": 143300,
+      "endMs": 146309,
+      "original": "Bhaunkde aan back 'te, kyon samajh nahi aundi?",
+      "translated": "We’re barking at your back, why don’t you understand?",
+      "note": "“Bhaunkde” (barking) is slang for loudly talking, threatening, or making their presence felt, like aggressive dogs."
+    },
+    {
+      "startMs": 146310,
+      "endMs": 149039,
+      "original": "Pata chaundi, tu laake yaari jattan de munde naa'",
+      "translated": "You’re finding out what it means now that you went and made yaari with jatt boys.",
+      "note": "“Pata chaundi” implies she is now realizing the consequences or true nature of her involvement. “Yaari” signifies a deep, loyal association."
+    },
+    {
+      "startMs": 149040,
+      "endMs": 152199,
+      "original": "Hun kehndi phire, \"Neend nahi aundi\"",
+      "translated": "Now she goes around saying, “I can’t sleep.”",
+      "note": "This is a recurring refrain, highlighting the girl's public expression of sleeplessness and regret."
+    },
+    {
+      "startMs": 152200,
+      "endMs": 157239,
+      "original": "Yeah, haha!",
+      "translated": "Yeah, haha!",
+      "note": "Ad-lib expressing amusement at the situation"
+    },
+    {
+      "startMs": 157240,
+      "endMs": 160999,
+      "original": "Jay Trak (Jay Trak)",
+      "translated": "Jay Trak (Jay Trak)",
+      "note": "Producer credit/tag"
+    }
+  ]
 }
