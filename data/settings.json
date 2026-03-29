@@ -1,0 +1,15 @@
+{
+  "generatorAModel": "gpt-4.1",
+  "generatorBModel": "claude-sonnet-4-20250514",
+  "judgeModel": "gemini-2.5-flash",
+  "targetLanguage": "English",
+  "translationStyle": "balanced",
+  "autoApproveThreshold": 85,
+  "autoFetchLyrics": true,
+  "keepBothDrafts": false,
+  "monthlySpendLimit": 10,
+  "alertThreshold": 75,
+  "defaultView": "grid",
+  "defaultSort": "status",
+  "showNoLyricsTracks": true
+}
