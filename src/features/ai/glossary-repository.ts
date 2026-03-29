@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { getGlossarySearchTerms } from "@/features/ai/glossary";
+import { normalizeLookupText } from "@/features/ai/romanized-normalization";
 
 // ── Paths ──────────────────────────────────────────────────────────────────
 
@@ -216,13 +218,16 @@ export async function incrementGlossaryTermUseCounts(
   const file = await readArtistGlossaryFile(artistKey);
   if (file.entries.length === 0) return;
 
-  const haystack = lyricOriginals.join(" ").toLowerCase();
+  // Normalize the haystack the same way glossary search terms are normalised,
+  // then pad with spaces so we can do whole-word/phrase matching.
+  // Wrapping in spaces means " te " won't false-match inside " teri ".
+  const normalizedHaystack = " " + lyricOriginals.map(normalizeLookupText).join(" ") + " ";
   let changed = false;
 
   for (const entry of file.entries) {
-    // Match the term or any of its aliases as a substring in the original lyrics
-    const needles = [entry.term, ...(entry.aliases ?? [])];
-    const found = needles.some((n) => haystack.includes(n.toLowerCase()));
+    // getGlossarySearchTerms returns normalizeLookupText of term + aliases
+    const searchTerms = getGlossarySearchTerms(entry);
+    const found = searchTerms.some((t) => t.length > 0 && normalizedHaystack.includes(" " + t + " "));
     if (found) {
       entry.useCount = (entry.useCount ?? 0) + 1;
       changed = true;

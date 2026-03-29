@@ -2445,7 +2445,7 @@ async function recordGenerationLog(
     );
 
     await appendGenerationLogEntry(spotifyTrackId, {
-      id: `${spotifyTrackId}-${now}`,
+      id: `${spotifyTrackId}-${now}-${Math.random().toString(36).slice(2, 8)}`,
       timestampMs: now,
       startedAt: new Date(startMs).toISOString(),
       durationMs: now - startMs,
