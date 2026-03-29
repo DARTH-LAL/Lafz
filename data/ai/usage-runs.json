@@ -188,5 +188,81 @@
       "durationMs": 171438
     },
     "pipelineDurationMs": 416866
+  },
+  {
+    "id": "f8328865-b70b-4edf-8f35-7d2e9b5a1980",
+    "timestamp": "2026-03-29T16:42:44.010Z",
+    "spotifyTrackId": "1dlCoq7vdDnuAzo3DYPTY4",
+    "title": "Daytona",
+    "artist": "Karan Aujla, Ikky",
+    "sourceLanguage": "Punjabi",
+    "totalLines": 40,
+    "winnerDistribution": {
+      "generatorA": 25,
+      "generatorB": 0,
+      "blended": 15
+    },
+    "confidenceBreakdown": {
+      "high": 40,
+      "medium": 0,
+      "low": 0
+    },
+    "generatorA": {
+      "model": "gpt-5.1",
+      "inputTokens": 38659,
+      "outputTokens": 9434,
+      "durationMs": 99342
+    },
+    "generatorB": {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 73710,
+      "outputTokens": 10149,
+      "durationMs": 171630
+    },
+    "judge": {
+      "model": "gemini-2.5-flash",
+      "inputTokens": 41090,
+      "outputTokens": 6519,
+      "durationMs": 99825
+    },
+    "pipelineDurationMs": 271473
+  },
+  {
+    "id": "928902c7-7ad6-4847-a3bc-fd0c98ec7fb3",
+    "timestamp": "2026-03-29T21:11:21.960Z",
+    "spotifyTrackId": "0S4PcH3EYQYIeLs6nLOpF1",
+    "title": "Deewane",
+    "artist": "Navaan Sandhu, Bir, Daaku",
+    "sourceLanguage": "Punjabi",
+    "totalLines": 47,
+    "winnerDistribution": {
+      "generatorA": 37,
+      "generatorB": 9,
+      "blended": 1
+    },
+    "confidenceBreakdown": {
+      "high": 46,
+      "medium": 1,
+      "low": 0
+    },
+    "generatorA": {
+      "model": "gpt-5.1",
+      "inputTokens": 20782,
+      "outputTokens": 8384,
+      "durationMs": 85702
+    },
+    "generatorB": {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 47039,
+      "outputTokens": 10634,
+      "durationMs": 158241
+    },
+    "judge": {
+      "model": "gemini-2.5-flash",
+      "inputTokens": 31741,
+      "outputTokens": 5403,
+      "durationMs": 65698
+    },
+    "pipelineDurationMs": 223959
   }
 ]

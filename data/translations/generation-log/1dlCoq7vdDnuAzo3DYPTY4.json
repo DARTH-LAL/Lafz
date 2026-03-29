@@ -1,0 +1,41 @@
+{
+  "spotifyTrackId": "1dlCoq7vdDnuAzo3DYPTY4",
+  "entries": [
+    {
+      "id": "1dlCoq7vdDnuAzo3DYPTY4-1774802564029",
+      "timestampMs": 1774802564029,
+      "startedAt": "2026-03-29T16:37:19.466Z",
+      "durationMs": 324563,
+      "model": "A:gpt-5.1 | B:claude-sonnet-4-20250514 | Eval:gemini-2.5-flash | Selected:gemini-2.5-flash",
+      "provider": "multi",
+      "lineCount": 40,
+      "lowCount": 0,
+      "mediumCount": 0,
+      "highCount": 40,
+      "sourceLanguage": "Punjabi",
+      "targetLanguage": "English",
+      "resultStatus": "saved_translation",
+      "costSummary": {
+        "generatorA": {
+          "model": "gpt-5.1",
+          "inputTokens": 38659,
+          "outputTokens": 9434,
+          "costUsd": 0.15278999999999998
+        },
+        "generatorB": {
+          "model": "claude-sonnet-4-20250514",
+          "inputTokens": 73710,
+          "outputTokens": 10149,
+          "costUsd": 0.373365
+        },
+        "judge": {
+          "model": "gemini-2.5-flash",
+          "inputTokens": 41090,
+          "outputTokens": 6519,
+          "costUsd": 0.0100749
+        },
+        "totalCostUsd": 0.5362298999999999
+      }
+    }
+  ]
+}
