@@ -150,5 +150,43 @@
       "durationMs": 97081
     },
     "pipelineDurationMs": 281441
+  },
+  {
+    "id": "b8e95de8-861d-41ed-8419-b47cafee9899",
+    "timestamp": "2026-03-29T01:04:45.971Z",
+    "spotifyTrackId": "3FqtduiaqnFYvBgKuc6QWQ",
+    "title": "Winning Speech",
+    "artist": "Karan Aujla, Seshnolan",
+    "sourceLanguage": "Punjabi (romanized)",
+    "totalLines": 73,
+    "winnerDistribution": {
+      "generatorA": 56,
+      "generatorB": 17,
+      "blended": 0
+    },
+    "confidenceBreakdown": {
+      "high": 50,
+      "medium": 23,
+      "low": 0
+    },
+    "generatorA": {
+      "model": "gpt-5.1",
+      "inputTokens": 36380,
+      "outputTokens": 16119,
+      "durationMs": 139977
+    },
+    "generatorB": {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 45158,
+      "outputTokens": 17451,
+      "durationMs": 245035
+    },
+    "judge": {
+      "model": "gemini-2.5-flash",
+      "inputTokens": 57700,
+      "outputTokens": 18912,
+      "durationMs": 171438
+    },
+    "pipelineDurationMs": 416866
   }
 ]
