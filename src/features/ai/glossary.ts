@@ -69,10 +69,18 @@ function parseGlossaryArray(value: unknown, category: AiGlossaryEntry["category"
         return null;
       }
 
+      // Preserve the entry's own stored category if present; fall back to the
+      // caller-supplied default (used for legacy categorised-section files).
+      const VALID_CATEGORIES = new Set(["entry", "slang", "idiom", "phrase", "reference", "preferred_rendering"]);
+      const storedCategory = asString(entry.category);
+      const resolvedCategory = (storedCategory && VALID_CATEGORIES.has(storedCategory)
+        ? storedCategory
+        : category) as AiGlossaryEntry["category"];
+
       const normalizedEntry: AiGlossaryEntry = {
         term,
         meaning,
-        category
+        category: resolvedCategory
       };
 
       if (aliases.length > 0) {
