@@ -299,6 +299,11 @@ function EntryRow({
           <span className="text-[rgba(255,255,255,0.3)]">→</span>
           <span className="text-[13px] text-[rgba(255,255,255,0.7)]">{entry.meaning}</span>
           <CategoryBadge category={entry.category} />
+          {entry.useCount !== undefined && entry.useCount > 0 && (
+            <span className="rounded-full border border-[rgba(64,232,255,0.18)] bg-[rgba(64,232,255,0.06)] px-2 py-0.5 text-[9px] font-semibold text-[rgba(64,232,255,0.7)]">
+              used {entry.useCount}×
+            </span>
+          )}
         </div>
         {entry.note && (
           <p className="mt-1 text-[11px] leading-[1.5] text-[rgba(255,255,255,0.35)]">{entry.note}</p>

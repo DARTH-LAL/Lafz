@@ -101,10 +101,11 @@ export async function bulkAddGlossaryTerms(
   if (entries.length === 0) return readArtistGlossaryFile(artistKey);
   const file = await readArtistGlossaryFile(artistKey);
   const existingNorm = new Set(file.entries.map((e) => normalizeTermForDedup(e.term)));
+  const now = new Date().toISOString();
   for (const entry of entries) {
     const norm = normalizeTermForDedup(entry.term);
     if (existingNorm.has(norm)) continue; // skip near-duplicate
-    file.entries.push(entry);
+    file.entries.push({ ...entry, useCount: entry.useCount ?? 0, addedAt: entry.addedAt ?? now });
     existingNorm.add(norm);
   }
   file.displayName = displayName || file.displayName;
@@ -201,4 +202,35 @@ export async function dismissSuggestion(artistKey: string, term: string): Promis
 
 export async function dismissAllSuggestions(artistKey: string): Promise<void> {
   await writePendingSuggestions(artistKey, []);
+}
+
+/**
+ * For each accepted glossary term whose text appears in the given lyric lines,
+ * increment its useCount by 1. Called once per translation to track term frequency.
+ */
+export async function incrementGlossaryTermUseCounts(
+  artistKey: string,
+  lyricOriginals: string[]
+): Promise<void> {
+  if (lyricOriginals.length === 0) return;
+  const file = await readArtistGlossaryFile(artistKey);
+  if (file.entries.length === 0) return;
+
+  const haystack = lyricOriginals.join(" ").toLowerCase();
+  let changed = false;
+
+  for (const entry of file.entries) {
+    // Match the term or any of its aliases as a substring in the original lyrics
+    const needles = [entry.term, ...(entry.aliases ?? [])];
+    const found = needles.some((n) => haystack.includes(n.toLowerCase()));
+    if (found) {
+      entry.useCount = (entry.useCount ?? 0) + 1;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    file.updatedAt = new Date().toISOString();
+    await writeArtistGlossaryFile(file);
+  }
 }

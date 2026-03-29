@@ -10,6 +10,10 @@ type ArtistProfileFields = Omit<AiArtistMemory, "glossaryEntries" | "artistKey">
 export type ArtistProfileFile = ArtistProfileFields & {
   artistKey: string;
   updatedAt: string;
+  /** How many songs were used when the profile was last generated */
+  builtFromSongs?: number;
+  /** How many glossary entries existed when the profile was last generated */
+  builtFromGlossaryTerms?: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -96,6 +100,8 @@ export async function readArtistProfileFile(artistKey: string): Promise<ArtistPr
       artistKey,
       displayName: asString(parsed.displayName) ?? artistKey,
       updatedAt: asString(parsed.updatedAt) ?? new Date().toISOString(),
+      builtFromSongs: typeof parsed.builtFromSongs === "number" ? parsed.builtFromSongs : undefined,
+      builtFromGlossaryTerms: typeof parsed.builtFromGlossaryTerms === "number" ? parsed.builtFromGlossaryTerms : undefined,
       personaSummary: asString(parsed.personaSummary),
       translationPreferences: asStringArray(parsed.translationPreferences),
       translationDirectives: asStringArray(parsed.translationDirectives),

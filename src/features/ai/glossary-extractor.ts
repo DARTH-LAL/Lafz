@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { bulkAddGlossaryTerms, normalizeArtistKey, readArtistGlossaryFile, readPendingSuggestions } from "@/features/ai/glossary-repository";
+import { bulkAddGlossaryTerms, incrementGlossaryTermUseCounts, normalizeArtistKey, readArtistGlossaryFile, readPendingSuggestions } from "@/features/ai/glossary-repository";
 import { getOpenAiBaseUrl, getOpenAiModel, isOpenAiConfigured } from "@/features/ai/openai";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -155,13 +155,18 @@ export async function extractAndStoreGlossarySuggestions(options: ExtractorOptio
 
     // Read both accepted glossary AND pending suggestions so the AI skips all known terms
     const [glossaryFile, pendingSuggestions] = await Promise.all([
-      readArtistGlossaryFile(artistKey).catch(() => ({ entries: [] as AiGlossaryEntry[], displayName: options.artist })),
+      readArtistGlossaryFile(artistKey).catch(() => ({ entries: [] as AiGlossaryEntry[], displayName: options.artist, artistKey, updatedAt: new Date().toISOString() })),
       readPendingSuggestions(artistKey).catch(() => []),
     ]);
 
+    // Increment use counts for existing terms that appear in this song's lyrics
+    void incrementGlossaryTermUseCounts(
+      artistKey,
+      options.lines.map((l) => l.original)
+    ).catch(() => null);
+
     const enrichedOptions: ExtractorOptions = {
       ...options,
-      // Merge accepted + pending so the AI prompt skips everything already known
       existingGlossary: glossaryFile.entries,
       pendingSuggestionTerms: pendingSuggestions.map((s) => s.term),
     };

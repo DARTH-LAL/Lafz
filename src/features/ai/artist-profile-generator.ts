@@ -167,7 +167,9 @@ export async function ensureArtistProfile(artist: string | null) {
     artistKey,
     ...profileResponse.profile,
     displayName: profileResponse.profile.displayName || existingProfile.displayName || glossaryFile.displayName || artistKey,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    builtFromSongs: evidence.length,
+    builtFromGlossaryTerms: glossaryFile.entries.length,
   };
 
   await writeArtistProfileFile(nextProfile);

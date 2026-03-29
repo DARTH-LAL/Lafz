@@ -9,6 +9,10 @@ export type AiGlossaryEntry = {
   note?: string;
   aliases?: string[];
   category?: "entry" | "slang" | "idiom" | "phrase" | "reference" | "preferred_rendering";
+  /** How many songs this term has appeared in since being added */
+  useCount?: number;
+  /** ISO timestamp when this term was first added */
+  addedAt?: string;
 };
 
 const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries");
