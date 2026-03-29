@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 
+type CanonicalRendering = { term: string; rendering: string; note?: string };
+
 type ArtistProfileResponse = {
   success: boolean;
   artistKey: string;
@@ -22,6 +24,7 @@ type ArtistProfileResponse = {
   stanceNotes: string[];
   perspectiveNotes: string[];
   notes: string[];
+  canonicalRenderings?: CanonicalRendering[];
   glossaryEntries: AiGlossaryEntry[];
 };
 
@@ -173,6 +176,9 @@ export function ArtistProfileCard({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState | null>(null);
+  const [canonicalRenderings, setCanonicalRenderings] = useState<CanonicalRendering[]>([]);
+  const [newRendering, setNewRendering] = useState<{ term: string; rendering: string; note: string }>({ term: "", rendering: "", note: "" });
+  const [showRenderingForm, setShowRenderingForm] = useState(false);
   const [glossaryEntries, setGlossaryEntries] = useState<AiGlossaryEntry[]>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [builtFromSongs, setBuiltFromSongs] = useState<number | null>(null);
@@ -191,6 +197,7 @@ export function ArtistProfileCard({
         throw new Error(payload.error ?? "Failed to load artist profile.");
       }
       setForm(buildFormState(payload));
+      setCanonicalRenderings(payload.canonicalRenderings ?? []);
       setGlossaryEntries(payload.glossaryEntries ?? []);
       setUpdatedAt(payload.updatedAt);
       setBuiltFromSongs(payload.builtFromSongs ?? null);
@@ -247,7 +254,8 @@ export function ArtistProfileCard({
           voiceNotes: textToLines(form.voiceNotes),
           stanceNotes: textToLines(form.stanceNotes),
           perspectiveNotes: textToLines(form.perspectiveNotes),
-          notes: textToLines(form.notes)
+          notes: textToLines(form.notes),
+          canonicalRenderings
         })
       });
       const payload = (await response.json()) as ArtistProfileResponse & { error?: string };
@@ -255,6 +263,7 @@ export function ArtistProfileCard({
         throw new Error(payload.error ?? "Failed to save artist profile.");
       }
       setForm(buildFormState(payload));
+      setCanonicalRenderings(payload.canonicalRenderings ?? []);
       setGlossaryEntries(payload.glossaryEntries ?? []);
       setUpdatedAt(payload.updatedAt);
       setSuccess("Artist profile saved. Lafz will use it in future translation passes.");
@@ -424,6 +433,94 @@ export function ArtistProfileCard({
             value={form.notes}
             onChange={(v) => setField("notes", v)}
           />
+
+          {/* Canonical renderings — full width, always visible */}
+          <div className="md:col-span-2">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-[rgba(255,20,100,0.62)]">
+                  Canonical renderings
+                </span>
+                <span className="rounded-full border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.06)] px-2 py-0.5 text-[9px] font-bold text-[#ff6aaa]">
+                  HARD RULES
+                </span>
+                {canonicalRenderings.length > 0 && (
+                  <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2 py-0.5 text-[9px] text-[rgba(255,255,255,0.35)]">
+                    {canonicalRenderings.length}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRenderingForm((v) => !v)}
+                className="rounded-full border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.07)] px-3 py-1 text-[10px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.14)]"
+              >
+                {showRenderingForm ? "✕ Cancel" : "+ Add"}
+              </button>
+            </div>
+            <p className="mb-2 text-[11px] leading-[1.5] text-[rgba(255,255,255,0.30)]">
+              Terms the AI must always translate exactly as specified — e.g. &quot;jatt&quot; → &quot;jatt&quot;, &quot;sandh&quot; → &quot;bull&quot;.
+            </p>
+
+            {showRenderingForm && (
+              <div className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-[14px] border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.04)] p-3">
+                <input
+                  value={newRendering.term}
+                  onChange={(e) => setNewRendering((r) => ({ ...r, term: e.target.value }))}
+                  placeholder="Source term"
+                  className="rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[12px] text-white outline-none placeholder:text-[rgba(255,255,255,0.3)] focus:border-[rgba(255,20,100,0.5)]"
+                />
+                <input
+                  value={newRendering.rendering}
+                  onChange={(e) => setNewRendering((r) => ({ ...r, rendering: e.target.value }))}
+                  placeholder="Always render as…"
+                  className="rounded-[10px] border border-[rgba(255,20,100,0.22)] bg-[rgba(255,20,100,0.06)] px-3 py-2 text-[12px] text-white outline-none placeholder:text-[rgba(255,255,255,0.3)] focus:border-[rgba(255,20,100,0.5)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = newRendering.term.trim();
+                    const r = newRendering.rendering.trim();
+                    if (!t || !r) return;
+                    setCanonicalRenderings((prev) => {
+                      if (prev.some((x) => x.term.toLowerCase() === t.toLowerCase())) return prev;
+                      return [...prev, { term: t, rendering: r, ...(newRendering.note.trim() ? { note: newRendering.note.trim() } : {}) }];
+                    });
+                    setNewRendering({ term: "", rendering: "", note: "" });
+                    setShowRenderingForm(false);
+                  }}
+                  className="rounded-[10px] bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-4 py-2 text-[11px] font-bold text-white shadow-[0_0_12px_rgba(255,20,100,0.30)] hover:opacity-90"
+                >
+                  Add
+                </button>
+              </div>
+            )}
+
+            {canonicalRenderings.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {canonicalRenderings.map((r) => (
+                  <div
+                    key={r.term}
+                    className="group flex items-center gap-1.5 rounded-full border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.06)] pl-3 pr-1.5 py-1"
+                  >
+                    <span className="text-[12px] font-semibold text-white">{r.term}</span>
+                    <span className="text-[rgba(255,255,255,0.35)]">→</span>
+                    <span className="text-[12px] text-[#ff6aaa]">{r.rendering}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCanonicalRenderings((prev) => prev.filter((x) => x.term !== r.term))}
+                      className="ml-1 rounded-full p-0.5 text-[rgba(255,20,100,0.4)] transition hover:bg-[rgba(255,20,100,0.15)] hover:text-[#ff1464]"
+                      title="Remove"
+                    >
+                      <svg viewBox="0 0 10 10" className="h-2.5 w-2.5 fill-current"><path d="M1.5 1.5 8.5 8.5M8.5 1.5 1.5 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-[rgba(255,255,255,0.2)]">No canonical renderings yet. Add terms the AI must always translate the same way.</p>
+            )}
+          </div>
         </div>
       )}
     </div>

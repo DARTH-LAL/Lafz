@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AiArtistMemory } from "@/features/ai/types";
+import type { AiArtistMemory, AiCanonicalRendering } from "@/features/ai/types";
 
 const artistProfilesRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
 
@@ -28,6 +28,20 @@ function asStringArray(value: unknown) {
   return Array.isArray(value)
     ? value.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
     : [];
+}
+
+function parseCanonicalRenderings(value: unknown): AiCanonicalRendering[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item): AiCanonicalRendering | null => {
+      if (!isRecord(item)) return null;
+      const term = asString(item.term);
+      const rendering = asString(item.rendering);
+      if (!term || !rendering) return null;
+      const note = asString(item.note) ?? undefined;
+      return note ? { term, rendering, note } : { term, rendering };
+    })
+    .filter((r): r is AiCanonicalRendering => r !== null);
 }
 
 function emptyProfile(artistKey: string) {
@@ -112,7 +126,8 @@ export async function readArtistProfileFile(artistKey: string): Promise<ArtistPr
       voiceNotes: asStringArray(parsed.voiceNotes),
       stanceNotes: asStringArray(parsed.stanceNotes),
       perspectiveNotes: asStringArray(parsed.perspectiveNotes),
-      notes: asStringArray(parsed.notes)
+      notes: asStringArray(parsed.notes),
+      canonicalRenderings: parseCanonicalRenderings(parsed.canonicalRenderings),
     } satisfies ArtistProfileFile;
   } catch {
     return emptyProfile(artistKey);
@@ -157,6 +172,7 @@ export async function updateArtistProfileFile(
     stanceNotes: patch.stanceNotes ?? existing.stanceNotes,
     perspectiveNotes: patch.perspectiveNotes ?? existing.perspectiveNotes,
     notes: patch.notes ?? existing.notes,
+    canonicalRenderings: patch.canonicalRenderings ?? existing.canonicalRenderings ?? [],
     updatedAt: new Date().toISOString()
   };
 

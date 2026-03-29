@@ -79,7 +79,23 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     voiceNotes: normalizeStringArray(body.voiceNotes),
     stanceNotes: normalizeStringArray(body.stanceNotes),
     perspectiveNotes: normalizeStringArray(body.perspectiveNotes),
-    notes: normalizeStringArray(body.notes)
+    notes: normalizeStringArray(body.notes),
+    ...(Array.isArray(body.canonicalRenderings)
+      ? {
+          canonicalRenderings: (body.canonicalRenderings as unknown[])
+            .filter(
+              (r): r is { term: string; rendering: string; note?: string } =>
+                typeof r === "object" && r !== null &&
+                typeof (r as Record<string, unknown>).term === "string" &&
+                typeof (r as Record<string, unknown>).rendering === "string"
+            )
+            .map((r) => ({
+              term: r.term.trim(),
+              rendering: r.rendering.trim(),
+              ...(r.note?.trim() ? { note: r.note.trim() } : {}),
+            })),
+        }
+      : {}),
   });
 
   const glossaryFile = await readArtistGlossaryFile(artistKey);

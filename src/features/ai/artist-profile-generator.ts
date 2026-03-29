@@ -76,17 +76,22 @@ function scoreDraftLine(line: AiDraftLine) {
 }
 
 function pickEvidenceLines(lines: AiDraftLine[]) {
-  return [...lines]
-    .sort((left, right) => scoreDraftLine(right) - scoreDraftLine(left))
-    .slice(0, MAX_EVIDENCE_LINES_PER_SONG)
-    .map((line) => ({
-      original: line.original,
-      chosen: line.chosen,
-      meaning: line.meaning,
-      register: line.register,
-      confidence: line.confidence,
-      selectorReason: line.selectorReason
-    }));
+  const sorted = [...lines].sort((left, right) => scoreDraftLine(right) - scoreDraftLine(left));
+
+  // Always keep ALL manually-reviewed lines — they are the strongest style signal.
+  // Fill remaining slots up to MAX_EVIDENCE_LINES_PER_SONG with the next-best lines.
+  const reviewed = sorted.filter((l) => l.selectorReason === "Manually reviewed in Lafz.");
+  const rest = sorted.filter((l) => l.selectorReason !== "Manually reviewed in Lafz.");
+  const remaining = Math.max(0, MAX_EVIDENCE_LINES_PER_SONG - reviewed.length);
+
+  return [...reviewed, ...rest.slice(0, remaining)].map((line) => ({
+    original: line.original,
+    chosen: line.chosen,
+    meaning: line.meaning,
+    register: line.register,
+    confidence: line.confidence,
+    selectorReason: line.selectorReason
+  }));
 }
 
 export async function ensureArtistProfile(artist: string | null) {

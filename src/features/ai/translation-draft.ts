@@ -530,6 +530,22 @@ function getGlossaryCategoryWeight(category: AiGlossaryEntry["category"]) {
   }
 }
 
+// Stop-words for romanized Punjabi/Hindi + common English particles.
+// These are excluded when extracting "anchor words" from multi-word terms
+// so that short connectives don't pollute the match signal.
+const GLOSSARY_STOP_WORDS = new Set([
+  "de", "di", "da", "nu", "te", "ton", "ne", "vi", "si", "ke", "kar",
+  "aa", "han", "hai", "tha", "ho", "ki", "koi", "jo", "jo", "wala",
+  "a", "an", "the", "in", "on", "at", "of", "for", "to", "is", "my",
+  "and", "or", "but", "with", "by", "from", "this", "that",
+]);
+
+function extractAnchorWords(normalizedTerm: string): string[] {
+  return normalizedTerm
+    .split(" ")
+    .filter((w) => w.length > 2 && !GLOSSARY_STOP_WORDS.has(w));
+}
+
 function filterRelevantGlossaryEntries(glossaryEntries: AiGlossaryEntry[], lineTexts: string[]) {
   if (glossaryEntries.length <= 16) {
     return glossaryEntries;
@@ -542,16 +558,39 @@ function filterRelevantGlossaryEntries(glossaryEntries: AiGlossaryEntry[], lineT
     const allTermWords = normalizedTerms.flatMap((term) => term.split(" ").filter(Boolean));
     const hasExactMatch = normalizedTerms.some((term) => term.length > 0 && normalizedText.includes(term));
     const partialMatchCount = allTermWords.filter((word) => normalizedText.includes(word)).length;
+
+    // For multi-word terms (>2 words), also try anchor-word matching — extract the
+    // most distinctive non-stop words and check what fraction appear in the text.
+    // This catches cases where romanization varies slightly between the glossary entry
+    // and the lyric line (e.g. "neend nahi aundi" vs "neend nhi aundi").
+    let anchorMatchBonus = 0;
+    if (allTermWords.length > 2) {
+      const anchors = extractAnchorWords(normalizedTerms.join(" "));
+      if (anchors.length >= 2) {
+        const matchedAnchors = anchors.filter((w) => normalizedText.includes(w)).length;
+        const ratio = matchedAnchors / anchors.length;
+        // ≥60 % anchor match AND at least 2 anchors hit → treat as a strong partial match
+        if (ratio >= 0.6 && matchedAnchors >= 2) {
+          anchorMatchBonus = Math.round(ratio * 60); // up to +60 pts
+        }
+      }
+    }
+
+    // Also add useCount as a tiebreaker — proven terms rank above untested ones
+    const useCountBonus = Math.min(entry.useCount ?? 0, 10) * 2; // up to +20 pts
+
     const score =
       (hasExactMatch ? 100 : 0) +
       partialMatchCount * 10 +
+      anchorMatchBonus +
+      useCountBonus +
       getGlossaryCategoryWeight(entry.category) +
       Math.min(allTermWords.length, 4);
 
     return {
       entry,
       score,
-      hasExactMatch
+      hasExactMatch: hasExactMatch || anchorMatchBonus > 0
     };
   });
 

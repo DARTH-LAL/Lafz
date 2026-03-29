@@ -168,6 +168,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
                   stanceNotes: resolvedProfile.stanceNotes,
                   perspectiveNotes: resolvedProfile.perspectiveNotes,
                   notes: resolvedProfile.notes,
+                  canonicalRenderings: resolvedProfile.canonicalRenderings ?? [],
                   glossaryEntries
                 }
               : buildEmptyArtistMemory(artistKey, glossaryFile.displayName ?? artistKey, glossaryEntries),
@@ -193,6 +194,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
         stanceNotes: resolvedProfile?.stanceNotes ?? asStringArray(parsed.stanceNotes),
         perspectiveNotes: resolvedProfile?.perspectiveNotes ?? asStringArray(parsed.perspectiveNotes),
         notes: resolvedProfile?.notes ?? asStringArray(parsed.notes),
+        canonicalRenderings: resolvedProfile?.canonicalRenderings ?? [],
         glossaryEntries
       };
 
@@ -219,6 +221,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
                 stanceNotes: resolvedProfile.stanceNotes,
                 perspectiveNotes: resolvedProfile.perspectiveNotes,
                 notes: resolvedProfile.notes,
+                canonicalRenderings: resolvedProfile.canonicalRenderings ?? [],
                 glossaryEntries
               }
             : buildEmptyArtistMemory(artistKey, glossaryFile.displayName ?? artistKey, glossaryEntries),

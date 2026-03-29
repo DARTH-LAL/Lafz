@@ -22,6 +22,13 @@ export type AiCorrectionExample = {
   useCount?: number | null;
 };
 
+/** A hard term→English mapping the AI must always follow exactly. */
+export type AiCanonicalRendering = {
+  term: string;
+  rendering: string;
+  note?: string;
+};
+
 export type AiArtistMemory = {
   artistKey: string;
   displayName: string;
@@ -36,6 +43,8 @@ export type AiArtistMemory = {
   stanceNotes: string[];
   perspectiveNotes: string[];
   notes: string[];
+  /** Hard term→English rules — AI must always use these exact renderings. */
+  canonicalRenderings?: AiCanonicalRendering[];
   glossaryEntries: AiGlossaryEntry[];
 };
 
