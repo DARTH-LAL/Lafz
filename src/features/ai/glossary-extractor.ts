@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { normalizeArtistKey, readPendingSuggestions, storePendingSuggestions, type PendingGlossarySuggestion } from "@/features/ai/glossary-repository";
+import { bulkAddGlossaryTerms, normalizeArtistKey, readArtistGlossaryFile, readPendingSuggestions } from "@/features/ai/glossary-repository";
 import { getOpenAiBaseUrl, getOpenAiModel, isOpenAiConfigured } from "@/features/ai/openai";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -151,29 +151,36 @@ export async function extractAndStoreGlossarySuggestions(options: ExtractorOptio
   if (options.lines.length === 0) return;
 
   try {
-    // Load already-pending suggestions so the AI skips them too
     const artistKey = normalizeArtistKey(options.artist);
-    const pendingSuggestions = await readPendingSuggestions(artistKey).catch(() => []);
+
+    // Read both accepted glossary AND pending suggestions so the AI skips all known terms
+    const [glossaryFile, pendingSuggestions] = await Promise.all([
+      readArtistGlossaryFile(artistKey).catch(() => ({ entries: [] as AiGlossaryEntry[], displayName: options.artist })),
+      readPendingSuggestions(artistKey).catch(() => []),
+    ]);
+
     const enrichedOptions: ExtractorOptions = {
       ...options,
+      // Merge accepted + pending so the AI prompt skips everything already known
+      existingGlossary: glossaryFile.entries,
       pendingSuggestionTerms: pendingSuggestions.map((s) => s.term),
     };
 
     const raw = await callExtraction(enrichedOptions);
     if (raw.length === 0) return;
 
-    const now = new Date().toISOString();
-
-    const suggestions: PendingGlossarySuggestion[] = raw.map((r) => ({
+    // Auto-add directly to the accepted glossary — no review queue
+    const entries: AiGlossaryEntry[] = raw.map((r) => ({
       term: r.term,
       meaning: r.meaning,
       category: r.category as AiGlossaryEntry["category"],
-      reason: r.reason,
-      sourceSongId: options.spotifyTrackId,
-      suggestedAt: now,
     }));
 
-    await storePendingSuggestions(artistKey, suggestions);
+    await bulkAddGlossaryTerms(
+      artistKey,
+      glossaryFile.displayName || options.artist,
+      entries
+    );
   } catch {
     // Non-fatal — never block generation pipeline
   }

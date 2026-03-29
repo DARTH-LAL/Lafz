@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import {
   readArtistProfileFile,
-  updateArtistProfileFile
+  updateArtistProfileFile,
+  writeArtistProfileFile
 } from "@/features/ai/artist-profile-repository";
 import { ensureArtistProfile } from "@/features/ai/artist-profile-generator";
 import { readArtistGlossaryFile } from "@/features/ai/glossary-repository";
@@ -20,11 +21,33 @@ function normalizeStringArray(value: unknown) {
     : [];
 }
 
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
   const session = await readSpotifySessionFromCookies();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { artistKey } = await params;
+  const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
+
+  // If force-refresh requested, wipe the profile first so ensureArtistProfile rebuilds it
+  if (forceRefresh) {
+    const blank = await readArtistProfileFile(artistKey);
+    await writeArtistProfileFile({
+      ...blank,
+      personaSummary: null,
+      translationPreferences: [],
+      translationDirectives: [],
+      recurringThemes: [],
+      recurringMotifs: [],
+      relationshipPatterns: [],
+      toneNotes: [],
+      voiceNotes: [],
+      stanceNotes: [],
+      perspectiveNotes: [],
+      notes: [],
+      updatedAt: new Date(0).toISOString(), // epoch so staleness check always passes
+    });
+  }
+
   const [profile, glossaryFile] = await Promise.all([
     ensureArtistProfile(artistKey).catch(() => readArtistProfileFile(artistKey)),
     readArtistGlossaryFile(artistKey)

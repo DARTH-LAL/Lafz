@@ -395,6 +395,19 @@ export function ArtistGlossaryCard({
     setSuggestions((prev) => prev.filter((s) => s.term.toLowerCase() !== term.toLowerCase()));
   }
 
+  async function handleDismissAll() {
+    try {
+      await fetch(`/api/glossary/artist/${artistKey}/suggestions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "dismiss_all" }),
+      });
+      setSuggestions([]);
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleScan() {
     if (!spotifyTrackIds || spotifyTrackIds.length === 0) return;
     setScanning(true);
@@ -468,10 +481,19 @@ export function ArtistGlossaryCard({
       {/* AI suggestions */}
       {suggestions.length > 0 && (
         <div className="mb-4">
-          <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[1.5px] text-[#ffc850]">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ffc850] shadow-[0_0_6px_#ffc850]" />
-            AI suggested · {suggestions.length} pending
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[1.5px] text-[#ffc850]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ffc850] shadow-[0_0_6px_#ffc850]" />
+              AI suggested · {suggestions.length} pending
+            </p>
+            <button
+              type="button"
+              onClick={() => { void handleDismissAll(); }}
+              className="rounded-full border border-[rgba(255,255,255,0.08)] px-3 py-1 text-[10px] font-semibold text-[rgba(255,255,255,0.30)] transition hover:border-[rgba(255,20,100,0.20)] hover:text-[rgba(255,20,100,0.65)]"
+            >
+              Dismiss all
+            </button>
+          </div>
           <div className="space-y-2">
             {suggestions.map((s) => (
               <SuggestionRow

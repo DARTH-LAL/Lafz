@@ -92,6 +92,28 @@ export async function addOrUpdateGlossaryTerm(
   return file;
 }
 
+/** Add multiple terms in a single read/write — skips near-duplicates already in the file */
+export async function bulkAddGlossaryTerms(
+  artistKey: string,
+  displayName: string,
+  entries: AiGlossaryEntry[]
+): Promise<ArtistGlossaryFile> {
+  if (entries.length === 0) return readArtistGlossaryFile(artistKey);
+  const file = await readArtistGlossaryFile(artistKey);
+  const existingNorm = new Set(file.entries.map((e) => normalizeTermForDedup(e.term)));
+  for (const entry of entries) {
+    const norm = normalizeTermForDedup(entry.term);
+    if (existingNorm.has(norm)) continue; // skip near-duplicate
+    file.entries.push(entry);
+    existingNorm.add(norm);
+  }
+  file.displayName = displayName || file.displayName;
+  file.artistKey = artistKey;
+  file.updatedAt = new Date().toISOString();
+  await writeArtistGlossaryFile(file);
+  return file;
+}
+
 export async function deleteGlossaryTerm(artistKey: string, term: string): Promise<ArtistGlossaryFile> {
   const file = await readArtistGlossaryFile(artistKey);
   file.entries = file.entries.filter((e) => e.term.trim().toLowerCase() !== term.trim().toLowerCase());
@@ -175,4 +197,8 @@ export async function dismissSuggestion(artistKey: string, term: string): Promis
     artistKey,
     suggestions.filter((s) => s.term.toLowerCase() !== term.toLowerCase())
   );
+}
+
+export async function dismissAllSuggestions(artistKey: string): Promise<void> {
+  await writePendingSuggestions(artistKey, []);
 }

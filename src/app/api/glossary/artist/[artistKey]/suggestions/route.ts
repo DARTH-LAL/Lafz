@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import {
   acceptSuggestion,
+  dismissAllSuggestions,
   dismissSuggestion,
   readPendingSuggestions,
 } from "@/features/ai/glossary-repository";
@@ -38,8 +39,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     await acceptSuggestion(artistKey, body.displayName ?? artistKey, body.term);
   } else if (body.action === "dismiss") {
     await dismissSuggestion(artistKey, body.term);
+  } else if (body.action === "dismiss_all") {
+    await dismissAllSuggestions(artistKey);
   } else {
-    return NextResponse.json({ error: "action must be accept or dismiss" }, { status: 400 });
+    return NextResponse.json({ error: "action must be accept, dismiss, or dismiss_all" }, { status: 400 });
   }
 
   const suggestions = await readPendingSuggestions(artistKey);

@@ -114,17 +114,19 @@ export function ArtistProfileCard({
 }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState | null>(null);
   const [glossaryEntries, setGlossaryEntries] = useState<AiGlossaryEntry[]>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (refresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/artist-profile/${artistKey}`);
+      const url = refresh ? `/api/artist-profile/${artistKey}?refresh=true` : `/api/artist-profile/${artistKey}`;
+      const response = await fetch(url);
       const payload = (await response.json()) as ArtistProfileResponse & { error?: string };
       if (!response.ok || !payload.success) {
         throw new Error(payload.error ?? "Failed to load artist profile.");
@@ -140,8 +142,22 @@ export function ArtistProfileCard({
     }
   }, [artistKey]);
 
+  async function handleRegenerate() {
+    setRegenerating(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await fetchProfile(true);
+      setSuccess("Profile regenerated from latest glossary and song evidence.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to regenerate profile.");
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   useEffect(() => {
-    void fetchProfile();
+    void fetchProfile(false);
   }, [fetchProfile]);
 
   const glossaryPreview = useMemo(() => glossaryEntries.slice(0, 8), [glossaryEntries]);
@@ -216,6 +232,20 @@ export function ArtistProfileCard({
               Full page
             </a>
           ) : null}
+          <button
+            type="button"
+            onClick={() => { void handleRegenerate(); }}
+            disabled={loading || regenerating}
+            title="Rebuild this profile from the latest glossary and song evidence"
+            className="rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.07)] px-4 py-2 text-[11px] font-semibold text-[#ff6aaa] transition hover:bg-[rgba(255,20,100,0.14)] disabled:opacity-40"
+          >
+            {regenerating ? (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-[#ff6aaa] border-t-transparent" />
+                Regenerating…
+              </span>
+            ) : "↺ Regenerate"}
+          </button>
           <button
             type="button"
             onClick={() => { void handleSave(); }}
