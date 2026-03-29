@@ -611,6 +611,37 @@ function filterRelevantGlossaryEntries(glossaryEntries: AiGlossaryEntry[], lineT
   return mergeGlossaryEntries([matchedEntries, fallbackEntries]).slice(0, 18);
 }
 
+/**
+ * Returns the terms from an artist glossary that genuinely match the given lyric
+ * texts (exact, anchor-word, or strong partial). Used for per-run hit tracking —
+ * does NOT include fallback entries injected for coverage.
+ */
+export function computeGlossaryHits(
+  glossaryEntries: AiGlossaryEntry[],
+  lyricTexts: string[]
+): string[] {
+  if (glossaryEntries.length === 0 || lyricTexts.length === 0) return [];
+  const normalizedText = lyricTexts.map(normalizeLineKey).join(" ");
+
+  return glossaryEntries
+    .filter((entry) => {
+      const normalizedTerms = getGlossarySearchTerms(entry);
+      const allTermWords = normalizedTerms.flatMap((t) => t.split(" ").filter(Boolean));
+
+      if (normalizedTerms.some((t) => t.length > 0 && normalizedText.includes(t))) return true;
+
+      if (allTermWords.length > 2) {
+        const anchors = extractAnchorWords(normalizedTerms.join(" "));
+        if (anchors.length >= 2) {
+          const matched = anchors.filter((w) => normalizedText.includes(w)).length;
+          if (matched / anchors.length >= 0.6 && matched >= 2) return true;
+        }
+      }
+      return false;
+    })
+    .map((e) => e.term);
+}
+
 function buildContextLines(lines: SourceDraftLine[], centerIndex: number, startOffset: number, endOffset: number) {
   const context: string[] = [];
 
@@ -2395,8 +2426,26 @@ async function recordGenerationLog(
 ): Promise<void> {
   try {
     const { appendGenerationLogEntry } = await import("@/features/ai/generation-log");
+    const { readArtistGlossaryFile } = await import("@/features/ai/glossary-repository");
     const now = Date.now();
     const lines = draftFile.lines;
+
+    // Compute which artist glossary terms genuinely matched this song's lyrics
+    const artistKey = normalizeArtistKey(draftFile.artist ?? "");
+    const glossaryFile = await readArtistGlossaryFile(artistKey).catch(() => null);
+    const lyricTexts = lines.map((l) => l.original).filter(Boolean);
+    const glossaryTermsMatched = glossaryFile?.entries.length
+      ? computeGlossaryHits(glossaryFile.entries, lyricTexts)
+      : [];
+
+    // Detect whether an artist profile was active (has real content)
+    const artistProfileActive = Boolean(
+      draftFile.artistMemory &&
+      typeof draftFile.artistMemory === "object" &&
+      ((draftFile.artistMemory as Record<string, unknown>).personaSummary ||
+       ((draftFile.artistMemory as Record<string, unknown>).translationDirectives as unknown[])?.length > 0)
+    );
+
     await appendGenerationLogEntry(spotifyTrackId, {
       id: `${spotifyTrackId}-${now}`,
       timestampMs: now,
@@ -2412,6 +2461,8 @@ async function recordGenerationLog(
       targetLanguage: draftFile.targetLanguage,
       resultStatus,
       costSummary: costSummary ?? null,
+      glossaryTermsMatched,
+      artistProfileActive,
     });
   } catch {
     // Non-fatal

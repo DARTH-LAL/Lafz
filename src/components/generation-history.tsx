@@ -311,6 +311,55 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
                         </div>
                       </>
                     )}
+                    {/* Artist profile + glossary hits */}
+                    {(entry.artistProfileActive !== undefined || (entry.glossaryTermsMatched && entry.glossaryTermsMatched.length > 0)) && (
+                      <div className="col-span-2 sm:col-span-3 lg:col-span-4 border-t border-[rgba(255,20,100,0.10)] pt-3 mt-1">
+                        <div className="flex flex-wrap gap-x-8 gap-y-3">
+                          {entry.artistProfileActive !== undefined && (
+                            <div>
+                              <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Artist profile</p>
+                              <div className="mt-1">
+                                {entry.artistProfileActive ? (
+                                  <span className="rounded-full border border-[rgba(63,255,170,0.3)] bg-[rgba(63,255,170,0.08)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#3fffaa]">
+                                    Active
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.05)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/40">
+                                    Inactive
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {entry.glossaryTermsMatched && entry.glossaryTermsMatched.length > 0 && (
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">
+                                Glossary hits
+                                <span className="ml-1.5 rounded-full bg-[rgba(255,20,100,0.15)] px-1.5 py-0.5 text-[8px] text-[#ff6aaa]">
+                                  {entry.glossaryTermsMatched.length}
+                                </span>
+                              </p>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {entry.glossaryTermsMatched.map((term) => (
+                                  <span
+                                    key={term}
+                                    className="rounded-full border border-[rgba(162,89,255,0.25)] bg-[rgba(162,89,255,0.08)] px-2 py-0.5 text-[9px] text-[#c49fff]"
+                                  >
+                                    {term}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {entry.glossaryTermsMatched !== undefined && entry.glossaryTermsMatched.length === 0 && (
+                            <div>
+                              <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Glossary hits</p>
+                              <p className="mt-0.5 text-[10px] text-white/40">None matched</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

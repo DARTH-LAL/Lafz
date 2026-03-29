@@ -26,6 +26,10 @@ export type GenerationLogEntry = {
   /** The terminal result status of the generation */
   resultStatus: string;
   costSummary: AiCostSummary | null;
+  /** Glossary terms from the artist glossary that matched lyrics in this run */
+  glossaryTermsMatched?: string[];
+  /** Whether the artist profile was active for this run */
+  artistProfileActive?: boolean;
 };
 
 type GenerationLogFile = {
