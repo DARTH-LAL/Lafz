@@ -9,6 +9,7 @@ import type {
   AiTranslationDraftInspection,
   AiSongContext
 } from "@/features/ai/types";
+import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { normalizeLookupText as normalizeRomanizedLookupText } from "@/features/ai/romanized-normalization";
 import type { TrackTranslation } from "@/features/translations/types";
 
@@ -190,17 +191,72 @@ function parseArtistMemory(value: unknown): AiArtistMemory | null {
 
   const artistKey = asString(value.artistKey);
   const displayName = asString(value.displayName);
+  const personaSummary = asString(value.personaSummary);
   const translationPreferences = Array.isArray(value.translationPreferences)
     ? value.translationPreferences.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const translationDirectives = Array.isArray(value.translationDirectives)
+    ? value.translationDirectives.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
     : [];
   const recurringThemes = Array.isArray(value.recurringThemes)
     ? value.recurringThemes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
     : [];
+  const recurringMotifs = Array.isArray(value.recurringMotifs)
+    ? value.recurringMotifs.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const relationshipPatterns = Array.isArray(value.relationshipPatterns)
+    ? value.relationshipPatterns.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
   const toneNotes = Array.isArray(value.toneNotes)
     ? value.toneNotes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
     : [];
+  const voiceNotes = Array.isArray(value.voiceNotes)
+    ? value.voiceNotes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const stanceNotes = Array.isArray(value.stanceNotes)
+    ? value.stanceNotes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const perspectiveNotes = Array.isArray(value.perspectiveNotes)
+    ? value.perspectiveNotes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
   const notes = Array.isArray(value.notes)
     ? value.notes.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+  const glossaryEntries = Array.isArray(value.glossaryEntries)
+    ? value.glossaryEntries
+        .map((entry): AiGlossaryEntry | null => {
+          if (!isRecord(entry)) {
+            return null;
+          }
+
+          const term = asString(entry.term);
+          const meaning = asString(entry.meaning);
+
+          if (!term || !meaning) {
+            return null;
+          }
+
+          const aliases = Array.isArray(entry.aliases)
+            ? entry.aliases.map((alias) => asString(alias)).filter((alias): alias is string => Boolean(alias))
+            : undefined;
+
+          return {
+            term,
+            meaning,
+            note: asString(entry.note) ?? undefined,
+            aliases,
+            category:
+              entry.category === "entry" ||
+              entry.category === "slang" ||
+              entry.category === "idiom" ||
+              entry.category === "phrase" ||
+              entry.category === "reference" ||
+              entry.category === "preferred_rendering"
+                ? entry.category
+                : undefined
+          };
+        })
+        .filter((entry): entry is AiGlossaryEntry => Boolean(entry))
     : [];
 
   if (!artistKey || !displayName) {
@@ -210,10 +266,18 @@ function parseArtistMemory(value: unknown): AiArtistMemory | null {
   return {
     artistKey,
     displayName,
+    personaSummary,
     translationPreferences,
+    translationDirectives,
     recurringThemes,
+    recurringMotifs,
+    relationshipPatterns,
     toneNotes,
-    notes
+    voiceNotes,
+    stanceNotes,
+    perspectiveNotes,
+    notes,
+    glossaryEntries
   };
 }
 
@@ -413,6 +477,41 @@ export async function findAiTranslationDraftByMetadata(target: { title: string; 
   }
 
   return bestMatch?.draft ?? null;
+}
+
+export async function listAiTranslationDraftsByArtistKey(artistKey: string) {
+  let fileNames: string[] = [];
+
+  try {
+    fileNames = (await readdir(aiTranslationDraftsRoot)).filter((fileName) => fileName.endsWith(".json"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [] satisfies AiTranslationDraftFile[];
+    }
+
+    throw error;
+  }
+
+  const normalizedArtistKey = normalizeLookupText(artistKey.replace(/-/g, " "));
+  const drafts: AiTranslationDraftFile[] = [];
+
+  for (const fileName of fileNames) {
+    const filePath = path.join(aiTranslationDraftsRoot, fileName);
+
+    try {
+      const fileContents = await readFile(filePath, "utf8");
+      const parsedDraft = parseAiTranslationDraftFile(JSON.parse(fileContents) as unknown, filePath);
+      const artistTokens = normalizeArtistTokens(parsedDraft.artist);
+
+      if (artistTokens.includes(normalizedArtistKey)) {
+        drafts.push(parsedDraft);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return drafts.sort((left, right) => new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime());
 }
 
 export function buildTrackTranslationFromAiDraft(draft: AiTranslationDraftFile): TrackTranslation | null {

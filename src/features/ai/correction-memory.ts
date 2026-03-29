@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { readArtistProfileFile } from "@/features/ai/artist-profile-repository";
 import type { AiCorrectionExample, AiDraftLine, AiTranslationDraftFile } from "@/features/ai/types";
 
 const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries", "local");
@@ -267,6 +268,7 @@ async function writeArtistCorrectionMemory(
 
   const filePath = path.join(artistMemoryRoot, `${artistKey}.json`);
   const existing = await readJsonRecord(filePath);
+  const existingProfile = await readArtistProfileFile(artistKey).catch(() => null);
   const mergedPreferredRenderings = mergePreferredRenderings(
     parsePreferredRenderings(existing?.preferredRenderings),
     corrections
@@ -278,11 +280,20 @@ async function writeArtistCorrectionMemory(
     filePath,
     `${JSON.stringify(
       {
-        displayName: asString(existing?.displayName) ?? primaryArtist,
-        translationPreferences: asStringArray(existing?.translationPreferences),
-        recurringThemes: asStringArray(existing?.recurringThemes),
-        toneNotes: asStringArray(existing?.toneNotes),
-        notes: asStringArray(existing?.notes),
+        ...(existing ?? {}),
+        displayName: existingProfile?.displayName ?? asString(existing?.displayName) ?? primaryArtist,
+        updatedAt: existingProfile?.updatedAt ?? asString(existing?.updatedAt) ?? new Date().toISOString(),
+        personaSummary: existingProfile?.personaSummary ?? asString(existing?.personaSummary) ?? null,
+        translationPreferences: existingProfile?.translationPreferences ?? asStringArray(existing?.translationPreferences),
+        translationDirectives: existingProfile?.translationDirectives ?? asStringArray(existing?.translationDirectives),
+        recurringThemes: existingProfile?.recurringThemes ?? asStringArray(existing?.recurringThemes),
+        recurringMotifs: existingProfile?.recurringMotifs ?? asStringArray(existing?.recurringMotifs),
+        relationshipPatterns: existingProfile?.relationshipPatterns ?? asStringArray(existing?.relationshipPatterns),
+        toneNotes: existingProfile?.toneNotes ?? asStringArray(existing?.toneNotes),
+        voiceNotes: existingProfile?.voiceNotes ?? asStringArray(existing?.voiceNotes),
+        stanceNotes: existingProfile?.stanceNotes ?? asStringArray(existing?.stanceNotes),
+        perspectiveNotes: existingProfile?.perspectiveNotes ?? asStringArray(existing?.perspectiveNotes),
+        notes: existingProfile?.notes ?? asStringArray(existing?.notes),
         preferredRenderings: mergedPreferredRenderings,
         correctionExamples: mergedCorrectionExamples
       },

@@ -1,4 +1,5 @@
 import { getAiArtistMemory } from "@/features/ai/artist-memory";
+import { ensureArtistProfile } from "@/features/ai/artist-profile-generator";
 import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import { extractAndStoreGlossarySuggestions } from "@/features/ai/glossary-extractor";
@@ -190,6 +191,11 @@ type DraftRequestOptions = {
 type DraftRequester = (
   options: DraftRequestOptions
 ) => Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }>;
+
+async function getHydratedArtistMemory(artist: string | null) {
+  await ensureArtistProfile(artist).catch(() => null);
+  return getAiArtistMemory(artist);
+}
 
 function buildNormalizedSourceLineLookup(lines: SourceDraftLine[]) {
   return new Map<number, NormalizedSourceLine>(
@@ -831,7 +837,7 @@ async function generateSongContext(
 ) {
   const requestedSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
   const { memory: artistMemory, preferredRenderings, correctionExamples: artistCorrectionExamples } =
-    await getAiArtistMemory(options.artist);
+    await getHydratedArtistMemory(options.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(options.spotifyTrackId).catch(() => []);
 
   // Reuse previous song context if available — saves an API call and keeps analysis stable
@@ -1616,7 +1622,7 @@ export async function rerunDraftAfterManualCorrections(
     memory: artistMemory,
     preferredRenderings,
     correctionExamples: artistCorrectionExamples
-  } = await getAiArtistMemory(draft.artist);
+  } = await getHydratedArtistMemory(draft.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(draft.spotifyTrackId).catch(() => []);
   const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
   const currentSongCorrectionExamples = buildCorrectionExamplesFromDraftLines(
@@ -2151,7 +2157,7 @@ export async function regenerateDraftLines(
     memory: artistMemory,
     preferredRenderings,
     correctionExamples: artistCorrectionExamples
-  } = await getAiArtistMemory(draft.artist);
+  } = await getHydratedArtistMemory(draft.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(draft.spotifyTrackId).catch(() => []);
 
   const correctionExamples = mergeCorrectionExampleSources([

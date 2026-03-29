@@ -1,4 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { buildArtistMemoryPromptSnippet, serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
 import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
@@ -97,6 +98,27 @@ type RequestAiSongContextOptions = BasePromptOptions & {
   lines: Array<{
     index: number;
     original: string;
+  }>;
+};
+
+type RequestAiArtistProfileOptions = {
+  artistKey: string;
+  artistName: string;
+  glossaryEntries: AiGlossaryEntry[];
+  evidence: Array<{
+    spotifyTrackId: string;
+    title: string;
+    album: string;
+    generatedAt: string;
+    songContext: AiSongContext | null;
+    lines: Array<{
+      original: string;
+      chosen: string;
+      meaning: string;
+      register: string | null;
+      confidence: "low" | "medium" | "high";
+      selectorReason: string | null;
+    }>;
   }>;
 };
 
@@ -301,6 +323,73 @@ export function buildSongContextSchema() {
   };
 }
 
+export function buildArtistProfileSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      displayName: { type: "string" },
+      personaSummary: {
+        anyOf: [{ type: "string" }, { type: "null" }]
+      },
+      translationPreferences: {
+        type: "array",
+        items: { type: "string" }
+      },
+      translationDirectives: {
+        type: "array",
+        items: { type: "string" }
+      },
+      recurringThemes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      recurringMotifs: {
+        type: "array",
+        items: { type: "string" }
+      },
+      relationshipPatterns: {
+        type: "array",
+        items: { type: "string" }
+      },
+      toneNotes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      voiceNotes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      stanceNotes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      perspectiveNotes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      notes: {
+        type: "array",
+        items: { type: "string" }
+      }
+    },
+    required: [
+      "displayName",
+      "personaSummary",
+      "translationPreferences",
+      "translationDirectives",
+      "recurringThemes",
+      "recurringMotifs",
+      "relationshipPatterns",
+      "toneNotes",
+      "voiceNotes",
+      "stanceNotes",
+      "perspectiveNotes",
+      "notes"
+    ]
+  };
+}
+
 export function buildSelectionSchema(lineCount: number) {
   return {
     type: "object",
@@ -348,9 +437,13 @@ function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: str
   }
 
   if (options.artistMemory) {
-    hints.push(
-      `Artist memory for ${options.artistMemory.displayName}: translationPreferences=${options.artistMemory.translationPreferences.join(" | ") || "none"}; recurringThemes=${options.artistMemory.recurringThemes.join(" | ") || "none"}; toneNotes=${options.artistMemory.toneNotes.join(" | ") || "none"}; notes=${options.artistMemory.notes.join(" | ") || "none"}.`
-    );
+    const artistMemoryHint = buildArtistMemoryPromptSnippet(options.artistMemory);
+    if (artistMemoryHint) {
+      hints.push(artistMemoryHint);
+      hints.push(
+        "Preserve the artist's perspective and speaker posture: keep recurring flex, tenderness, warning, pride, or vulnerability cues intact instead of flattening them into generic English."
+      );
+    }
   }
 
   if (options.glossaryEntries.length > 0) {
@@ -450,6 +543,24 @@ export function buildSongContextSystemPrompt(options: RequestAiSongContextOption
   ].join(" ");
 }
 
+export function buildArtistProfileSystemPrompt(options: RequestAiArtistProfileOptions) {
+  return [
+    "You are building an artist profile for Lafz, a lyric-translation system.",
+    "Your job is to infer how this artist usually speaks, postures, relates to people, and what translation guidance Lafz should remember.",
+    "Use only the evidence provided: glossary entries, past translated lines, song-context summaries, and line-level registers.",
+    "Do not invent biographical facts or external information.",
+    "Keep all outputs compact, practical, and translation-oriented.",
+    "translationPreferences should describe how Lafz should generally render this artist in English.",
+    "translationDirectives should be crisp rules like 'do not soften threats' or 'keep romantic lines proud, not submissive'.",
+    "recurringThemes and recurringMotifs should capture what repeatedly shows up across songs.",
+    "relationshipPatterns should explain how the artist usually talks to lovers, rivals, friends, enemies, or listeners.",
+    "toneNotes, voiceNotes, stanceNotes, and perspectiveNotes should help preserve the artist's point of view and social posture in translation.",
+    "personaSummary should be a concise paragraph, not generic fluff.",
+    "If the evidence is thin, stay conservative and leave weak categories empty rather than guessing.",
+    "Respond only with JSON matching the schema."
+  ].join(" ");
+}
+
 export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOptions) {
   return [
     "You are the final selector for Lafz lyric translations.",
@@ -465,6 +576,21 @@ export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectio
   ].join(" ");
 }
 
+export function buildArtistProfileUserPrompt(options: RequestAiArtistProfileOptions) {
+  return JSON.stringify(
+    {
+      artist: {
+        artistKey: options.artistKey,
+        displayName: options.artistName
+      },
+      glossary: options.glossaryEntries,
+      evidence: options.evidence
+    },
+    null,
+    2
+  );
+}
+
 export function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
   return JSON.stringify(
     {
@@ -476,7 +602,7 @@ export function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,
@@ -514,7 +640,7 @@ export function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions)
       },
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       lines: options.lines.map((line) => ({
         index: line.index,
@@ -544,7 +670,7 @@ export function buildRefinementUserPrompt(options: RequestAiTranslationRefinemen
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,
@@ -588,7 +714,7 @@ export function buildSongContextUserPrompt(options: RequestAiSongContextOptions)
         album: options.album
       },
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       outputRules: {
         inferSpeakerAndAddressee: true,
@@ -612,7 +738,7 @@ export function buildSelectionUserPrompt(options: RequestAiTranslationSelectionO
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,
@@ -664,6 +790,12 @@ function getOpenAiAuthHeaders() {
 
 function normalizeNullableString(value: unknown) {
   return value === null ? null : asString(value);
+}
+
+function parseStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
 }
 
 function extractOpenAiErrorMessage(payload: unknown, fallbackMessage: string) {
@@ -991,6 +1123,56 @@ export async function requestOpenAiSongContext(
     model,
     sourceLanguage: normalized.sourceLanguage,
     songContext: normalized.songContext
+  };
+}
+
+export async function requestOpenAiArtistProfile(options: RequestAiArtistProfileOptions): Promise<{
+  model: string;
+  profile: {
+    displayName: string;
+    personaSummary: string | null;
+    translationPreferences: string[];
+    translationDirectives: string[];
+    recurringThemes: string[];
+    recurringMotifs: string[];
+    relationshipPatterns: string[];
+    toneNotes: string[];
+    voiceNotes: string[];
+    stanceNotes: string[];
+    perspectiveNotes: string[];
+    notes: string[];
+  };
+}> {
+  const model = getOpenAiModel();
+  const parsed = await callOpenAiJson<unknown>({
+    model,
+    schemaName: "lafz_artist_profile",
+    schema: buildArtistProfileSchema(),
+    systemPrompt: buildArtistProfileSystemPrompt(options),
+    userPrompt: buildArtistProfileUserPrompt(options),
+    errorLabel: "OpenAI artist-profile request"
+  });
+
+  if (!isRecord(parsed)) {
+    throw new Error("OpenAI returned an invalid artist-profile shape.");
+  }
+
+  return {
+    model,
+    profile: {
+      displayName: asString(parsed.displayName) ?? options.artistName,
+      personaSummary: normalizeNullableString(parsed.personaSummary),
+      translationPreferences: parseStringArray(parsed.translationPreferences),
+      translationDirectives: parseStringArray(parsed.translationDirectives),
+      recurringThemes: parseStringArray(parsed.recurringThemes),
+      recurringMotifs: parseStringArray(parsed.recurringMotifs),
+      relationshipPatterns: parseStringArray(parsed.relationshipPatterns),
+      toneNotes: parseStringArray(parsed.toneNotes),
+      voiceNotes: parseStringArray(parsed.voiceNotes),
+      stanceNotes: parseStringArray(parsed.stanceNotes),
+      perspectiveNotes: parseStringArray(parsed.perspectiveNotes),
+      notes: parseStringArray(parsed.notes)
+    }
   };
 }
 

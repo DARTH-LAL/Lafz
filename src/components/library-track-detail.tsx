@@ -2,6 +2,7 @@ import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
 import { ArtistGlossaryCard } from "@/components/artist-glossary-card";
+import { ArtistProfileCard } from "@/components/artist-profile-card";
 import { GenerationHistory } from "@/components/generation-history";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
@@ -268,6 +269,14 @@ export function LibraryTrackDetail({
         </section>
 
         {/* Artist glossary */}
+        <section className="mb-6 lafz-card p-6">
+          <ArtistProfileCard
+            artistKey={normalizeArtistKey(record.artist)}
+            artistName={record.artist}
+            fullPageHref={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
+          />
+        </section>
+
         <section className="mb-6 lafz-card p-6">
           <ArtistGlossaryCard
             artistKey={normalizeArtistKey(record.artist)}

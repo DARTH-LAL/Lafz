@@ -1,4 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { buildArtistMemoryPromptSnippet, serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
 import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
@@ -132,9 +133,13 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
   ];
 
   if (options.artistMemory) {
-    sharedHints.push(
-      `Artist memory for ${options.artistMemory.displayName}: translationPreferences=${options.artistMemory.translationPreferences.join(" | ") || "none"}; recurringThemes=${options.artistMemory.recurringThemes.join(" | ") || "none"}; toneNotes=${options.artistMemory.toneNotes.join(" | ") || "none"}; notes=${options.artistMemory.notes.join(" | ") || "none"}.`
-    );
+    const artistMemoryHint = buildArtistMemoryPromptSnippet(options.artistMemory);
+    if (artistMemoryHint) {
+      sharedHints.push(artistMemoryHint);
+      sharedHints.push(
+        "Preserve perspective fidelity: the winning line should sound true to the artist's persona, stance, and relationship dynamic, not just semantically correct."
+      );
+    }
   }
 
   if (options.glossaryEntries.length > 0) {
@@ -155,7 +160,7 @@ function buildGeminiComparisonUserPrompt(options: RequestGeminiDraftComparisonOp
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       lines: options.lines
     },

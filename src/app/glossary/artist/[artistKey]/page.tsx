@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
 import { ArtistGlossaryCard } from "@/components/artist-glossary-card";
+import { ArtistProfileCard } from "@/components/artist-profile-card";
 import { readArtistGlossaryFile, normalizeArtistKey } from "@/features/ai/glossary-repository";
 import { buildLibraryQueue } from "@/features/library/queue";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
@@ -47,18 +48,21 @@ export default async function GlossaryArtistPage({ params }: GlossaryArtistPageP
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-[linear-gradient(90deg,#ff1464,transparent)] shadow-[0_0_8px_#ff1464]" />
             <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464] [text-shadow:0_0_16px_rgba(255,20,100,0.6)]">
-              Artist Glossary
+              Artist Profile
             </p>
           </div>
           <h1 className="mt-3 text-[42px] font-extrabold leading-[1.04] tracking-[-2px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
             {artistName}
           </h1>
           <p className="mt-2 text-[14px] text-white [text-shadow:0_0_16px_rgba(255,255,255,0.55),0_0_40px_rgba(255,255,255,0.20)]">
-            Terms and preferred renderings used when translating this artist&apos;s lyrics.
+            Persona, perspective, motifs, and glossary memory used when translating this artist&apos;s lyrics.
           </p>
         </header>
 
-        {/* Glossary card */}
+        <div className="mb-6 lafz-card p-6">
+          <ArtistProfileCard artistKey={artistKey} artistName={artistName} />
+        </div>
+
         <div className="lafz-card p-6">
           <ArtistGlossaryCard
             artistKey={artistKey}

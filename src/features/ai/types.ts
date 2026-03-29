@@ -1,3 +1,5 @@
+import type { AiGlossaryEntry } from "@/features/ai/glossary";
+
 export type AiTranslationDraftMode = "synced" | "plain";
 export type AiTranslationConfidence = "low" | "medium" | "high";
 
@@ -12,21 +14,29 @@ export type AiSongContext = {
   narrativeMode: string | null;
 };
 
-export type AiArtistMemory = {
-  artistKey: string;
-  displayName: string;
-  translationPreferences: string[];
-  recurringThemes: string[];
-  toneNotes: string[];
-  notes: string[];
-};
-
 export type AiCorrectionExample = {
   original: string;
   chosen: string;
   note: string | null;
   updatedAt?: string | null;
   useCount?: number | null;
+};
+
+export type AiArtistMemory = {
+  artistKey: string;
+  displayName: string;
+  personaSummary: string | null;
+  translationPreferences: string[];
+  translationDirectives: string[];
+  recurringThemes: string[];
+  recurringMotifs: string[];
+  relationshipPatterns: string[];
+  toneNotes: string[];
+  voiceNotes: string[];
+  stanceNotes: string[];
+  perspectiveNotes: string[];
+  notes: string[];
+  glossaryEntries: AiGlossaryEntry[];
 };
 
 export type AiCorrectionHint = {

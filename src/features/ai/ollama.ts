@@ -1,4 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { buildArtistMemoryPromptSnippet, serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
@@ -339,9 +340,13 @@ function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: str
   }
 
   if (options.artistMemory) {
-    hints.push(
-      `Artist memory for ${options.artistMemory.displayName}: translationPreferences=${options.artistMemory.translationPreferences.join(" | ") || "none"}; recurringThemes=${options.artistMemory.recurringThemes.join(" | ") || "none"}; toneNotes=${options.artistMemory.toneNotes.join(" | ") || "none"}; notes=${options.artistMemory.notes.join(" | ") || "none"}.`
-    );
+    const artistMemoryHint = buildArtistMemoryPromptSnippet(options.artistMemory);
+    if (artistMemoryHint) {
+      hints.push(artistMemoryHint);
+      hints.push(
+        "Preserve the artist's perspective and relationship posture instead of flattening the voice into generic English."
+      );
+    }
   }
 
   if (options.glossaryEntries.length > 0) {
@@ -462,7 +467,7 @@ function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,
@@ -499,7 +504,7 @@ function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions) {
       },
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       lines: options.lines.map((line) => ({
         index: line.index,
@@ -529,7 +534,7 @@ function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOption
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,
@@ -572,7 +577,7 @@ function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
         album: options.album
       },
       sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       outputRules: {
         inferSpeakerAndAddressee: true,
@@ -596,7 +601,7 @@ function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions)
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
-      artistMemory: options.artistMemory,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       outputRules: {
         exactLineCount: options.lines.length,
         includeTransliteration: options.includeTransliteration,

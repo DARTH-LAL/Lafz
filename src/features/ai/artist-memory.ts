@@ -3,6 +3,8 @@ import path from "node:path";
 
 import type { AiArtistMemory, AiCorrectionExample } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { readArtistProfileFile } from "@/features/ai/artist-profile-repository";
+import { readArtistGlossaryFile } from "@/features/ai/glossary-repository";
 
 const aiMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
 
@@ -106,6 +108,25 @@ function parseCorrectionExamples(value: unknown) {
     .filter((entry): entry is AiCorrectionExample => Boolean(entry));
 }
 
+function buildEmptyArtistMemory(artistKey: string, displayName: string, glossaryEntries: AiGlossaryEntry[]): AiArtistMemory {
+  return {
+    artistKey,
+    displayName,
+    personaSummary: null,
+    translationPreferences: [],
+    translationDirectives: [],
+    recurringThemes: [],
+    recurringMotifs: [],
+    relationshipPatterns: [],
+    toneNotes: [],
+    voiceNotes: [],
+    stanceNotes: [],
+    perspectiveNotes: [],
+    notes: [],
+    glossaryEntries
+  };
+}
+
 export async function getAiArtistMemory(artist: string | null): Promise<{
   memory: AiArtistMemory | null;
   preferredRenderings: AiGlossaryEntry[];
@@ -117,21 +138,62 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
 
   for (const artistKey of artistKeys) {
     const filePath = path.join(aiMemoryRoot, `${artistKey}.json`);
+    const glossaryFile = await readArtistGlossaryFile(artistKey).catch(() => ({
+      displayName: artistKey,
+      artistKey,
+      updatedAt: new Date().toISOString(),
+      entries: [] satisfies AiGlossaryEntry[]
+    }));
+    const glossaryEntries = glossaryFile.entries;
+    const resolvedProfile = await readArtistProfileFile(artistKey).catch(() => null);
 
     try {
       const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
 
       if (!isRecord(parsed)) {
+        if (glossaryEntries.length > 0) {
+          return {
+            memory: resolvedProfile
+              ? {
+                  artistKey,
+                  displayName: resolvedProfile.displayName,
+                  personaSummary: resolvedProfile.personaSummary,
+                  translationPreferences: resolvedProfile.translationPreferences,
+                  translationDirectives: resolvedProfile.translationDirectives,
+                  recurringThemes: resolvedProfile.recurringThemes,
+                  recurringMotifs: resolvedProfile.recurringMotifs,
+                  relationshipPatterns: resolvedProfile.relationshipPatterns,
+                  toneNotes: resolvedProfile.toneNotes,
+                  voiceNotes: resolvedProfile.voiceNotes,
+                  stanceNotes: resolvedProfile.stanceNotes,
+                  perspectiveNotes: resolvedProfile.perspectiveNotes,
+                  notes: resolvedProfile.notes,
+                  glossaryEntries
+                }
+              : buildEmptyArtistMemory(artistKey, glossaryFile.displayName ?? artistKey, glossaryEntries),
+            preferredRenderings: [],
+            correctionExamples: []
+          };
+        }
         continue;
       }
 
+      const displayName = asString(parsed.displayName) ?? glossaryFile.displayName ?? artistKey;
       const memory: AiArtistMemory = {
         artistKey,
-        displayName: asString(parsed.displayName) ?? artistKey,
-        translationPreferences: asStringArray(parsed.translationPreferences),
-        recurringThemes: asStringArray(parsed.recurringThemes),
-        toneNotes: asStringArray(parsed.toneNotes),
-        notes: asStringArray(parsed.notes)
+        displayName: resolvedProfile?.displayName ?? displayName,
+        personaSummary: resolvedProfile?.personaSummary ?? asString(parsed.personaSummary),
+        translationPreferences: resolvedProfile?.translationPreferences ?? asStringArray(parsed.translationPreferences),
+        translationDirectives: resolvedProfile?.translationDirectives ?? asStringArray(parsed.translationDirectives),
+        recurringThemes: resolvedProfile?.recurringThemes ?? asStringArray(parsed.recurringThemes),
+        recurringMotifs: resolvedProfile?.recurringMotifs ?? asStringArray(parsed.recurringMotifs),
+        relationshipPatterns: resolvedProfile?.relationshipPatterns ?? asStringArray(parsed.relationshipPatterns),
+        toneNotes: resolvedProfile?.toneNotes ?? asStringArray(parsed.toneNotes),
+        voiceNotes: resolvedProfile?.voiceNotes ?? asStringArray(parsed.voiceNotes),
+        stanceNotes: resolvedProfile?.stanceNotes ?? asStringArray(parsed.stanceNotes),
+        perspectiveNotes: resolvedProfile?.perspectiveNotes ?? asStringArray(parsed.perspectiveNotes),
+        notes: resolvedProfile?.notes ?? asStringArray(parsed.notes),
+        glossaryEntries
       };
 
       return {
@@ -140,6 +202,30 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
         correctionExamples: parseCorrectionExamples(parsed.correctionExamples)
       };
     } catch {
+      if (glossaryEntries.length > 0) {
+        return {
+          memory: resolvedProfile
+            ? {
+                artistKey,
+                displayName: resolvedProfile.displayName,
+                personaSummary: resolvedProfile.personaSummary,
+                translationPreferences: resolvedProfile.translationPreferences,
+                translationDirectives: resolvedProfile.translationDirectives,
+                recurringThemes: resolvedProfile.recurringThemes,
+                recurringMotifs: resolvedProfile.recurringMotifs,
+                relationshipPatterns: resolvedProfile.relationshipPatterns,
+                toneNotes: resolvedProfile.toneNotes,
+                voiceNotes: resolvedProfile.voiceNotes,
+                stanceNotes: resolvedProfile.stanceNotes,
+                perspectiveNotes: resolvedProfile.perspectiveNotes,
+                notes: resolvedProfile.notes,
+                glossaryEntries
+              }
+            : buildEmptyArtistMemory(artistKey, glossaryFile.displayName ?? artistKey, glossaryEntries),
+          preferredRenderings: [],
+          correctionExamples: []
+        };
+      }
       continue;
     }
   }
