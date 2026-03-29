@@ -45,7 +45,7 @@ function readRuns(): AiUsageRun[] {
 
 function writeRuns(runs: AiUsageRun[]): void {
   fs.mkdirSync(path.dirname(USAGE_FILE), { recursive: true });
-  fs.writeFileSync(USAGE_FILE, JSON.stringify(runs, null, 2));
+  fs.writeFileSync(USAGE_FILE, `${JSON.stringify(runs, null, 2)}\n`);
 }
 
 export function recordAiUsageRun(run: Omit<AiUsageRun, "id">): void {

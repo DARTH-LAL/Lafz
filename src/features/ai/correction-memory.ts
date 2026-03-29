@@ -173,7 +173,10 @@ function mergeCorrectionExamples(existingEntries: CorrectionExampleEntry[], corr
     merged.set(key, {
       original: correction.original,
       chosen: correction.chosen,
-      note: correction.note ?? null,
+      // Preserve the existing note when the new correction doesn't carry one.
+      // correction.note is absent (undefined) when the draft line had no AI note;
+      // falling back to existing?.note prevents silently wiping a stored note.
+      note: correction.note !== undefined ? correction.note : (existing?.note ?? null),
       updatedAt: new Date().toISOString(),
       useCount
     });
