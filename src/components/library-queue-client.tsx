@@ -12,6 +12,15 @@ import { formatMilliseconds } from "@/lib/utils";
 
 /* ─── helpers ──────────────────────────────────────────────────────────── */
 
+function normalizeArtistKey(artist: string): string {
+  return artist
+    .split(/,|&| feat\.| ft\.| x /i)[0]
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function formatUpdatedAt(value: string | null) {
   if (!value) return null;
   return new Date(value).toLocaleString();
@@ -46,6 +55,17 @@ function ribbonConfig(status: string) {
       return { label: "LYRICS READY", color: "#40e8ff", border: "rgba(64,232,255,0.35)", bg: "rgba(64,232,255,0.12)" };
     default:
       return { label: "NEEDS LYRICS", color: "#ff9999", border: "rgba(255,70,70,0.32)", bg: "rgba(255,70,70,0.10)" };
+  }
+}
+
+/** Per-status raw color for separator line */
+function statusColor(status: string): string {
+  switch (status) {
+    case "synced":       return "rgba(63,255,170,0.70)";
+    case "unsynced":     return "rgba(162,89,255,0.70)";
+    case "needs_review": return "rgba(255,179,71,0.70)";
+    case "lyrics_ready": return "rgba(64,232,255,0.70)";
+    default:             return "rgba(255,70,70,0.70)";
   }
 }
 
@@ -165,6 +185,15 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
         </div>
       </div>
 
+      {/* Glow separator */}
+      <div
+        className="h-px w-full flex-shrink-0"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${statusColor(record.studio_status)} 50%, transparent 100%)`,
+          boxShadow: `0 0 8px 2px ${statusColor(record.studio_status)}`
+        }}
+      />
+
       {/* Card body */}
       <div className="flex flex-1 flex-col gap-3 p-4">
         {/* Playlist chip */}
@@ -179,7 +208,11 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
           <p className="line-clamp-1 font-display text-[14px] font-semibold text-[#fff0f6] transition-colors group-hover:text-[#ffb0d0]">
             {record.title}
           </p>
-          <p className="mt-0.5 line-clamp-1 text-[12px] text-[rgba(255,20,100,0.65)]">{record.artist}</p>
+          <Link
+            href={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-0.5 line-clamp-1 block text-[12px] text-[rgba(255,20,100,0.65)] hover:text-[#ff1464] hover:underline"
+          >{record.artist}</Link>
         </div>
 
         {/* Translation progress bar */}
@@ -233,7 +266,11 @@ function ListRow({ record }: { record: LibraryQueueRecord }) {
         <p className="font-display text-[15px] font-semibold text-[#fff0f6] transition-colors group-hover:text-[#ffb0d0]">
           {record.title}
         </p>
-        <p className="mt-1 text-[13px] text-[rgba(255,20,100,0.65)]">{record.artist}</p>
+        <Link
+          href={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 block text-[13px] text-[rgba(255,20,100,0.65)] hover:text-[#ff1464] hover:underline"
+        >{record.artist}</Link>
         <p className="mt-1 text-[11px] text-white">{record.album} · {formatMilliseconds(record.duration_ms)}</p>
       </td>
       <td className="px-6 py-5">

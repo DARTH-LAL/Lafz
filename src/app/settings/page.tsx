@@ -19,7 +19,7 @@ export default async function SettingsPage() {
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
       <AnimatedBackground />
-      <div className="relative z-10 mx-auto max-w-[860px] px-6 py-8 lg:px-10">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
         <AppTopBar connected className="mb-8" />
         <SettingsClient initialSettings={settings} tokenExpiresInMin={tokenExpiresInMin} />
       </div>

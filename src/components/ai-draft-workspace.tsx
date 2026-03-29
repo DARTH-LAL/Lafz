@@ -241,17 +241,14 @@ export function AiDraftWorkspace({
       {toast ? <FloatingToast message={toast.message} tone={toast.tone} /> : null}
 
       {/* AI settings */}
-      <section className="rounded-[24px] border border-[rgba(160,60,255,0.18)] bg-[linear-gradient(135deg,rgba(160,60,255,0.06)_0%,rgba(255,20,100,0.04)_100%)] p-6 backdrop-blur-[20px]">
-        <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(160,60,255,0.70)]">AI Translation</p>
-        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[rgba(160,60,255,0.25)] bg-[rgba(160,60,255,0.12)] px-3 py-1 text-[12px] font-semibold text-[#c87eff]">
+      <section className="lafz-card p-6">
+        <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">AI Translation</p>
+        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.12)] px-3 py-1 text-[12px] font-semibold text-[#ff6aaa]">
           <span>✦</span> gpt-5.1 + claude-sonnet-4.6 → gemini-2.5-pro
         </div>
         <h2 className="mt-3 text-[22px] font-bold tracking-[-0.5px]">
           Generate a translation draft.
         </h2>
-        <p className="mt-2 text-[13px] leading-[1.7] text-white">
-          Two models translate in parallel. A third evaluates and picks the best line by line — literal, natural, and slang-aware options included.
-        </p>
 
         {message ? (
           <div
@@ -274,60 +271,30 @@ export function AiDraftWorkspace({
                 { label: costSummary.generatorB.model.split("-")[0] === "claude" ? "Claude" : costSummary.generatorB.model, color: "#a259ff", cost: costSummary.generatorB.costUsd, input: costSummary.generatorB.inputTokens, output: costSummary.generatorB.outputTokens },
                 { label: costSummary.judge.model.includes("gemini") ? "Gemini" : costSummary.judge.model, color: "#40e8ff", cost: costSummary.judge.costUsd, input: costSummary.judge.inputTokens, output: costSummary.judge.outputTokens },
               ].map(({ label, color, cost, input, output }) => (
-                <div key={label} className="rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-3 text-center">
+                <div key={label} className="rounded-[12px] border border-[rgba(255,20,100,0.12)] bg-[rgba(255,20,100,0.05)] p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: `${color}99` }}>{label}</p>
                   <p className="mt-1 text-[18px] font-bold" style={{ color }}>${cost.toFixed(4)}</p>
-                  <p className="mt-0.5 text-[10px] text-[rgba(255,255,255,0.3)]">{(input + output).toLocaleString()} tokens</p>
+                  <p className="mt-0.5 text-[10px] text-white">{(input + output).toLocaleString()} tokens</p>
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-3">
-              <span className="text-[12px] text-[rgba(255,255,255,0.35)]">Total</span>
+            <div className="mt-3 flex items-center justify-between border-t border-[rgba(255,20,100,0.15)] pt-3">
+              <span className="text-[12px] text-white">Total</span>
               <span className="text-[18px] font-bold text-[#3fffaa]">${costSummary.totalCostUsd.toFixed(4)}</span>
             </div>
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Current AI behavior</p>
-          <p className="mt-2">
-            {lyricsKind === "synced"
-              ? "Synced lyrics detected — draft will include timestamps for karaoke-style playback."
-              : lyricsKind === "plain"
-                ? "Plain lyrics only — draft will be saved untimed and playback stays in reading mode."
-                : "Import lyrics for this track first, then generate a draft."}
-          </p>
-        </div>
-
-        <div className="mt-3 rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">AI provider</p>
-          <p className="mt-2">
-            Provider: <span className="text-[#fff0f6]">{getAiProviderLabel(aiProviderStatus.provider)}</span>
-          </p>
-          <p className="mt-1.5">
-            Model: <span className="font-mono text-[11px] text-[#fff0f6]">{aiProviderStatus.model}</span>
-          </p>
-          <p className="mt-1.5">
-            Status:{" "}
-            <span className={aiProviderStatus.available ? "text-[#3fffaa]" : "text-[#ffc87a]"}>
-              {aiProviderStatus.available ? "reachable" : "not reachable"}
-            </span>
-          </p>
-        </div>
-
         {canGenerate ? (
           <div className="mt-5 space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="block">
+              <div className="block">
                 <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">Source language</span>
-                <input
-                  type="text"
-                  value={sourceLanguage}
-                  onChange={(event) => { setSourceLanguage(event.target.value); }}
-                  placeholder="Auto-detect from lyrics"
-                  className="w-full rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-white focus:border-[rgba(255,20,100,0.50)] focus:shadow-[0_0_0_3px_rgba(255,20,100,0.10)]"
-                />
-              </label>
+                <div className="flex items-center gap-2 rounded-[14px] border border-[rgba(255,20,100,0.16)] bg-[rgba(255,20,100,0.05)] px-4 py-3 text-[14px] text-white">
+                  <span className="text-[rgba(255,20,100,0.50)] text-[11px]">AUTO</span>
+                  <span>{sourceLanguage || "Detected from lyrics"}</span>
+                </div>
+              </div>
 
               <label className="block">
                 <span className="mb-2 block text-[12px] font-bold uppercase tracking-[1px] text-[rgba(255,20,100,0.70)]">Target language</span>
@@ -374,42 +341,22 @@ export function AiDraftWorkspace({
               ) : null}
             </div>
 
-            {initialDraft?.songContext ? (
-              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
-                <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Song context</p>
-                <p className="mt-2 text-[#fff0f6]">{initialDraft.songContext.summary}</p>
-                <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Tone</p>
-                <p className="mt-1.5">{initialDraft.songContext.tone}</p>
-                {initialDraft.songContext.themes.length > 0 ? (
-                  <>
-                    <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Themes</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {initialDraft.songContext.themes.map((theme) => (
-                        <span key={theme} className="rounded-full border border-[rgba(160,60,255,0.20)] bg-[rgba(160,60,255,0.08)] px-3 py-1 text-[11px] text-[#c87eff]">
-                          {theme}
-                        </span>
-                      ))}
-                    </div>
-                  </>
+            {(initialDraft?.songContext || initialDraft?.artistMemory) ? (
+              <div className="flex flex-wrap gap-2">
+                {initialDraft.songContext?.tone ? (
+                  <span className="rounded-full border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.07)] px-3 py-1 text-[11px] text-[#ff6aaa]">
+                    🎵 {initialDraft.songContext.tone}
+                  </span>
                 ) : null}
-              </div>
-            ) : null}
-
-            {initialDraft?.artistMemory ? (
-              <div className="rounded-[16px] border border-[rgba(160,60,255,0.12)] bg-[rgba(160,60,255,0.05)] p-4 text-[13px] text-white">
-                <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Artist memory</p>
-                <p className="mt-2 text-[#fff0f6]">{initialDraft.artistMemory.displayName}</p>
-                {initialDraft.artistMemory.translationPreferences.length > 0 ? (
-                  <>
-                    <p className="mt-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(160,60,255,0.55)]">Preferences</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {initialDraft.artistMemory.translationPreferences.map((preference) => (
-                        <span key={preference} className="rounded-full border border-[rgba(160,60,255,0.20)] bg-[rgba(160,60,255,0.08)] px-3 py-1 text-[11px] text-[#c87eff]">
-                          {preference}
-                        </span>
-                      ))}
-                    </div>
-                  </>
+                {initialDraft.songContext?.themes.map((theme) => (
+                  <span key={theme} className="rounded-full border border-[rgba(255,20,100,0.14)] bg-[rgba(255,20,100,0.04)] px-3 py-1 text-[11px] text-[rgba(255,20,100,0.65)]">
+                    {theme}
+                  </span>
+                ))}
+                {initialDraft.artistMemory ? (
+                  <span className="rounded-full border border-[rgba(255,20,100,0.20)] bg-[rgba(255,20,100,0.07)] px-3 py-1 text-[11px] text-[#ff6aaa]">
+                    🧠 {initialDraft.artistMemory.displayName} memory loaded
+                  </span>
                 ) : null}
               </div>
             ) : null}
@@ -418,7 +365,7 @@ export function AiDraftWorkspace({
               type="button"
               onClick={() => { void handleGenerate(); }}
               disabled={isGenerating}
-              className="w-full rounded-full bg-[linear-gradient(135deg,#a03cff,#ff1464)] py-3.5 text-[14px] font-bold text-white shadow-[0_0_24px_rgba(160,60,255,0.35)] transition hover:opacity-90 hover:shadow-[0_0_40px_rgba(160,60,255,0.55)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] py-3.5 text-[14px] font-bold text-white shadow-[0_0_24px_rgba(255,20,100,0.35)] transition hover:opacity-90 hover:shadow-[0_0_40px_rgba(255,20,100,0.65)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGenerating ? "Generating draft..." : "Generate Draft"}
             </button>

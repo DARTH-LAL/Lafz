@@ -15,7 +15,7 @@ export function LibraryQueueView({ queue, records, filters, artMap }: LibraryQue
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
       <AnimatedBackground />
-      <div className="relative z-10 mx-auto max-w-7xl px-6 py-8 lg:px-10">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
         <AppTopBar connected className="mb-8" />
 
         {/* Header */}
@@ -49,30 +49,30 @@ export function LibraryQueueView({ queue, records, filters, artMap }: LibraryQue
 
         {/* Stats */}
         <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {/* Violet */}
-          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(162,89,255,0.65)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
-            shadow-[0_0_0_1px_rgba(162,89,255,0.15),0_0_20px_rgba(162,89,255,0.40),0_0_50px_rgba(162,89,255,0.18),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(162,89,255,0.18)]">
-            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(200,140,255,0.80)]">Total Unique Tracks</p>
-            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#c87eff] [text-shadow:0_0_20px_rgba(162,89,255,0.80),0_0_50px_rgba(162,89,255,0.40)]">
+          {/* Sky blue — Total */}
+          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(56,189,248,0.65)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
+            shadow-[0_0_0_1px_rgba(56,189,248,0.15),0_0_20px_rgba(56,189,248,0.40),0_0_50px_rgba(56,189,248,0.18),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(56,189,248,0.18)]">
+            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(56,189,248,0.80)]">Total Unique Tracks</p>
+            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#38bdf8] [text-shadow:0_0_20px_rgba(56,189,248,0.80),0_0_50px_rgba(56,189,248,0.40)]">
               {queue.summary.total_unique_tracks}
             </p>
           </div>
 
-          {/* Pink */}
-          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.65)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
-            shadow-[0_0_0_1px_rgba(255,20,100,0.15),0_0_20px_rgba(255,20,100,0.40),0_0_50px_rgba(255,20,100,0.18),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,20,100,0.18)]">
-            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(255,100,160,0.80)]">Needs Review</p>
-            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#ff4d96] [text-shadow:0_0_20px_rgba(255,20,100,0.80),0_0_50px_rgba(255,20,100,0.40)]">
+          {/* Amber — Needs Review */}
+          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(255,179,71,0.65)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
+            shadow-[0_0_0_1px_rgba(255,179,71,0.15),0_0_20px_rgba(255,179,71,0.40),0_0_50px_rgba(255,179,71,0.18),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,179,71,0.18)]">
+            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(255,179,71,0.80)]">Needs Review</p>
+            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#ffcc88] [text-shadow:0_0_20px_rgba(255,179,71,0.80),0_0_50px_rgba(255,179,71,0.40)]">
               {queue.summary.needs_review}
             </p>
           </div>
 
-          {/* Cyan */}
-          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(64,232,255,0.55)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
-            shadow-[0_0_0_1px_rgba(64,232,255,0.12),0_0_20px_rgba(64,232,255,0.35),0_0_50px_rgba(64,232,255,0.15),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(64,232,255,0.15)]">
-            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(64,232,255,0.80)]">Needs Lyrics</p>
-            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#40e8ff] [text-shadow:0_0_20px_rgba(64,232,255,0.80),0_0_50px_rgba(64,232,255,0.40)]">
-              {queue.summary.needs_lyrics}
+          {/* Violet — Unsynced */}
+          <div className="group relative overflow-hidden rounded-[22px] border border-[rgba(162,89,255,0.65)] bg-[rgba(6,2,5,0.92)] p-6 backdrop-blur-xl transition-transform hover:-translate-y-1
+            shadow-[0_0_0_1px_rgba(162,89,255,0.15),0_0_20px_rgba(162,89,255,0.40),0_0_50px_rgba(162,89,255,0.18),0_8px_32px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(162,89,255,0.18)]">
+            <p className="text-[10px] font-bold uppercase tracking-[2px] text-[rgba(200,126,255,0.80)]">Unsynced</p>
+            <p className="mt-3 text-[44px] font-extrabold leading-none tracking-[-2px] text-[#c87eff] [text-shadow:0_0_20px_rgba(162,89,255,0.80),0_0_50px_rgba(162,89,255,0.40)]">
+              {queue.summary.unsynced}
             </p>
           </div>
 

@@ -1,8 +1,7 @@
+import Link from "next/link";
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
-import { ArtistGlossaryCard } from "@/components/artist-glossary-card";
-import { ArtistProfileCard } from "@/components/artist-profile-card";
 import { GenerationHistory } from "@/components/generation-history";
 import { StatePanel } from "@/components/state-panel";
 import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
@@ -83,7 +82,10 @@ export function LibraryTrackDetail({
               <h1 className="font-display text-5xl font-extrabold leading-[1.02] tracking-[-3px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
                 {record.title}
               </h1>
-              <p className="mt-3 text-[18px] text-white [text-shadow:0_0_16px_rgba(255,255,255,0.55),0_0_40px_rgba(255,255,255,0.20)]">{record.artist}</p>
+              <Link
+                href={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
+                className="mt-3 inline-block cursor-pointer text-[18px] text-white transition-all duration-200 hover:text-[#ff1464] hover:[text-shadow:0_0_14px_rgba(255,20,100,0.80),0_0_32px_rgba(255,20,100,0.40)] [text-shadow:0_0_16px_rgba(255,255,255,0.55),0_0_40px_rgba(255,255,255,0.20)]"
+              >{record.artist}</Link>
               <p className="mt-1 text-[13px] text-white opacity-40">{record.album}</p>
             </div>
 
@@ -256,7 +258,7 @@ export function LibraryTrackDetail({
         />
 
         {/* Generation history */}
-        <section className="mb-6 lafz-card p-6">
+        <section className="mb-6 mt-6 lafz-card p-6">
           <div className="mb-4 flex items-center gap-3">
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 flex-shrink-0 fill-[rgba(255,20,100,0.6)]" aria-hidden="true">
               <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 3.5v4.25l3 1.5-.53 1.06-3.47-1.73V4.5h1z" />
@@ -268,23 +270,6 @@ export function LibraryTrackDetail({
           <GenerationHistory spotifyTrackId={record.spotify_track_id} />
         </section>
 
-        {/* Artist glossary */}
-        <section className="mb-6 lafz-card p-6">
-          <ArtistProfileCard
-            artistKey={normalizeArtistKey(record.artist)}
-            artistName={record.artist}
-            fullPageHref={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
-          />
-        </section>
-
-        <section className="mb-6 lafz-card p-6">
-          <ArtistGlossaryCard
-            artistKey={normalizeArtistKey(record.artist)}
-            artistName={record.artist}
-            fullPageHref={`/glossary/artist/${normalizeArtistKey(record.artist)}`}
-            spotifyTrackIds={[record.spotify_track_id]}
-          />
-        </section>
       </div>
 
       <style>{`@keyframes lafz-shimmer { to { background-position: -250% 0; } }`}</style>

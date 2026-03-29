@@ -159,7 +159,7 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6">
-        <span className="text-[12px] text-[rgba(255,255,255,0.25)]">Loading generation history…</span>
+        <span className="text-[12px] text-white/50">Loading generation history…</span>
       </div>
     );
   }
@@ -167,8 +167,8 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
   if (entries.length === 0) {
     return (
       <div className="py-6 text-center">
-        <p className="text-[12px] text-[rgba(255,255,255,0.25)]">No generation runs recorded yet.</p>
-        <p className="mt-1 text-[11px] text-[rgba(255,255,255,0.15)]">
+        <p className="text-[12px] text-white/50">No generation runs recorded yet.</p>
+        <p className="mt-1 text-[11px] text-white/30">
           Each time you generate a translation, a record is saved here.
         </p>
       </div>
@@ -180,28 +180,28 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
   return (
     <div className="space-y-3">
       {/* Summary row */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-[rgba(255,20,100,0.35)] bg-[rgba(6,2,5,0.92)] shadow-[0_0_0_1px_rgba(255,20,100,0.08),0_0_18px_rgba(255,20,100,0.18)] px-4 py-3">
         <div className="flex flex-wrap gap-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,255,255,0.3)]">Runs</p>
-            <p className="mt-0.5 text-[18px] font-bold text-[#fff0f6]">{entries.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.65)]">Runs</p>
+            <p className="mt-0.5 text-[18px] font-bold text-white">{entries.length}</p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,255,255,0.3)]">Latest quality</p>
+            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.65)]">Latest quality</p>
             <p className="mt-0.5 text-[18px] font-bold" style={{ color: highPctLatest >= 75 ? "#3fffaa" : highPctLatest >= 50 ? "#ffb347" : "#ff4d64" }}>
               {highPctLatest}% high
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,255,255,0.3)]">Latest model</p>
-            <p className="mt-0.5 text-[13px] font-semibold text-[rgba(255,255,255,0.6)] truncate max-w-[160px]">{entries[0].model}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(255,20,100,0.65)]">Latest model</p>
+            <p className="mt-0.5 text-[13px] font-semibold text-white truncate max-w-[160px]">{entries[0].model}</p>
           </div>
         </div>
         <QualitySparkline entries={entries} />
       </div>
 
       {/* Entry list */}
-      <div className="divide-y divide-[rgba(255,255,255,0.04)] rounded-[16px] border border-[rgba(255,255,255,0.06)] overflow-hidden">
+      <div className="divide-y divide-[rgba(255,20,100,0.10)] rounded-[16px] border border-[rgba(255,20,100,0.35)] shadow-[0_0_0_1px_rgba(255,20,100,0.08),0_0_18px_rgba(255,20,100,0.18)] overflow-hidden">
         {entries.map((entry, i) => {
           const isExpanded = expanded === entry.id;
           const highPct = entry.lineCount > 0 ? Math.round((entry.highCount / entry.lineCount) * 100) : 0;
@@ -210,12 +210,12 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
             <div key={entry.id}>
               <button
                 onClick={() => setExpanded(isExpanded ? null : entry.id)}
-                className="w-full px-4 py-3 text-left transition hover:bg-[rgba(255,255,255,0.03)]"
+                className="w-full px-4 py-3 text-left transition hover:bg-[rgba(255,20,100,0.05)]"
               >
                 <div className="flex items-center justify-between gap-3">
                   {/* Left: index + badges */}
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-5 text-center text-[10px] font-bold text-[rgba(255,255,255,0.2)]">
+                    <span className="w-5 text-center text-[10px] font-bold text-white/40">
                       {entries.length - i}
                     </span>
                     <ProviderBadge provider={entry.provider} />
@@ -229,10 +229,10 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
 
                   {/* Right: time + chevron */}
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-[10px] text-[rgba(255,255,255,0.25)]">{formatRelative(entry.timestampMs)}</span>
+                    <span className="text-[10px] text-white/50">{formatRelative(entry.timestampMs)}</span>
                     <svg
                       viewBox="0 0 12 12"
-                      className={`h-2.5 w-2.5 fill-none stroke-current text-[rgba(255,255,255,0.25)] transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      className={`h-2.5 w-2.5 fill-none stroke-current text-white/50 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                     >
                       <path d="M2 4l4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -241,13 +241,13 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
 
                 {/* Model + quick stats */}
                 <div className="mt-1.5 flex items-center justify-between gap-2 pl-7">
-                  <p className="truncate text-[11px] text-[rgba(255,255,255,0.45)]">{entry.model}</p>
+                  <p className="truncate text-[11px] text-white">{entry.model}</p>
                   <div className="flex flex-shrink-0 items-center gap-3 text-[10px]">
-                    <span className="text-[rgba(255,255,255,0.3)]">{entry.lineCount} lines</span>
+                    <span className="text-[rgba(255,20,100,0.65)]">{entry.lineCount} lines</span>
                     <span className="font-bold" style={{ color: highPct >= 75 ? "#3fffaa" : highPct >= 50 ? "#ffb347" : "#ff4d64" }}>
                       {highPct}% ↑
                     </span>
-                    <span className="text-[rgba(255,255,255,0.25)]">{formatDuration(entry.durationMs)}</span>
+                    <span className="text-white/50">{formatDuration(entry.durationMs)}</span>
                   </div>
                 </div>
 
@@ -264,11 +264,11 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
 
               {/* Expanded detail */}
               {isExpanded && (
-                <div className="border-t border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.02)] px-4 py-4 pl-11">
+                <div className="border-t border-[rgba(255,20,100,0.10)] bg-[rgba(255,20,100,0.03)] px-4 py-4 pl-11">
                   <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-[11px] sm:grid-cols-3 lg:grid-cols-4">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Started</p>
-                      <p className="mt-0.5 text-[rgba(255,255,255,0.6)]">
+                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Started</p>
+                      <p className="mt-0.5 text-white">
                         {new Date(entry.startedAt).toLocaleString(undefined, {
                           month: "short", day: "numeric", year: "numeric",
                           hour: "2-digit", minute: "2-digit", second: "2-digit"
@@ -276,17 +276,17 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Duration</p>
-                      <p className="mt-0.5 text-[rgba(255,255,255,0.6)]">{formatDuration(entry.durationMs)}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Duration</p>
+                      <p className="mt-0.5 text-white">{formatDuration(entry.durationMs)}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Languages</p>
-                      <p className="mt-0.5 text-[rgba(255,255,255,0.6)]">
+                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Languages</p>
+                      <p className="mt-0.5 text-white">
                         {entry.sourceLanguage ?? "?"} → {entry.targetLanguage}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Lines</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Lines</p>
                       <p className="mt-0.5 flex gap-2">
                         <span className="text-[#3fffaa]">↑{entry.highCount}</span>
                         <span className="text-[#ffb347]">~{entry.mediumCount}</span>
@@ -296,12 +296,12 @@ export function GenerationHistory({ spotifyTrackId }: GenerationHistoryProps) {
                     {entry.costSummary && (
                       <>
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Total cost</p>
-                          <p className="mt-0.5 text-[rgba(255,255,255,0.6)]">{formatCost(entry.costSummary.totalCostUsd)}</p>
+                          <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Total cost</p>
+                          <p className="mt-0.5 text-white">{formatCost(entry.costSummary.totalCostUsd)}</p>
                         </div>
                         <div className="col-span-2 sm:col-span-2">
-                          <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,255,255,0.3)]">Pipeline</p>
-                          <div className="mt-0.5 flex flex-wrap gap-3 text-[10px] text-[rgba(255,255,255,0.45)]">
+                          <p className="text-[9px] font-bold uppercase tracking-[1.6px] text-[rgba(255,20,100,0.65)]">Pipeline</p>
+                          <div className="mt-0.5 flex flex-wrap gap-3 text-[10px] text-white">
                             <span>{entry.costSummary.generatorA.model} ({formatCost(entry.costSummary.generatorA.costUsd)})</span>
                             <span>·</span>
                             <span>{entry.costSummary.generatorB.model} ({formatCost(entry.costSummary.generatorB.costUsd)})</span>

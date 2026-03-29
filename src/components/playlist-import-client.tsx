@@ -88,15 +88,16 @@ export function PlaylistImportClient() {
               Lafz Library Tools
             </p>
           </div>
-          <h1 className="font-display text-5xl font-extrabold leading-[1.06] tracking-[-2px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
+          <h1 className="font-display text-5xl font-extrabold leading-[1.04] tracking-[-2.2px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
             Import your music
             <br />
             <span
               className="bg-clip-text text-transparent"
               style={{
-                backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff6aaa 25%,#ffffff 48%,#ff6aaa 68%,#ff1464 100%)",
+                backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff8ab0 22%,#ffffff 45%,#ff8ab0 68%,#ff1464 100%)",
                 backgroundSize: "250% 100%",
-                animation: "lafz-shimmer 3.5s linear infinite"
+                animation: "lafz-shimmer 3.5s linear infinite",
+                filter: "drop-shadow(0 0 18px rgba(255,20,100,0.55))"
               }}
             >
               into Lafz.

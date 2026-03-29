@@ -167,22 +167,29 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, rgba(255,20,100,0.5), transparent)`, maxWidth: 160, display: "block" }} />
           </div>
           <h1 style={{
-            fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", margin: 0,
-            background: "linear-gradient(135deg, #fff 40%, rgba(255,20,100,0.7))",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            backgroundClip: "text", marginBottom: 4
+            fontSize: 48, fontWeight: 800, letterSpacing: "-0.022em", lineHeight: 1.04,
+            margin: 0, marginBottom: 12, color: "#fff",
+            textShadow: "0 0 30px rgba(255,255,255,0.30), 0 0 70px rgba(255,255,255,0.12)"
           }}>
             Model Performance
+            <br />
+            <span style={{
+              backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff8ab0 22%,#ffffff 45%,#ff8ab0 68%,#ff1464 100%)",
+              backgroundSize: "250% 100%",
+              animation: "lafz-shimmer 3.5s linear infinite",
+              filter: "drop-shadow(0 0 18px rgba(255,20,100,0.55))",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              backgroundClip: "text"
+            }}>
+              for your music.
+            </span>
           </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", margin: 0 }}>
-            3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini · {periodLabel(period)}
-          </p>
         </div>
 
         {/* Filter pills */}
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(6,2,5,0.92)", border: "1px solid rgba(255,20,100,0.25)",
           borderRadius: 12, padding: 4
         }}>
           {periods.map(({ value, label }) => (
@@ -192,13 +199,15 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
               style={{
                 fontSize: 12, fontWeight: 600, letterSpacing: "0.04em",
                 padding: "7px 16px", borderRadius: 8,
-                border: period === value ? "1px solid rgba(255,20,100,0.3)" : "1px solid transparent",
+                border: period === value ? "1px solid rgba(255,20,100,0.60)" : "1px solid transparent",
                 cursor: "pointer",
-                color: period === value ? "#fff" : "rgba(255,255,255,0.4)",
+                color: period === value ? "#fff" : "rgba(255,255,255,0.6)",
                 background: period === value
-                  ? "linear-gradient(135deg, rgba(255,20,100,0.35), rgba(162,89,255,0.25))"
+                  ? "linear-gradient(135deg, rgba(255,20,100,0.40), rgba(162,89,255,0.28))"
                   : "transparent",
-                boxShadow: period === value ? "0 0 12px rgba(255,20,100,0.2)" : "none",
+                boxShadow: period === value
+                  ? "0 0 0 1px rgba(255,20,100,0.15), 0 0 14px rgba(255,20,100,0.55), 0 0 28px rgba(255,20,100,0.22)"
+                  : "none",
                 transition: "all 0.18s"
               }}
             >
@@ -211,10 +220,10 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
       {!data ? (
         /* Empty state */
         <div style={{
-          textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.2)", fontSize: 13
+          textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.5)", fontSize: 13
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "rgba(255,255,255,0.3)" }}>No data yet</div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#fff" }}>No data yet</div>
           <div>Run the 3-model pipeline on a track to start seeing analytics.</div>
         </div>
       ) : (
@@ -223,62 +232,65 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 20 }}>
             {/* Generator A */}
             <div style={{
-              background: "rgba(255,255,255,0.03)", borderRadius: 18, padding: 24,
-              border: "1px solid rgba(255,20,100,0.25)", position: "relative", overflow: "hidden",
+              background: BG, borderRadius: 18, padding: 24,
+              border: "1px solid rgba(255,20,100,0.45)", position: "relative", overflow: "hidden",
+              boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.30), 0 0 48px rgba(255,20,100,0.12)",
               transition: "transform 0.2s"
             }}>
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, background: "radial-gradient(circle,rgba(255,20,100,0.18),transparent 70%)", pointerEvents: "none" }} />
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: PINK_LIGHT, marginBottom: 6 }}>Generator A</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{data.generatorA.model}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 20 }}>OpenAI</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
+              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>OpenAI</div>
+              <div style={{ fontSize: 11, color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
               <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: PINK_LIGHT }}>{data.winRate.a}%</div>
-              <div style={{ width: "100%", height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
+              <div style={{ width: "100%", height: 5, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
                 <div style={{ height: "100%", borderRadius: 99, background: `linear-gradient(90deg,${PINK},${PINK_LIGHT})`, width: `${data.winRate.a}%`, transition: "width 0.5s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Avg confidence <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.confidence.high}%</span></div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Tracks <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.trackCount}</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Avg confidence <span style={{ color: "#fff", fontWeight: 600 }}>{data.confidence.high}%</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Tracks <span style={{ color: "#fff", fontWeight: 600 }}>{data.trackCount}</span></div>
               </div>
             </div>
 
             {/* Generator B */}
             <div style={{
-              background: "rgba(255,255,255,0.03)", borderRadius: 18, padding: 24,
-              border: "1px solid rgba(162,89,255,0.25)", position: "relative", overflow: "hidden"
+              background: BG, borderRadius: 18, padding: 24,
+              border: "1px solid rgba(162,89,255,0.45)", position: "relative", overflow: "hidden",
+              boxShadow: "0 0 0 1px rgba(162,89,255,0.10), 0 0 20px rgba(162,89,255,0.30), 0 0 48px rgba(162,89,255,0.12)"
             }}>
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, background: "radial-gradient(circle,rgba(162,89,255,0.18),transparent 70%)", pointerEvents: "none" }} />
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: VIOLET, marginBottom: 6 }}>Generator B</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{data.generatorB.model}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 20 }}>Anthropic</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
+              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>Anthropic</div>
+              <div style={{ fontSize: 11, color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
               <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: VIOLET }}>{data.winRate.b}%</div>
-              <div style={{ width: "100%", height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
+              <div style={{ width: "100%", height: 5, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
                 <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg,#7b2fff,#a259ff)", width: `${data.winRate.b}%`, transition: "width 0.5s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Avg confidence <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.confidence.med}%</span></div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Tracks <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.trackCount}</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Avg confidence <span style={{ color: "#fff", fontWeight: 600 }}>{data.confidence.med}%</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Tracks <span style={{ color: "#fff", fontWeight: 600 }}>{data.trackCount}</span></div>
               </div>
             </div>
 
             {/* Judge */}
             <div style={{
-              background: "rgba(255,255,255,0.03)", borderRadius: 18, padding: 24,
-              border: "1px solid rgba(64,232,255,0.25)", position: "relative", overflow: "hidden"
+              background: BG, borderRadius: 18, padding: 24,
+              border: "1px solid rgba(64,232,255,0.45)", position: "relative", overflow: "hidden",
+              boxShadow: "0 0 0 1px rgba(64,232,255,0.10), 0 0 20px rgba(64,232,255,0.30), 0 0 48px rgba(64,232,255,0.12)"
             }}>
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, background: "radial-gradient(circle,rgba(64,232,255,0.18),transparent 70%)", pointerEvents: "none" }} />
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: CYAN, marginBottom: 6 }}>Judge</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{data.judge.model}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 20 }}>Google</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Blended Lines</div>
+              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>Google</div>
+              <div style={{ fontSize: 11, color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em" }}>Blended Lines</div>
               <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: CYAN }}>{data.winRate.blend}%</div>
-              <div style={{ width: "100%", height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
+              <div style={{ width: "100%", height: 5, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
                 <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg,#00c8e0,#40e8ff)", width: `${data.winRate.blend}%`, transition: "width 0.5s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Avg latency <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.speed.avgDurG}s</span></div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Evals <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{data.trackCount}</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Avg latency <span style={{ color: "#fff", fontWeight: 600 }}>{data.speed.avgDurG}s</span></div>
+                <div style={{ fontSize: 12, color: "#fff" }}>Evals <span style={{ color: "#fff", fontWeight: 600 }}>{data.trackCount}</span></div>
               </div>
             </div>
           </div>
@@ -286,9 +298,9 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
           {/* Winner Distribution + Confidence Donut */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
             {/* Winner dist */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>Winner Distribution</div>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)" }}>Winner Distribution</div>
                 <div style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, background: "rgba(255,20,100,0.12)", color: PINK_LIGHT, border: "1px solid rgba(255,20,100,0.2)" }}>
                   {data.totalLines.toLocaleString()} lines
                 </div>
@@ -305,15 +317,15 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                 </div>
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: PINK_LIGHT }} />
                   Generator A (GPT)
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: VIOLET }} />
                   Generator B (Claude)
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: CYAN }} />
                   Blended
                 </div>
@@ -321,8 +333,8 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             </div>
 
             {/* Confidence donut */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 16 }}>Confidence Breakdown</div>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)", marginBottom: 16 }}>Confidence Breakdown</div>
               <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
                 <div style={{
                   width: 100, height: 100, borderRadius: "50%",
@@ -330,22 +342,22 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, position: "relative", transition: "background 0.5s"
                 }}>
-                  <div style={{ position: "absolute", width: 64, height: 64, background: "#0a0716", borderRadius: "50%" }} />
+                  <div style={{ position: "absolute", width: 64, height: 64, background: "rgba(6,2,5,0.92)", borderRadius: "50%" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: GREEN, flexShrink: 0 }} />
-                    <span style={{ color: "rgba(255,255,255,0.5)" }}>High confidence</span>
+                    <span style={{ color: "#fff" }}>High confidence</span>
                     <span style={{ color: "#fff", fontWeight: 600, marginLeft: "auto", paddingLeft: 12 }}>{data.confidence.high}%</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: ORANGE, flexShrink: 0 }} />
-                    <span style={{ color: "rgba(255,255,255,0.5)" }}>Medium</span>
+                    <span style={{ color: "#fff" }}>Medium</span>
                     <span style={{ color: "#fff", fontWeight: 600, marginLeft: "auto", paddingLeft: 12 }}>{data.confidence.med}%</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: PINK_LIGHT, flexShrink: 0 }} />
-                    <span style={{ color: "rgba(255,255,255,0.5)" }}>Low / flagged</span>
+                    <span style={{ color: "#fff" }}>Low / flagged</span>
                     <span style={{ color: "#fff", fontWeight: 600, marginLeft: "auto", paddingLeft: 12 }}>{data.confidence.low}%</span>
                   </div>
                 </div>
@@ -356,17 +368,17 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
           {/* Speed + Cost + Language */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
             {/* Speed */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 16 }}>Avg Pipeline Speed</div>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)", marginBottom: 16 }}>Avg Pipeline Speed</div>
               {[
                 { label: "Generator A (GPT)", val: data.speed.avgDurA, color: `linear-gradient(90deg,${PINK},${PINK_LIGHT})` },
                 { label: "Generator B (Claude)", val: data.speed.avgDurB, color: "linear-gradient(90deg,#7b2fff,#a259ff)" },
                 { label: "Judge (Gemini)", val: data.speed.avgDurG, color: "linear-gradient(90deg,#00c8e0,#40e8ff)" },
                 { label: "Total avg", val: data.speed.avgTotal, color: `linear-gradient(90deg,${PINK},${VIOLET},${CYAN})` },
               ].map(({ label, val, color }) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", flex: 1 }}>{label}</div>
-                  <div style={{ flex: 2, height: 6, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
+                  <div style={{ fontSize: 13, color: "#fff", flex: 1 }}>{label}</div>
+                  <div style={{ flex: 2, height: 6, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 99, background: color, width: `${Math.min(100, (val / maxSpeed) * 100)}%`, transition: "width 0.5s ease" }} />
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", width: 48, textAlign: "right" }}>{val}s</div>
@@ -375,9 +387,9 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             </div>
 
             {/* Cost */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>Estimated Cost</div>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)" }}>Estimated Cost</div>
                 <div style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, background: "rgba(255,20,100,0.12)", color: PINK_LIGHT, border: "1px solid rgba(255,20,100,0.2)" }}>
                   {periodLabel(period)}
                 </div>
@@ -388,15 +400,15 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                   { label: "Claude", val: data.generatorB.cost, tokens: data.generatorB.inputTokens + data.generatorB.outputTokens, color: VIOLET },
                   { label: "Gemini", val: data.judge.cost, tokens: data.judge.inputTokens + data.judge.outputTokens, color: CYAN },
                 ].map(({ label, val, tokens, color }) => (
-                  <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, textAlign: "center" }}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6 }}>{label}</div>
+                  <div key={label} style={{ background: "rgba(255,20,100,0.05)", border: "1px solid rgba(255,20,100,0.12)", borderRadius: 12, padding: 14, textAlign: "center" }}>
+                    <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fff", marginBottom: 6 }}>{label}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color }}>{formatCost(val)}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{formatTokens(tokens)}</div>
+                    <div style={{ fontSize: 11, color: "#fff", marginTop: 3 }}>{formatTokens(tokens)}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Total spend</span>
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,20,100,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#fff" }}>Total spend</span>
                 <span style={{ fontSize: 22, fontWeight: 800, color: GREEN }}>
                   {formatCost(data.generatorA.cost + data.generatorB.cost + data.judge.cost)}
                 </span>
@@ -404,19 +416,19 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             </div>
 
             {/* Language breakdown */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 16 }}>Low-Conf by Language</div>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)", marginBottom: 16 }}>Low-Conf by Language</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {data.languageStats.length === 0 ? (
-                  <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>No data</div>
+                  <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>No data</div>
                 ) : (
                   data.languageStats.map(({ lang, pct }) => (
                     <div key={lang} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", width: 80, flexShrink: 0 }}>{lang}</div>
-                      <div style={{ flex: 1, height: 7, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+                      <div style={{ fontSize: 12, color: "#fff", width: 80, flexShrink: 0 }}>{lang}</div>
+                      <div style={{ flex: 1, height: 7, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden" }}>
                         <div style={{ height: "100%", borderRadius: 99, background: `linear-gradient(90deg,${PINK},${VIOLET})`, width: `${pct}%`, transition: "width 0.5s ease" }} />
                       </div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", width: 36, textAlign: "right" }}>{pct}%</div>
+                      <div style={{ fontSize: 12, color: "#fff", width: 36, textAlign: "right" }}>{pct}%</div>
                     </div>
                   ))
                 )}
@@ -427,9 +439,9 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
           {/* Recent Tracks + Reasoning Feed */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             {/* Recent Tracks */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>Recent Translations</div>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)" }}>Recent Translations</div>
                 <div style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, background: "rgba(255,20,100,0.12)", color: PINK_LIGHT, border: "1px solid rgba(255,20,100,0.2)" }}>
                   Last {data.recentTracks.length}
                 </div>
@@ -438,7 +450,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                 <thead>
                   <tr>
                     {["Track", "Lines", "Winner", "Confidence"].map(h => (
-                      <th key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textAlign: "left", padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <th key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#fff", textAlign: "left", padding: "8px 12px", borderBottom: "1px solid rgba(255,20,100,0.12)" }}>
                         {h}
                       </th>
                     ))}
@@ -447,15 +459,15 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                 <tbody>
                   {data.recentTracks.map((t, i) => (
                     <tr key={i}>
-                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
                         <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{t.title}</div>
-                        <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>{t.artist}</div>
+                        <div style={{ color: "#fff", fontSize: 11 }}>{t.artist}</div>
                       </td>
-                      <td style={{ padding: "12px 12px", fontSize: 13, color: "rgba(255,255,255,0.7)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>{t.lines}</td>
-                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td style={{ padding: "12px 12px", fontSize: 13, color: "#fff", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>{t.lines}</td>
+                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
                         <WinnerBadge winner={t.winnerModel} />
                       </td>
-                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
                         <ConfBadge conf={t.confidence} />
                       </td>
                     </tr>
@@ -465,16 +477,16 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             </div>
 
             {/* Judge Reasoning Feed */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 22 }}>
+            <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>Judge Reasoning Feed</div>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)" }}>Judge Reasoning Feed</div>
                 <div style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, background: "rgba(255,20,100,0.12)", color: PINK_LIGHT, border: "1px solid rgba(255,20,100,0.2)" }}>
                   Last 6 decisions
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto" }}>
                 {reasons.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "20px", color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
+                  <div style={{ textAlign: "center", padding: "20px", color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
                     No judge reasoning available yet.
                   </div>
                 ) : (
@@ -482,8 +494,8 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                     <div
                       key={i}
                       style={{
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(6,2,5,0.92)",
+                        border: "1px solid rgba(255,20,100,0.12)",
                         borderLeft: `2px solid ${item.winner === "generator_a" ? PINK_LIGHT : item.winner === "generator_b" ? VIOLET : CYAN}`,
                         borderRadius: 10,
                         padding: "12px 14px"
@@ -491,11 +503,11 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                         <WinnerBadge winner={item.winner === "generator_a" ? "a" : item.winner === "generator_b" ? "b" : "blend"} />
-                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>{item.track} · line {item.lineIndex}</span>
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{item.track} · line {item.lineIndex}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>{item.original}</div>
+                      <div style={{ fontSize: 12, color: "#fff", marginBottom: 4 }}>{item.original}</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>&ldquo;{item.chosen}&rdquo;</div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>{item.reason}</div>
+                      <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.5 }}>{item.reason}</div>
                     </div>
                   ))
                 )}

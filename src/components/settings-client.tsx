@@ -229,22 +229,21 @@ export function SettingsClient({
           <div className="h-0.5 w-7 rounded-full bg-[linear-gradient(90deg,#ff1464,transparent)] shadow-[0_0_8px_#ff1464]" />
           <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464] [text-shadow:0_0_16px_rgba(255,20,100,0.6)]">Settings</p>
         </div>
-        <h1 className="font-display text-5xl font-extrabold leading-[1.04] tracking-[-2.2px] text-[#fff0f6]">
-          Configure{" "}
+        <h1 className="font-display text-5xl font-extrabold leading-[1.04] tracking-[-2.2px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
+          Configure your
+          <br />
           <span
             className="bg-clip-text text-transparent"
             style={{
-              backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff6aaa 25%,#ffffff 48%,#ff6aaa 68%,#ff1464 100%)",
+              backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff8ab0 22%,#ffffff 45%,#ff8ab0 68%,#ff1464 100%)",
               backgroundSize: "250% 100%",
               animation: "lafz-shimmer 3.5s linear infinite",
+              filter: "drop-shadow(0 0 18px rgba(255,20,100,0.55))"
             }}
           >
-            Lafz.
+            Lafz settings.
           </span>
         </h1>
-        <p className="mt-3 text-[15px] leading-[1.7] text-white">
-          Manage your AI models, translation preferences, budgets and account.
-        </p>
       </header>
 
       {/* ── AI Pipeline ── */}
