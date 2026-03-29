@@ -100,6 +100,24 @@ export async function deleteGlossaryTerm(artistKey: string, term: string): Promi
   return file;
 }
 
+// ── Term normalization for near-duplicate detection ───────────────────────
+// Strips parenthetical content, takes the first variant before any "/" or "|",
+// and collapses to lowercase alphanumeric tokens.
+// "timepass / time-pass" → "timepass"
+// "khayal rakhna / khayal rakhda" → "khayal rakhna"
+// "pata mainu (de denga tu jaan)" → "pata mainu"
+
+function normalizeTermForDedup(term: string): string {
+  // Remove content in parentheses
+  let s = term.replace(/\(.*?\)/g, "");
+  // Take only the first segment before "/" or "|"
+  s = s.split(/[/|]/)[0];
+  // Lowercase, strip non-alphanumeric except spaces
+  s = s.toLowerCase().replace(/[^a-z0-9\s]+/g, " ");
+  // Collapse spaces
+  return s.trim().replace(/\s+/g, " ");
+}
+
 // ── Pending suggestions ───────────────────────────────────────────────────
 
 export async function readPendingSuggestions(artistKey: string): Promise<PendingGlossarySuggestion[]> {
@@ -124,13 +142,15 @@ export async function storePendingSuggestions(
 ): Promise<void> {
   if (incoming.length === 0) return;
   const existing = await readPendingSuggestions(artistKey);
-  const existingTerms = new Set(existing.map((s) => s.term.toLowerCase()));
+  // Normalize for near-duplicate detection (handles slash variants, parenthetical forms, etc.)
+  const existingNormalized = new Set(existing.map((s) => normalizeTermForDedup(s.term)));
   // Also skip terms already in the main glossary
   const glossary = await readArtistGlossaryFile(artistKey);
-  const glossaryTerms = new Set(glossary.entries.map((e) => e.term.toLowerCase()));
-  const toAdd = incoming.filter(
-    (s) => !existingTerms.has(s.term.toLowerCase()) && !glossaryTerms.has(s.term.toLowerCase())
-  );
+  const glossaryNormalized = new Set(glossary.entries.map((e) => normalizeTermForDedup(e.term)));
+  const toAdd = incoming.filter((s) => {
+    const norm = normalizeTermForDedup(s.term);
+    return !existingNormalized.has(norm) && !glossaryNormalized.has(norm);
+  });
   if (toAdd.length === 0) return;
   await writePendingSuggestions(artistKey, [...existing, ...toAdd]);
 }

@@ -104,7 +104,16 @@ export async function ensureArtistProfile(artist: string | null) {
   ]);
 
   if (hasArtistProfileContent(existingProfile)) {
-    return existingProfile;
+    // Refresh the profile if the glossary has been updated more recently than the profile
+    // and has grown to a meaningful size, so the profile reflects the latest knowledge.
+    const profileAge = existingProfile.updatedAt ? new Date(existingProfile.updatedAt).getTime() : 0;
+    const glossaryAge = glossaryFile.updatedAt ? new Date(glossaryFile.updatedAt).getTime() : 0;
+    const glossaryIsNewer = glossaryAge > profileAge + 24 * 60 * 60 * 1000; // 24-hour buffer
+    const glossaryHasEntries = glossaryFile.entries.length >= 3;
+    if (!glossaryIsNewer || !glossaryHasEntries) {
+      return existingProfile;
+    }
+    // Fall through to regenerate with fresh glossary + evidence
   }
 
   const evidence = drafts

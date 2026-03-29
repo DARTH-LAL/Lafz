@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { normalizeArtistKey, storePendingSuggestions, type PendingGlossarySuggestion } from "@/features/ai/glossary-repository";
+import { normalizeArtistKey, readPendingSuggestions, storePendingSuggestions, type PendingGlossarySuggestion } from "@/features/ai/glossary-repository";
 import { getOpenAiBaseUrl, getOpenAiModel, isOpenAiConfigured } from "@/features/ai/openai";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -17,6 +17,8 @@ type ExtractorOptions = {
   sourceLanguage: string | null;
   lines: ExtractorLine[];
   existingGlossary: AiGlossaryEntry[];
+  /** Terms already queued as pending suggestions — skip these too */
+  pendingSuggestionTerms?: string[];
 };
 
 type RawSuggestion = {
@@ -56,16 +58,27 @@ function buildExtractionSchema() {
 
 function buildSystemPrompt(options: ExtractorOptions): string {
   const language = options.sourceLanguage ?? "an unknown language";
-  const existingTerms = options.existingGlossary.map((e) => e.term).join(", ") || "none";
+  const acceptedTerms = options.existingGlossary.map((e) => e.term).join(", ") || "none";
+  const pendingTerms = (options.pendingSuggestionTerms ?? []).join(", ") || "none";
   return [
-    `You are a vocabulary extractor for Lafz, a personal lyric translation tool.`,
+    `You are a precision vocabulary extractor for Lafz, a personal lyric translation tool.`,
     `You are analyzing lyrics by ${options.artist} translated from ${language} to English.`,
-    `Your task: identify terms that should be stored in the artist's permanent glossary — words or phrases with artist-specific usage, recurring slang, idioms, cultural references, or preferred renderings that are non-obvious and would help future translations be more accurate and consistent.`,
-    `Focus on: terms where the translation captures something non-literal or artist-specific; slang with a fixed meaning for this artist; phrases this artist uses in a distinctive way; recurring vocabulary across multiple lines.`,
-    `Do NOT suggest: common English words, generic translations, words already in the glossary, or obvious direct translations.`,
-    `Already in glossary (skip these): ${existingTerms}.`,
-    `Return at most 12 terms. If no strong candidates exist, return an empty array.`,
-    `For each term, provide the original-language word/phrase, its preferred English meaning, its category (preferred_rendering | slang | idiom | phrase | reference | entry), and a short one-sentence reason explaining why it's worth storing.`
+    `Your task: identify ONLY terms that are SPECIFIC to ${options.artist}'s distinct voice or artistic style — words/phrases that a skilled translator would NOT automatically know, but that are essential for accurate, consistent translations of this artist specifically.`,
+    `ACCEPT a term only if ALL of these are true:`,
+    `(1) It carries a meaning specific to how ${options.artist} uses it — NOT a meaning shared by all ${language} speakers or any generic cultural reference.`,
+    `(2) Missing or mistranslating it would cause a meaningfully wrong, flat, or tone-breaking translation.`,
+    `(3) It is likely to recur across multiple songs by this artist.`,
+    `(4) It is a short canonical form — one word or a tight 2–5 word phrase, NOT a long sentence or a slash-separated list of variants.`,
+    `SKIP these categories entirely:`,
+    `- Common cultural terms any ${language} translator would know (e.g. mehndi, chunni, jatt — unless used in a unique twist).`,
+    `- Generic idioms or phrases not distinctive to this artist.`,
+    `- Terms that are just one-off poetic images unlikely to recur.`,
+    `- Long quoted lines or full sentences.`,
+    `- Any variant or near-duplicate of a term already in either skip list below.`,
+    `Already accepted into glossary (skip): ${acceptedTerms}.`,
+    `Already queued as suggestions (skip): ${pendingTerms}.`,
+    `Return at most 5 terms. If fewer than 2 strong candidates exist, return an empty array.`,
+    `For each term, use its shortest canonical form, provide its preferred English meaning, category (preferred_rendering | slang | idiom | phrase | reference | entry), and a one-sentence reason explaining why it is artist-specific and translation-critical.`
   ].join(" ");
 }
 
@@ -128,7 +141,7 @@ async function callExtraction(options: ExtractorOptions): Promise<RawSuggestion[
         typeof (t as RawSuggestion).term === "string" &&
         typeof (t as RawSuggestion).meaning === "string"
     )
-    .slice(0, 12);
+    .slice(0, 5);
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────
@@ -138,10 +151,17 @@ export async function extractAndStoreGlossarySuggestions(options: ExtractorOptio
   if (options.lines.length === 0) return;
 
   try {
-    const raw = await callExtraction(options);
+    // Load already-pending suggestions so the AI skips them too
+    const artistKey = normalizeArtistKey(options.artist);
+    const pendingSuggestions = await readPendingSuggestions(artistKey).catch(() => []);
+    const enrichedOptions: ExtractorOptions = {
+      ...options,
+      pendingSuggestionTerms: pendingSuggestions.map((s) => s.term),
+    };
+
+    const raw = await callExtraction(enrichedOptions);
     if (raw.length === 0) return;
 
-    const artistKey = normalizeArtistKey(options.artist);
     const now = new Date().toISOString();
 
     const suggestions: PendingGlossarySuggestion[] = raw.map((r) => ({
