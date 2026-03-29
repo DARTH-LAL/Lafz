@@ -123,6 +123,7 @@ function buildEmptyArtistMemory(artistKey: string, displayName: string, glossary
     stanceNotes: [],
     perspectiveNotes: [],
     notes: [],
+    canonicalRenderings: [],
     glossaryEntries
   };
 }

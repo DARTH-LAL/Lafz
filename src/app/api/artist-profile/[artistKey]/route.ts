@@ -93,7 +93,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
               term: r.term.trim(),
               rendering: r.rendering.trim(),
               ...(r.note?.trim() ? { note: r.note.trim() } : {}),
-            })),
+            }))
+            // Drop entries where term or rendering became empty after trimming
+            .filter((r) => r.term.length > 0 && r.rendering.length > 0),
         }
       : {}),
   });

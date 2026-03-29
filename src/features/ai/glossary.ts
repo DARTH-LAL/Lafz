@@ -139,7 +139,11 @@ function mergeGlossaries(glossaries: AiGlossaryEntry[][]) {
 
   for (const glossary of glossaries) {
     for (const entry of glossary) {
-      merged.set(entry.term.trim().toLowerCase(), entry);
+      // Use the same normalisation as normalizeGlossaryKey so that terms like
+      // "foo bar" and "foo-bar" don't create duplicate entries when merged from
+      // different glossary source files.
+      const key = entry.term.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      merged.set(key, entry);
     }
   }
 

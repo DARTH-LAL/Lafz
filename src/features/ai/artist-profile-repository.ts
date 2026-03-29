@@ -59,7 +59,8 @@ function emptyProfile(artistKey: string) {
     voiceNotes: [],
     stanceNotes: [],
     perspectiveNotes: [],
-    notes: []
+    notes: [],
+    canonicalRenderings: []
   } satisfies ArtistProfileFile;
 }
 

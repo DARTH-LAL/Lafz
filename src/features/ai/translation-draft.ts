@@ -2440,10 +2440,8 @@ async function recordGenerationLog(
 
     // Detect whether an artist profile was active (has real content)
     const artistProfileActive = Boolean(
-      draftFile.artistMemory &&
-      typeof draftFile.artistMemory === "object" &&
-      ((draftFile.artistMemory as Record<string, unknown>).personaSummary ||
-       ((draftFile.artistMemory as Record<string, unknown>).translationDirectives as unknown[])?.length > 0)
+      draftFile.artistMemory?.personaSummary ||
+      (draftFile.artistMemory?.translationDirectives?.length ?? 0) > 0
     );
 
     await appendGenerationLogEntry(spotifyTrackId, {
