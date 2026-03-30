@@ -1,9 +1,9 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
-import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
+  PreviousTranslationRef,
   AiSongContext,
   AiVerseState
 } from "@/features/ai/types";

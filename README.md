@@ -73,7 +73,7 @@ The project keeps the reusable parts separated so the same core logic can later 
 │   │   └── page.tsx
 │   ├── components/
 │   ├── features/
-│   │   ├── ai/                   # Ollama draft generation, provider status, local AI-draft repository
+│   │   ├── ai/                   # three-model translation pipeline, memory, and draft repository
 │   │   ├── library/              # queue aggregation, filtering, sorting
 │   │   ├── lyrics/               # cache inspection, LRC parsing, and local import handling
 │   │   ├── spotify/              # auth, playback, server-side playlist importer
@@ -93,8 +93,9 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/features/spotify/playlist-import.ts`: validates playlist input, fetches playlist data, normalizes tracks, deduplicates, and writes local playlist JSON files
 - `src/features/spotify/track-import.ts`: validates single-track input, fetches track metadata, and writes local single-song library JSON files
 - `src/features/spotify/server-session.ts`: refreshes Spotify sessions for server routes
-- `src/features/ai/openai.ts`: cloud-provider adapter for song-context generation, candidate drafting, refinement, and selector passes
-- `src/features/ai/ollama.ts`: local-provider adapter for song-context generation, candidate drafting, refinement, and selector passes
+- `src/features/ai/openai.ts`: OpenAI adapter for song-context generation, meaning analysis, and Generator A drafting
+- `src/features/ai/anthropic.ts`: Anthropic adapter for Generator B drafting
+- `src/features/ai/gemini.ts`: Gemini evaluator for A/B line comparisons
 - `src/features/ai/glossary.ts`: loads categorized glossary hints plus your own overrides for slang, idioms, phrases, and references
 - `src/features/ai/artist-memory.ts`: loads optional artist-level translation memory for recurring tone and preferred renderings
 - `src/features/ai/translation-draft.ts`: builds song context, grouped verse batches, refinement passes, and final selector output before writing synced or untimed draft files
@@ -273,18 +274,14 @@ ANTHROPIC_GENERATOR_B_MODEL=claude-sonnet-4-20250514
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 GEMINI_EVALUATOR_MODEL=gemini-2.5-pro
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen2.5:14b
 ```
 
-`OPENAI_API_KEY` is optional, but if you set it Lafz will prefer OpenAI for AI draft generation. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`.
+Lafz now runs a single three-model pipeline. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`.
 
-If you also set Anthropic and Gemini keys, Lafz enables a three-model pipeline:
+Set all three providers to enable generation:
 - Generator A: OpenAI via `OPENAI_GENERATOR_A_MODEL`
 - Generator B: Anthropic via `ANTHROPIC_GENERATOR_B_MODEL`
 - Evaluator: Gemini via `GEMINI_EVALUATOR_MODEL`
-
-`OLLAMA_BASE_URL` and `OLLAMA_MODEL` are optional. If OpenAI is not configured, Lafz falls back to Ollama and defaults to `http://127.0.0.1:11434` and `qwen2.5:14b`.
 
 ## Translation files
 
@@ -360,19 +357,18 @@ Once a track has original lyrics cached, the track detail page can generate an A
 
 1. Lafz reads the cached original lyrics from `data/lyrics/cache/<spotifyTrackId>.json`.
 2. Lafz loads any matching glossary hints for the detected language from `data/ai/glossaries`.
-3. If OpenAI, Anthropic, and Gemini are all configured, Lafz runs the three-model pipeline first. Otherwise it uses the existing single-provider OpenAI/Ollama flow.
+3. Lafz runs the three-model pipeline: OpenAI handles song context and meaning analysis, OpenAI and Anthropic generate draft candidates, and Gemini judges the final line selection.
 4. Lafz builds a song-level context summary first so later passes can stay consistent about tone, themes, and recurring phrases.
 5. Lafz loads any matching artist memory from `data/ai/memory/artists`.
-6. Lafz generates a grouped first-pass draft so nearby verse lines can help disambiguate each other.
-7. Lafz runs a refinement pass for consistency and slang accuracy across the lyric candidates.
-8. Lafz runs a selector pass that chooses the safest final display line from the literal, natural, and slang-aware candidates.
-9. Lafz saves the generated result locally to:
+6. Lafz generates paired draft candidates so nearby verse lines can help disambiguate each other.
+7. Lafz runs a Gemini judge pass that chooses the safest final display line from Generator A and Generator B.
+8. Lafz saves the generated result locally to:
    - `data/translations/drafts/<spotifyTrackId>.json`
    - the draft is reviewed on the same track page; Lafz does not bounce you back to now-playing after a successful generation
-10. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
+9. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
    - `data/translations/local/<spotifyTrackId>.json`
-11. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
-12. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
+10. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
+11. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
 
 ### Local glossary hints
 
@@ -469,21 +465,7 @@ If you want the higher-quality hosted AI path:
 3. Optionally choose a model:
    - `OPENAI_GENERATOR_A_MODEL=gpt-5.1`
 
-Lafz uses OpenAI automatically whenever `OPENAI_API_KEY` is present.
-
-### Ollama setup
-
-For the local AI path, install and run Ollama on your Mac:
-
-1. Install Ollama: [https://ollama.com/download](https://ollama.com/download)
-2. Start the Ollama app, or run:
-   - `ollama serve`
-3. Pull the model Lafz is configured to use:
-   - `ollama pull qwen2.5:14b`
-
-`qwen2.5:14b` is the recommended local model for Lafz on a modern Apple Silicon laptop if you want the best draft quality without using a paid cloud API. If you need a lighter, faster fallback, `qwen2.5:7b` is the next best option.
-
-If you set a different `OLLAMA_MODEL` in `.env.local`, pull that model name instead.
+Lafz uses OpenAI automatically for song context, meaning analysis, and Generator A once `OPENAI_API_KEY` is present.
 
 ### Example AI draft JSON shape
 
@@ -500,8 +482,8 @@ If you set a different `OLLAMA_MODEL` in `.env.local`, pull that model name inst
   "mode": "synced",
   "sourceLyricsKind": "synced",
   "generator": {
-    "provider": "ollama",
-    "model": "qwen2.5:14b"
+    "provider": "multi",
+    "model": "A:gpt-5.1 | B:claude-sonnet-4-20250514 | Eval:gemini-2.5-pro"
   },
   "lines": [
     {
@@ -647,15 +629,13 @@ Open:
 
 ## Testing AI drafts
 
-1. Install and start Ollama locally.
-2. Pull the model Lafz should use, for example:
-   - `ollama pull llama3.2`
-3. Restart Lafz with `npm run dev`.
-4. Open `/library/queue`.
-5. Open a track detail page.
-6. Import local lyrics first.
-7. In the `AI translation draft` section, choose the source and target languages.
-8. Optionally keep transliteration and note generation enabled.
+1. Configure OpenAI, Anthropic, and Gemini in `.env.local`.
+2. Restart Lafz with `npm run dev`.
+3. Open `/library/queue`.
+4. Open a track detail page.
+5. Import local lyrics first.
+6. In the `AI translation draft` section, choose the source and target languages.
+7. Optionally keep transliteration and note generation enabled.
 9. Click `Generate AI draft`.
 10. Confirm Lafz creates:
    - `data/translations/drafts/<spotifyTrackId>.json`

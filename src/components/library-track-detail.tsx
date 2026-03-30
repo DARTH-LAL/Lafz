@@ -4,7 +4,7 @@ import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
 import { GenerationHistory } from "@/components/generation-history";
 import { StatePanel } from "@/components/state-panel";
-import type { AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
+import type { AiTranslationDraftFile } from "@/features/ai/types";
 import type { LyricsCacheInspection } from "@/features/lyrics/types";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
 import type { LibraryQueueRecord } from "@/features/library/types";
@@ -22,10 +22,7 @@ type LibraryTrackDetailProps = {
   translationInspection: TranslationFileInspection;
   lyricsInspection: LyricsCacheInspection;
   aiDraft: AiTranslationDraftFile | null;
-  aiDraftInspection: AiTranslationDraftInspection;
-  aiProviderStatus: AiProviderStatus;
   aiConfigured: boolean;
-  aiModel: string;
   lyricsStatus: string;
   lyricsMessage: string | null;
   aiStatus: string;
@@ -37,10 +34,7 @@ export function LibraryTrackDetail({
   translationInspection,
   lyricsInspection,
   aiDraft,
-  aiDraftInspection,
-  aiProviderStatus,
   aiConfigured,
-  aiModel,
   lyricsStatus,
   lyricsMessage,
   aiStatus,
@@ -249,10 +243,7 @@ export function LibraryTrackDetail({
           lyricsLanguage={lyricsInspection.language}
           translationKind={translationInspection.kind}
           aiConfigured={aiConfigured}
-          aiModel={aiModel}
-          aiProviderStatus={aiProviderStatus}
           initialDraft={aiDraft}
-          initialInspection={aiDraftInspection}
           initialMessage={aiMessage}
           initialStatus={aiStatus}
         />

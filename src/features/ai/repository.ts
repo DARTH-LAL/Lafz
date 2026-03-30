@@ -356,7 +356,7 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   const generator = isRecord(value.generator) ? value.generator : null;
   const provider =
     generator?.provider === "openai" || generator?.provider === "ollama" || generator?.provider === "multi"
-      ? generator.provider
+      ? "multi"
       : null;
   const model = asString(generator?.model);
   const lines = Array.isArray(value.lines) ? value.lines.map((line, index) => parseAiDraftLine(line, index)) : null;

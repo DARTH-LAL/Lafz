@@ -5,10 +5,11 @@ import {
   buildUserPrompt,
   parseGeneratedLines
 } from "@/features/ai/openai";
-import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
+  AiVerseState,
+  PreviousTranslationRef,
   GeneratedTranslationLineDraft
 } from "@/features/ai/types";
 
@@ -48,6 +49,7 @@ type RequestAnthropicTranslationDraftOptions = {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;

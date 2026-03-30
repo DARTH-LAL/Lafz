@@ -4,19 +4,14 @@ import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import { extractAndStoreGlossarySuggestions } from "@/features/ai/glossary-extractor";
 import { normalizeArtistKey } from "@/features/ai/glossary-repository";
-import {
-  getActiveAiProvider,
-  isThreeModelPipelineConfigured,
-  requestProviderMeaningAnalysis,
-  requestProviderSongContext,
-  requestProviderTranslationDraft,
-  requestProviderTranslationRefinement,
-  requestProviderTranslationSelection,
-  type PreviousTranslationRef
-} from "@/features/ai/provider";
+import { isThreeModelPipelineConfigured } from "@/features/ai/provider";
 import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
 import { requestGeminiDraftComparison } from "@/features/ai/gemini";
-import { requestOpenAiTranslationDraft } from "@/features/ai/openai";
+import {
+  requestOpenAiMeaningAnalysis,
+  requestOpenAiSongContext,
+  requestOpenAiTranslationDraft
+} from "@/features/ai/openai";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { buildTrackTranslationFromAiDraft, getAiTranslationDraftByTrackId, writeAiTranslationDraftFile } from "@/features/ai/repository";
 import { calcModelCost, recordAiUsageRun } from "@/features/ai/usage-tracker";
@@ -25,6 +20,7 @@ import type {
   AiDraftLine,
   AiCorrectionExample,
   AiCorrectionHint,
+  PreviousTranslationRef,
   AiSongContext,
   AiTranslationDraftFile,
   AiVerseState,
@@ -48,90 +44,42 @@ const LARGE_TRACK_LINE_COUNT = 56;
 const VERY_LARGE_TRACK_LINE_COUNT = 84;
 
 function getInitialBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
-  if (getActiveAiProvider() === "openai") {
-    if (sourceLyricsKind === "plain") {
-      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 8 : 4;
-    }
-
-    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
-      return 18;
-    }
-
-    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
-      return 16;
-    }
-
-    return 12;
-  }
-
   if (sourceLyricsKind === "plain") {
-    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 2 : 1;
+    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 8 : 4;
   }
 
-  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 10 : 6;
-}
-
-function getRefinementBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
-  if (getActiveAiProvider() === "openai") {
-    if (sourceLyricsKind === "plain") {
-      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 16 : 8;
-    }
-
-    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
-      return 40;
-    }
-
-    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
-      return 30;
-    }
-
+  if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
     return 18;
   }
 
-  if (sourceLyricsKind === "plain") {
-    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 6 : 4;
+  if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
+    return 16;
   }
 
-  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 12 : 8;
+  return 12;
 }
 
-function getSelectionBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
-  if (getActiveAiProvider() === "openai") {
-    if (sourceLyricsKind === "plain") {
-      return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 18 : 10;
-    }
-
-    if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
-      return 28;
-    }
-
-    if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
-      return 24;
-    }
-
-    return 20;
-  }
-
+function getComparisonBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   if (sourceLyricsKind === "plain") {
-    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 6 : 4;
+    return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 18 : 10;
   }
 
-  return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 12 : 8;
-}
-
-function shouldSkipRefinement(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
-  if (getActiveAiProvider() === "openai") {
-    return sourceLyricsKind === "synced" && totalLineCount >= LARGE_TRACK_LINE_COUNT;
+  if (totalLineCount >= VERY_LARGE_TRACK_LINE_COUNT) {
+    return 28;
   }
 
-  return totalLineCount >= LARGE_TRACK_LINE_COUNT;
+  if (totalLineCount >= LARGE_TRACK_LINE_COUNT) {
+    return 24;
+  }
+
+  return 20;
 }
 
 function getDraftContextWindowLines(totalLineCount: number) {
   return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 1 : CONTEXT_WINDOW_LINES;
 }
 
-function getRefinementContextWindowLines(totalLineCount: number) {
+function getComparisonContextWindowLines(totalLineCount: number) {
   return totalLineCount >= LARGE_TRACK_LINE_COUNT ? 1 : REFINEMENT_CONTEXT_WINDOW_LINES;
 }
 
@@ -194,7 +142,7 @@ type DraftRequester = (
 ) => Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }>;
 
 async function getHydratedArtistMemory(artist: string | null) {
-  await ensureArtistProfile(artist).catch(() => null);
+  void ensureArtistProfile(artist).catch(() => null);
   return getAiArtistMemory(artist);
 }
 
@@ -1080,7 +1028,7 @@ async function generateSongContext(
     preferredRenderings
   });
 
-  const response = await requestProviderSongContext({
+  const response = await requestOpenAiSongContext({
     title: options.title,
     artist: options.artist,
     album: options.album,
@@ -1141,7 +1089,7 @@ async function generateMeaningLinesInBatches(
 
   for (const batch of batches) {
 
-    const aiResponse = await requestProviderMeaningAnalysis({
+    const aiResponse = await requestOpenAiMeaningAnalysis({
       title: options.title,
       artist: options.artist,
       album: options.album,
@@ -1201,7 +1149,7 @@ async function generateDraftLinesInBatches(
   normalizedSourceLookup: Map<number, NormalizedSourceLine>,
   verseStateLookup: Map<number, AiVerseState>,
   meaningLines: MeaningAnalysisLine[],
-  requestDraft: DraftRequester = requestProviderTranslationDraft,
+  requestDraft: DraftRequester,
   previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
@@ -1262,6 +1210,7 @@ async function generateDraftLinesInBatches(
           contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
           groupIndex: group?.index,
           groupText: includeGroupText ? group?.text : undefined,
+          verseState: verseStateLookup.get(line.order) ?? null,
           matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
             line.original,
             ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
@@ -1311,294 +1260,6 @@ async function generateDraftLinesInBatches(
     model,
     sourceLanguage: normalizeLanguage(inferredSourceLanguage ?? "Unknown"),
     lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(generatedLines), normalizedSourceLookup)
-  };
-}
-
-async function refineDraftLinesInBatches(
-  options: GenerateAiTranslationOptions,
-  sourceLines: SourceDraftLine[],
-  draftLines: AiDraftLine[],
-  sourceLyricsKind: "synced" | "plain",
-  sourceLanguage: string,
-  songContext: AiSongContext | null,
-  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
-  preferredRenderings: AiGlossaryEntry[],
-  artistCorrectionExamples: AiCorrectionExample[],
-  trackCorrectionExamples: AiCorrectionExample[],
-  lockedOrders?: Set<number>,
-  currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
-  normalizedSourceLookup?: Map<number, NormalizedSourceLine>,
-  verseStateLookup?: Map<number, AiVerseState>,
-  previousDraftLookup?: Map<number, PreviousTranslationRef>
-) {
-  const batchSize = getRefinementBatchSize(sourceLyricsKind, sourceLines.length);
-  const batches = chunkSourceLines(sourceLines, batchSize);
-  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
-  const refinedLines: AiDraftLine[] = [];
-  let model = "";
-
-  const glossaryEntries = await loadRelevantGlossaryEntries({
-    sourceLanguage,
-    artist: options.artist,
-    spotifyTrackId: options.spotifyTrackId,
-    candidateTexts: sourceLines.flatMap((line) => [
-      line.original,
-      draftLines[line.order]?.literal ?? "",
-      draftLines[line.order]?.natural ?? "",
-      draftLines[line.order]?.chosen ?? ""
-    ]),
-    preferredRenderings
-  });
-  const correctionExamples = mergeCorrectionExampleSources([
-    currentSongCorrectionExamples,
-    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-  ]);
-
-  for (const batch of batches) {
-    const unlockedBatch = batch.filter((line) => !lockedOrders?.has(line.order));
-
-    if (unlockedBatch.length === 0) {
-      refinedLines.push(
-        ...batch.map((line) => ({
-          ...draftLines[line.order],
-          startMs: line.startMs,
-          endMs: line.endMs
-        }))
-      );
-      continue;
-    }
-
-    const batchDraftLines = unlockedBatch
-      .map((line) => draftLines[line.order])
-      .filter((line): line is AiDraftLine => Boolean(line));
-
-    const aiResponse = await requestProviderTranslationRefinement({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage,
-      targetLanguage: normalizeLanguage(options.targetLanguage),
-      includeTransliteration: options.includeTransliteration,
-      includeNotes: options.includeNotes,
-      glossaryEntries,
-      songContext,
-      artistMemory,
-      lines: batchDraftLines.map((line) => ({
-        index: line.order + 1,
-        original: line.original,
-        normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? line.normalizedOriginal ?? null,
-        meaning: line.meaning,
-        impliedMeaning: line.impliedMeaning,
-        register: line.register,
-        literal: line.literal,
-        natural: line.natural,
-        slangAware: line.slangAware,
-        chosen: line.chosen,
-        ambiguity: line.ambiguity,
-        confidence: line.confidence,
-        contextBefore: buildRefinementContext(draftLines, line.order, -refinementContextWindow, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, refinementContextWindow),
-        verseState: verseStateLookup?.get(line.order) ?? null,
-        matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
-          line.original,
-          ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-          ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow),
-          line.literal,
-          line.natural,
-          line.slangAware,
-          line.chosen
-        ]),
-        previousTranslation: previousDraftLookup?.get(line.order) ?? null
-      }))
-    });
-
-    model = aiResponse.model || model;
-    const unlockedByOrder = new Map(unlockedBatch.map((line) => [line.order, line]));
-    let unlockedIndex = 0;
-
-    refinedLines.push(
-      ...batch.map((line) => {
-        const existingLine = draftLines[line.order];
-
-        if (!unlockedByOrder.has(line.order)) {
-          return {
-            ...existingLine,
-            startMs: line.startMs,
-            endMs: line.endMs
-          };
-        }
-
-        const responseLine = aiResponse.lines[unlockedIndex];
-        unlockedIndex += 1;
-
-        return {
-          order: line.order,
-          original: line.original,
-          normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? existingLine?.normalizedOriginal ?? null,
-          normalizationNotes: normalizedSourceLookup?.get(line.order)?.notes ?? existingLine?.normalizationNotes ?? [],
-          meaning: existingLine?.meaning ?? line.original,
-          impliedMeaning: existingLine?.impliedMeaning ?? null,
-          register: existingLine?.register ?? null,
-          literal: responseLine?.literal ?? existingLine?.literal ?? "",
-          natural: responseLine?.natural ?? existingLine?.natural ?? "",
-          slangAware: responseLine?.slangAware ?? existingLine?.slangAware ?? "",
-          chosen: responseLine?.chosen ?? existingLine?.chosen ?? "",
-          transliteration: normalizeGeneratedTransliteration(
-            line.original,
-            responseLine?.transliteration ?? existingLine?.transliteration ?? null
-          ),
-          note: responseLine?.note ?? existingLine?.note ?? null,
-          ambiguity: responseLine?.ambiguity ?? existingLine?.ambiguity ?? null,
-          confidence: responseLine?.confidence ?? existingLine?.confidence ?? "medium",
-          selectorReason: responseLine?.selectorReason ?? existingLine?.selectorReason ?? null,
-          selectionWinner: existingLine?.selectionWinner ?? null,
-          startMs: line.startMs,
-          endMs: line.endMs
-        };
-      })
-    );
-  }
-
-  return {
-    model,
-    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(refinedLines), normalizedSourceLookup)
-  };
-}
-
-async function selectDraftLinesInBatches(
-  options: GenerateAiTranslationOptions,
-  sourceLines: SourceDraftLine[],
-  draftLines: AiDraftLine[],
-  sourceLyricsKind: "synced" | "plain",
-  sourceLanguage: string,
-  songContext: AiSongContext | null,
-  artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
-  preferredRenderings: AiGlossaryEntry[],
-  artistCorrectionExamples: AiCorrectionExample[],
-  trackCorrectionExamples: AiCorrectionExample[],
-  lockedOrders?: Set<number>,
-  currentSongCorrectionExamples: CorrectionExampleWithSource[] = [],
-  normalizedSourceLookup?: Map<number, NormalizedSourceLine>,
-  verseStateLookup?: Map<number, AiVerseState>,
-  previousDraftLookup?: Map<number, PreviousTranslationRef>
-) {
-  const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
-  const batches = chunkSourceLines(sourceLines, batchSize);
-  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
-  const selectedLines: AiDraftLine[] = [];
-  let model = "";
-
-  const glossaryEntries = await loadRelevantGlossaryEntries({
-    sourceLanguage,
-    artist: options.artist,
-    spotifyTrackId: options.spotifyTrackId,
-    candidateTexts: sourceLines.flatMap((line) => [
-      line.original,
-      draftLines[line.order]?.literal ?? "",
-      draftLines[line.order]?.natural ?? "",
-      draftLines[line.order]?.chosen ?? ""
-    ]),
-    preferredRenderings
-  });
-  const correctionExamples = mergeCorrectionExampleSources([
-    currentSongCorrectionExamples,
-    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-  ]);
-
-  for (const batch of batches) {
-    const unlockedBatch = batch.filter(
-      (line) => !lockedOrders?.has(line.order) && shouldRunSelectionForLine(draftLines[line.order])
-    );
-
-    if (unlockedBatch.length === 0) {
-      selectedLines.push(
-        ...batch.map((line) => ({
-          ...draftLines[line.order],
-          startMs: line.startMs,
-          endMs: line.endMs
-        }))
-      );
-      continue;
-    }
-
-    const aiResponse = await requestProviderTranslationSelection({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage,
-      targetLanguage: normalizeLanguage(options.targetLanguage),
-      includeTransliteration: options.includeTransliteration,
-      includeNotes: options.includeNotes,
-      glossaryEntries,
-      songContext,
-      artistMemory,
-      lines: unlockedBatch.map((line) => ({
-        index: line.order + 1,
-        original: line.original,
-        normalizedOriginal: normalizedSourceLookup?.get(line.order)?.canonical ?? draftLines[line.order]?.normalizedOriginal ?? null,
-        meaning: draftLines[line.order]?.meaning ?? line.original,
-        impliedMeaning: draftLines[line.order]?.impliedMeaning ?? null,
-        register: draftLines[line.order]?.register ?? null,
-        literal: draftLines[line.order]?.literal ?? "",
-        natural: draftLines[line.order]?.natural ?? "",
-        slangAware: draftLines[line.order]?.slangAware ?? "",
-        currentChosen: draftLines[line.order]?.chosen ?? "",
-        note: draftLines[line.order]?.note ?? null,
-        ambiguity: draftLines[line.order]?.ambiguity ?? null,
-        confidence: draftLines[line.order]?.confidence ?? "medium",
-        contextBefore: buildRefinementContext(draftLines, line.order, -refinementContextWindow, -1),
-        contextAfter: buildRefinementContext(draftLines, line.order, 1, refinementContextWindow),
-        verseState: verseStateLookup?.get(line.order) ?? null,
-        matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
-          line.original,
-          draftLines[line.order]?.literal ?? "",
-          draftLines[line.order]?.natural ?? "",
-          draftLines[line.order]?.slangAware ?? "",
-          draftLines[line.order]?.chosen ?? "",
-          ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-          ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
-        ]),
-        previousTranslation: previousDraftLookup?.get(line.order) ?? null
-      }))
-    });
-
-    model = aiResponse.model || model;
-    const unlockedByOrder = new Map(unlockedBatch.map((line) => [line.order, line]));
-    let unlockedIndex = 0;
-
-    selectedLines.push(
-      ...batch.map((line) => {
-        if (!unlockedByOrder.has(line.order)) {
-          return {
-            ...draftLines[line.order],
-            startMs: line.startMs,
-            endMs: line.endMs
-          };
-        }
-
-        const responseLine = aiResponse.lines[unlockedIndex];
-        unlockedIndex += 1;
-
-        return {
-          ...draftLines[line.order],
-          chosen: responseLine?.chosen ?? draftLines[line.order]?.chosen ?? "",
-          note: responseLine?.note ?? draftLines[line.order]?.note ?? null,
-          ambiguity: responseLine?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
-          confidence: responseLine?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
-          selectorReason: responseLine?.selectorReason ?? draftLines[line.order]?.selectorReason ?? null,
-          selectionWinner: draftLines[line.order]?.selectionWinner ?? null,
-          startMs: line.startMs,
-          endMs: line.endMs
-        };
-      })
-    );
-  }
-
-  return {
-    model,
-    lines: alignDraftLinesToSource(sourceLines, applyDuplicateLineReuse(selectedLines), normalizedSourceLookup)
   };
 }
 
@@ -1729,73 +1390,6 @@ function getEvaluatorScoreBonus(
   return score.semanticAccuracy * 3 + score.contextFit * 2 + score.perspectiveFidelity * 2 - score.repetitionRisk * 2 - score.driftRisk * 3;
 }
 
-function getConfidenceBonus(confidence: AiDraftLine["confidence"]) {
-  return confidence === "high" ? 3 : confidence === "medium" ? 1 : 0;
-}
-
-function getPreviousTranslationBonus(candidate: AiDraftLine, previousTranslation: PreviousTranslationRef | null | undefined) {
-  if (!previousTranslation) {
-    return 0;
-  }
-
-  const similarity = scoreChosenLineSimilarity(previousTranslation.chosen, candidate.chosen);
-  const exact = normalizeLineKey(previousTranslation.chosen) === normalizeLineKey(candidate.chosen);
-
-  if (exact) {
-    return previousTranslation.manuallyReviewed ? 8 : previousTranslation.confidence === "high" ? 5 : 3;
-  }
-
-  if (similarity >= 250) {
-    return previousTranslation.manuallyReviewed ? 4 : 2;
-  }
-
-  return 0;
-}
-
-function chooseHeuristicGeneratorLine(options: {
-  sourceLine: SourceDraftLine;
-  generatorALine: AiDraftLine | undefined;
-  generatorBLine: AiDraftLine | undefined;
-  verseState: AiVerseState | null | undefined;
-  seenChoices: Map<string, Array<{ order: number; original: string }>>;
-  previousTranslation: PreviousTranslationRef | null | undefined;
-}) {
-  const candidates = [
-    options.generatorALine ? { key: "generator_a" as const, line: options.generatorALine } : null,
-    options.generatorBLine ? { key: "generator_b" as const, line: options.generatorBLine } : null
-  ].filter((entry): entry is { key: "generator_a" | "generator_b"; line: AiDraftLine } => Boolean(entry));
-
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  const scored = candidates.map((candidate) => {
-    const anchorScore = scoreCandidateAgainstAnchor(candidate.line.chosen, candidate.line, options.verseState);
-    const duplicatePenalty = hasSuspiciousDuplicateChoice(candidate.line.chosen, options.sourceLine.original, options.seenChoices) ? 12 : 0;
-    const adlibPenalty =
-      isMeaningfulSourceLine(options.sourceLine.original) && isAdlibLikeText(candidate.line.chosen)
-        ? 16
-        : 0;
-    const previousBonus = getPreviousTranslationBonus(candidate.line, options.previousTranslation);
-    const confidenceBonus = getConfidenceBonus(candidate.line.confidence);
-
-    return {
-      ...candidate,
-      totalScore: anchorScore * 3 + previousBonus + confidenceBonus - duplicatePenalty - adlibPenalty
-    };
-  });
-
-  const best = [...scored].sort((left, right) => right.totalScore - left.totalScore)[0] ?? scored[0];
-
-  const caution = best.totalScore < 4 || best.line.confidence === "low" || isAdlibLikeText(best.line.chosen);
-  return {
-    ...best.line,
-    confidence: caution ? (best.line.confidence === "high" ? "medium" : best.line.confidence) : best.line.confidence,
-    selectorReason: `Heuristic ${best.key === "generator_a" ? "A" : "B"} fallback after evaluator issue.`,
-    selectionWinner: best.key
-  } satisfies AiDraftLine;
-}
-
 function chooseGuardrailedEvaluatedLine(options: {
   sourceLine: SourceDraftLine;
   selectedLine: AiDraftLine;
@@ -1826,11 +1420,11 @@ function chooseGuardrailedEvaluatedLine(options: {
           repetitionRisk: number;
           driftRisk: number;
         } | null;
-      }
+  }
     | undefined;
   verseState: AiVerseState | null | undefined;
   seenChoices: Map<string, Array<{ order: number; original: string }>>;
-}) {
+}): AiDraftLine {
   const candidates = [
     options.generatorALine
       ? {
@@ -1946,9 +1540,9 @@ async function evaluateDraftAlternativesInBatches(
   usageSink?: { inputTokens: number; outputTokens: number },
   previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
-  const batchSize = getSelectionBatchSize(sourceLyricsKind, sourceLines.length);
+  const batchSize = getComparisonBatchSize(sourceLyricsKind, sourceLines.length);
   const batches = chunkSourceLines(sourceLines, batchSize);
-  const refinementContextWindow = getRefinementContextWindowLines(sourceLines.length);
+  const comparisonContextWindow = getComparisonContextWindowLines(sourceLines.length);
   const evaluatedLines: AiDraftLine[] = [];
   const seenChoices = new Map<string, Array<{ order: number; original: string }>>();
   let model = "";
@@ -2004,72 +1598,41 @@ async function evaluateDraftAlternativesInBatches(
           ambiguity: generatorBLine?.ambiguity ?? null,
           confidence: generatorBLine?.confidence ?? "medium"
         },
-        contextBefore: buildRefinementContext(generatorALines, line.order, -refinementContextWindow, -1),
-        contextAfter: buildRefinementContext(generatorALines, line.order, 1, refinementContextWindow),
+        contextBefore: buildRefinementContext(generatorALines, line.order, -comparisonContextWindow, -1),
+        contextAfter: buildRefinementContext(generatorALines, line.order, 1, comparisonContextWindow),
         verseState: verseStateLookup.get(line.order) ?? null,
         matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
           line.original,
           generatorALine?.chosen ?? "",
           generatorBLines[line.order]?.chosen ?? "",
-          ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-          ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
+          ...buildContextLines(sourceLines, line.order, -comparisonContextWindow, -1),
+          ...buildContextLines(sourceLines, line.order, 1, comparisonContextWindow)
         ]),
         previousTranslation: previousDraftLookup?.get(line.order) ?? null
       };
     });
 
-    let aiResponse: Awaited<ReturnType<typeof requestGeminiDraftComparison>> | null = null;
-
-    try {
-      aiResponse = await requestGeminiDraftComparison(
-        {
-          title: options.title,
-          artist: options.artist,
-          album: options.album,
-          sourceLanguage,
-          targetLanguage: normalizeLanguage(options.targetLanguage),
-          glossaryEntries,
-          songContext,
-          artistMemory,
-          lines: comparisonLines
-        },
-        usageSink
-      );
-      model = aiResponse.model || model;
-    } catch (error) {
-      console.warn("Gemini evaluator failed for batch; using heuristic A/B fallback.", error);
-      model ||= "heuristic_ab_fallback";
-    }
+    const aiResponse = await requestGeminiDraftComparison(
+      {
+        title: options.title,
+        artist: options.artist,
+        album: options.album,
+        sourceLanguage,
+        targetLanguage: normalizeLanguage(options.targetLanguage),
+        glossaryEntries,
+        songContext,
+        artistMemory,
+        lines: comparisonLines
+      },
+      usageSink
+    );
+    model = aiResponse.model || model;
 
     evaluatedLines.push(
       ...batch.map((line, index) => {
         const generatorALine = generatorALines[line.order];
         const generatorBLine = generatorBLines[line.order];
-        const evaluationLine = aiResponse?.lines[index];
-
-        if (!aiResponse) {
-          const heuristicLine = chooseHeuristicGeneratorLine({
-            sourceLine: line,
-            generatorALine,
-            generatorBLine,
-            verseState: verseStateLookup.get(line.order) ?? null,
-            seenChoices,
-            previousTranslation: previousDraftLookup?.get(line.order) ?? null
-          });
-
-          if (!heuristicLine) {
-            return generatorALine ?? generatorBLine;
-          }
-
-          const chosenKey = normalizeEnglishChoiceKey(heuristicLine.chosen);
-          if (chosenKey) {
-            const entries = seenChoices.get(chosenKey) ?? [];
-            entries.push({ order: line.order, original: line.original });
-            seenChoices.set(chosenKey, entries);
-          }
-
-          return heuristicLine;
-        }
+        const evaluationLine = aiResponse.lines[index];
 
         const baseLine =
           evaluationLine?.winner === "generator_b"
@@ -2192,114 +1755,6 @@ async function shouldRefreshPublishedTranslation(options: {
   return areTrackTranslationsEquivalent(existingTranslation, previousDraftPlayback);
 }
 
-function shouldRunSelectionForLine(line: AiDraftLine | undefined) {
-  if (!line) {
-    return false;
-  }
-
-  if (line.confidence !== "high") {
-    return true;
-  }
-
-  if (line.ambiguity) {
-    return true;
-  }
-
-  const distinctCandidates = new Set(
-    [line.literal, line.natural, line.slangAware, line.chosen].map((value) => value.trim()).filter(Boolean)
-  );
-
-  return distinctCandidates.size > 1;
-}
-
-export async function rerunDraftAfterManualCorrections(
-  draft: AiTranslationDraftFile,
-  editedOrders: number[]
-) {
-  if (editedOrders.length === 0 || draft.lines.length === 0) {
-    return draft;
-  }
-
-  const sourceLines = buildSourceLinesFromDraft(draft);
-  const normalizedSourceLookup = buildNormalizedSourceLineLookup(sourceLines);
-  const verseStateLookup = buildVerseStateLookup(draft.verseStates);
-  const includeTransliteration = draft.lines.some((line) => line.transliteration !== null);
-  const includeNotes = draft.lines.some((line) => line.note !== null);
-  const {
-    memory: artistMemory,
-    preferredRenderings,
-    correctionExamples: artistCorrectionExamples
-  } = await getHydratedArtistMemory(draft.artist);
-  const trackCorrectionExamples = await getTrackCorrectionExamples(draft.spotifyTrackId).catch(() => []);
-  const propagatedDraft = propagateLockedDuplicateLines(draft.lines, new Set(editedOrders));
-  const currentSongCorrectionExamples = buildCorrectionExamplesFromDraftLines(
-    propagatedDraft.lines,
-    propagatedDraft.lockedOrders,
-    "current_song"
-  );
-  const baseOptions: GenerateAiTranslationOptions = {
-    spotifyTrackId: draft.spotifyTrackId,
-    title: draft.title,
-    artist: draft.artist,
-    album: draft.album,
-    durationMs: draft.durationMs,
-    sourceLanguage: draft.sourceLanguage,
-    targetLanguage: draft.targetLanguage,
-    includeTransliteration,
-    includeNotes,
-    overwriteExistingTranslation: true
-  };
-  const skipRefinement = shouldSkipRefinement(draft.mode, sourceLines.length);
-
-  const refinedDraft = skipRefinement
-    ? null
-    : await refineDraftLinesInBatches(
-        baseOptions,
-        sourceLines,
-        propagatedDraft.lines,
-        draft.mode,
-        draft.sourceLanguage,
-        draft.songContext,
-        artistMemory,
-        preferredRenderings,
-        artistCorrectionExamples,
-        trackCorrectionExamples,
-        propagatedDraft.lockedOrders,
-        currentSongCorrectionExamples,
-        normalizedSourceLookup,
-        verseStateLookup
-      ).catch(() => null);
-
-  const selectedDraft = await selectDraftLinesInBatches(
-    baseOptions,
-    sourceLines,
-    refinedDraft?.lines ?? propagatedDraft.lines,
-    draft.mode,
-    draft.sourceLanguage,
-    draft.songContext,
-    artistMemory,
-    preferredRenderings,
-    artistCorrectionExamples,
-    trackCorrectionExamples,
-    propagatedDraft.lockedOrders,
-    currentSongCorrectionExamples,
-    normalizedSourceLookup,
-    verseStateLookup
-  ).catch(() => null);
-
-  return {
-    ...draft,
-    generatedAt: new Date().toISOString(),
-    generator: {
-      ...draft.generator,
-      model: selectedDraft?.model || refinedDraft?.model || draft.generator.model
-    },
-    artistMemory: artistMemory ?? draft.artistMemory,
-    verseStates: draft.verseStates ?? [],
-    lines: selectedDraft?.lines ?? refinedDraft?.lines ?? propagatedDraft.lines
-  } satisfies AiTranslationDraftFile;
-}
-
 export function getChosenLineEditOrdersFromDraft(previousDraft: AiTranslationDraftFile, nextDraft: AiTranslationDraftFile) {
   return getChosenLineEditOrders(previousDraft, nextDraft);
 }
@@ -2402,149 +1857,47 @@ export async function generateAiTranslationDraft(
   const sourceGroups = buildSourceLineGroups(sourceLines, lyricsCache.kind);
   const verseStates = inferVerseStates(sourceGroups, sourceLines, meaningResponse.lines, contextResponse.songContext);
   const verseStateLookup = buildVerseStateLookup(verseStates);
-  const useThreeModelPipeline = isThreeModelPipelineConfigured();
+
+  if (!isThreeModelPipelineConfigured()) {
+    return {
+      status: "missing_ai_config"
+    };
+  }
+
   let aiResponse: {
     model: string;
     sourceLanguage: string;
     lines: AiDraftLine[];
   };
   let pipelineCostSummary: AiCostSummary | undefined;
+  const pipelineStartMs = Date.now();
+  const usageSinkA = { inputTokens: 0, outputTokens: 0 };
+  const usageSinkB = { inputTokens: 0, outputTokens: 0 };
+  const usageSinkG = { inputTokens: 0, outputTokens: 0 };
+  let genAModel = "";
+  let genBModel = "";
+  let genADurationMs = 0;
+  let genBDurationMs = 0;
+  let genGDurationMs = 0;
 
-  if (useThreeModelPipeline) {
-    const pipelineStartMs = Date.now();
-    const usageSinkA = { inputTokens: 0, outputTokens: 0 };
-    const usageSinkB = { inputTokens: 0, outputTokens: 0 };
-    const usageSinkG = { inputTokens: 0, outputTokens: 0 };
-    let genAModel = "";
-    let genBModel = "";
-    let genADurationMs = 0;
-    let genBDurationMs = 0;
-    let genGDurationMs = 0;
+  const openAiRequester: DraftRequester = async (opts) => {
+    const t0 = Date.now();
+    const result = await requestOpenAiTranslationDraft(opts, usageSinkA);
+    genADurationMs += Date.now() - t0;
+    genAModel = result.model;
+    return result;
+  };
 
-    const openAiRequester: DraftRequester = async (opts) => {
-      const t0 = Date.now();
-      const result = await requestOpenAiTranslationDraft(opts, usageSinkA);
-      genADurationMs += Date.now() - t0;
-      genAModel = result.model;
-      return result;
-    };
+  const anthropicRequester: DraftRequester = async (opts) => {
+    const t0 = Date.now();
+    const result = await requestAnthropicTranslationDraft(opts, usageSinkB);
+    genBDurationMs += Date.now() - t0;
+    genBModel = result.model;
+    return result;
+  };
 
-    const anthropicRequester: DraftRequester = async (opts) => {
-      const t0 = Date.now();
-      const result = await requestAnthropicTranslationDraft(opts, usageSinkB);
-      genBDurationMs += Date.now() - t0;
-      genBModel = result.model;
-      return result;
-    };
-
-    const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
-      generateDraftLinesInBatches(
-        options,
-        sourceLines,
-        lyricsCache.kind,
-        meaningResponse.sourceLanguage,
-        contextResponse.songContext,
-        contextResponse.artistMemory,
-        contextResponse.preferredRenderings,
-        contextResponse.artistCorrectionExamples,
-        contextResponse.trackCorrectionExamples,
-        normalizedSourceLookup,
-        verseStateLookup,
-        meaningResponse.lines,
-        openAiRequester,
-        previousDraftLookup
-      ),
-      generateDraftLinesInBatches(
-        options,
-        sourceLines,
-        lyricsCache.kind,
-        meaningResponse.sourceLanguage,
-        contextResponse.songContext,
-        contextResponse.artistMemory,
-        contextResponse.preferredRenderings,
-        contextResponse.artistCorrectionExamples,
-        contextResponse.trackCorrectionExamples,
-        normalizedSourceLookup,
-        verseStateLookup,
-        meaningResponse.lines,
-        anthropicRequester,
-        previousDraftLookup
-      )
-    ]);
-
-    const geminiT0 = Date.now();
-    const evaluatedDraft = await evaluateDraftAlternativesInBatches(
-      options,
-      sourceLines,
-      lyricsCache.kind,
-      generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
-      contextResponse.songContext,
-      contextResponse.artistMemory,
-      contextResponse.preferredRenderings,
-      contextResponse.artistCorrectionExamples,
-      contextResponse.trackCorrectionExamples,
-      normalizedSourceLookup,
-      verseStateLookup,
-      generatorAInitialDraft.lines,
-      generatorBInitialDraft.lines,
-      usageSinkG,
-      previousDraftLookup
-    );
-    genGDurationMs = Date.now() - geminiT0;
-    const pipelineDurationMs = Date.now() - pipelineStartMs;
-
-    // Count winner distribution and confidence breakdown from evaluated lines
-    const evalLines = evaluatedDraft.lines;
-    let winnerA = 0, winnerB = 0, winnerBlend = 0;
-    let confHigh = 0, confMed = 0, confLow = 0;
-    for (const line of evalLines) {
-      if (line.selectionWinner === "generator_b") winnerB++;
-      else if (line.selectionWinner === "blended") winnerBlend++;
-      else winnerA++;
-      if (line.confidence === "high") confHigh++;
-      else if (line.confidence === "medium") confMed++;
-      else confLow++;
-    }
-
-    // Build cost summary for immediate display
-    const costA = calcModelCost("openai",    usageSinkA.inputTokens, usageSinkA.outputTokens);
-    const costB = calcModelCost("anthropic", usageSinkB.inputTokens, usageSinkB.outputTokens);
-    const costG = calcModelCost("gemini",    usageSinkG.inputTokens, usageSinkG.outputTokens);
-    pipelineCostSummary = {
-      generatorA: { model: genAModel,          inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, costUsd: costA },
-      generatorB: { model: genBModel,          inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, costUsd: costB },
-      judge:      { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, costUsd: costG },
-      totalCostUsd: costA + costB + costG,
-    };
-
-    // Record the usage run (non-fatal)
-    try {
-      await recordAiUsageRun({
-        timestamp: new Date().toISOString(),
-        spotifyTrackId: options.spotifyTrackId,
-        title: options.title,
-        artist: options.artist,
-        sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
-        totalLines: evalLines.length,
-        winnerDistribution: { generatorA: winnerA, generatorB: winnerB, blended: winnerBlend },
-        confidenceBreakdown: { high: confHigh, medium: confMed, low: confLow },
-        generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, durationMs: genADurationMs },
-        generatorB: { model: genBModel, inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, durationMs: genBDurationMs },
-        judge:      { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, durationMs: genGDurationMs },
-        pipelineDurationMs
-      });
-    } catch {
-      // Non-fatal: don't fail the translation if analytics recording fails
-    }
-
-    aiResponse = {
-      model: `A:${genAModel} | B:${genBModel} | Eval:${evaluatedDraft.model}`,
-      sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
-      lines: evaluatedDraft.lines
-    };
-  } else {
-    const skipRefinement = shouldSkipRefinement(lyricsCache.kind, sourceLines.length);
-    const initialDraft = await generateDraftLinesInBatches(
+  const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
+    generateDraftLinesInBatches(
       options,
       sourceLines,
       lyricsCache.kind,
@@ -2557,54 +1910,98 @@ export async function generateAiTranslationDraft(
       normalizedSourceLookup,
       verseStateLookup,
       meaningResponse.lines,
-      undefined,
+      openAiRequester,
       previousDraftLookup
-    );
-    const refinedDraft = skipRefinement
-      ? null
-      : await refineDraftLinesInBatches(
-          options,
-          sourceLines,
-          initialDraft.lines,
-          lyricsCache.kind,
-          initialDraft.sourceLanguage,
-          contextResponse.songContext,
-          contextResponse.artistMemory,
-          contextResponse.preferredRenderings,
-          contextResponse.artistCorrectionExamples,
-          contextResponse.trackCorrectionExamples,
-          undefined,
-          [],
-          normalizedSourceLookup,
-          verseStateLookup,
-          previousDraftLookup
-        ).catch(() => null);
-    const selectedDraft = await selectDraftLinesInBatches(
+    ),
+    generateDraftLinesInBatches(
       options,
       sourceLines,
-      refinedDraft?.lines ?? initialDraft.lines,
       lyricsCache.kind,
-      initialDraft.sourceLanguage,
+      meaningResponse.sourceLanguage,
       contextResponse.songContext,
       contextResponse.artistMemory,
       contextResponse.preferredRenderings,
       contextResponse.artistCorrectionExamples,
       contextResponse.trackCorrectionExamples,
-      undefined,
-      [],
       normalizedSourceLookup,
       verseStateLookup,
+      meaningResponse.lines,
+      anthropicRequester,
       previousDraftLookup
-    ).catch(() => null);
+    )
+  ]);
 
-    aiResponse = {
-      model: selectedDraft?.model || refinedDraft?.model || initialDraft.model,
-      sourceLanguage: initialDraft.sourceLanguage,
-      lines: selectedDraft?.lines ?? refinedDraft?.lines ?? initialDraft.lines
-    };
+  const geminiT0 = Date.now();
+  const evaluatedDraft = await evaluateDraftAlternativesInBatches(
+    options,
+    sourceLines,
+    lyricsCache.kind,
+    generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+    contextResponse.songContext,
+    contextResponse.artistMemory,
+    contextResponse.preferredRenderings,
+    contextResponse.artistCorrectionExamples,
+    contextResponse.trackCorrectionExamples,
+    normalizedSourceLookup,
+    verseStateLookup,
+    generatorAInitialDraft.lines,
+    generatorBInitialDraft.lines,
+    usageSinkG,
+    previousDraftLookup
+  );
+  genGDurationMs = Date.now() - geminiT0;
+  const pipelineDurationMs = Date.now() - pipelineStartMs;
+
+  const evalLines = evaluatedDraft.lines;
+  let winnerA = 0;
+  let winnerB = 0;
+  let winnerBlend = 0;
+  let confHigh = 0;
+  let confMed = 0;
+  let confLow = 0;
+
+  for (const line of evalLines) {
+    if (line.selectionWinner === "generator_b") winnerB++;
+    else if (line.selectionWinner === "blended") winnerBlend++;
+    else winnerA++;
+
+    if (line.confidence === "high") confHigh++;
+    else if (line.confidence === "medium") confMed++;
+    else confLow++;
   }
 
-  const draftFile = {
+  const costA = calcModelCost("openai", usageSinkA.inputTokens, usageSinkA.outputTokens);
+  const costB = calcModelCost("anthropic", usageSinkB.inputTokens, usageSinkB.outputTokens);
+  const costG = calcModelCost("gemini", usageSinkG.inputTokens, usageSinkG.outputTokens);
+  pipelineCostSummary = {
+    generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, costUsd: costA },
+    generatorB: { model: genBModel, inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, costUsd: costB },
+    judge: { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, costUsd: costG },
+    totalCostUsd: costA + costB + costG
+  };
+
+  queueUsageTracking({
+    timestamp: new Date().toISOString(),
+    spotifyTrackId: options.spotifyTrackId,
+    title: options.title,
+    artist: options.artist,
+    sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+    totalLines: evalLines.length,
+    winnerDistribution: { generatorA: winnerA, generatorB: winnerB, blended: winnerBlend },
+    confidenceBreakdown: { high: confHigh, medium: confMed, low: confLow },
+    generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, durationMs: genADurationMs },
+    generatorB: { model: genBModel, inputTokens: usageSinkB.inputTokens, outputTokens: usageSinkB.outputTokens, durationMs: genBDurationMs },
+    judge: { model: evaluatedDraft.model, inputTokens: usageSinkG.inputTokens, outputTokens: usageSinkG.outputTokens, durationMs: genGDurationMs },
+    pipelineDurationMs
+  });
+
+  aiResponse = {
+    model: `A:${genAModel} | B:${genBModel} | Eval:${evaluatedDraft.model}`,
+    sourceLanguage: generatorAInitialDraft.sourceLanguage || generatorBInitialDraft.sourceLanguage || meaningResponse.sourceLanguage,
+    lines: evaluatedDraft.lines
+  };
+
+  const draftFile: AiTranslationDraftFile = {
     spotifyTrackId: options.spotifyTrackId,
     title: options.title,
     artist: options.artist,
@@ -2616,7 +2013,7 @@ export async function generateAiTranslationDraft(
     mode: lyricsCache.kind,
     sourceLyricsKind: lyricsCache.kind,
     generator: {
-      provider: (useThreeModelPipeline ? "multi" : getActiveAiProvider()) as AiTranslationDraftFile["generator"]["provider"],
+      provider: "multi",
       model: aiResponse.model
     },
     songContext: contextResponse.songContext,
@@ -2628,15 +2025,7 @@ export async function generateAiTranslationDraft(
   const draftFilePath = await writeAiTranslationDraftFile(draftFile);
 
   if (lyricsCache.kind === "plain") {
-    void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "draft_only_plain");
-    void extractAndStoreGlossarySuggestions({
-      spotifyTrackId: options.spotifyTrackId,
-      title: options.title,
-      artist: options.artist,
-      sourceLanguage: draftFile.sourceLanguage,
-      lines: draftFile.lines.map((l) => ({ original: l.original, chosen: l.chosen, meaning: l.meaning })),
-      existingGlossary: await getAiGlossaryEntries({ language: draftFile.sourceLanguage, artist: options.artist }).catch(() => [])
-    });
+    queuePostGenerationTasks(options, draftFile, pipelineCostSummary, generationStartMs, "draft_only_plain");
     return {
       status: "draft_only_plain",
       draftFilePath,
@@ -2654,15 +2043,7 @@ export async function generateAiTranslationDraft(
   });
 
   if (!refreshPublishedTranslation) {
-    void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "draft_only_preserved");
-    void extractAndStoreGlossarySuggestions({
-      spotifyTrackId: options.spotifyTrackId,
-      title: options.title,
-      artist: options.artist,
-      sourceLanguage: draftFile.sourceLanguage,
-      lines: draftFile.lines.map((l) => ({ original: l.original, chosen: l.chosen, meaning: l.meaning })),
-      existingGlossary: await getAiGlossaryEntries({ language: draftFile.sourceLanguage, artist: options.artist }).catch(() => [])
-    });
+    queuePostGenerationTasks(options, draftFile, pipelineCostSummary, generationStartMs, "draft_only_preserved");
     return {
       status: "draft_only_preserved",
       draftFilePath,
@@ -2690,15 +2071,7 @@ export async function generateAiTranslationDraft(
 
   const translationFilePath = await writeTrackTranslationFile(translationFile);
 
-  void recordGenerationLog(options.spotifyTrackId, draftFile, pipelineCostSummary, generationStartMs, "saved_translation");
-  void extractAndStoreGlossarySuggestions({
-    spotifyTrackId: options.spotifyTrackId,
-    title: options.title,
-    artist: options.artist,
-    sourceLanguage: draftFile.sourceLanguage,
-    lines: draftFile.lines.map((l) => ({ original: l.original, chosen: l.chosen, meaning: l.meaning })),
-    existingGlossary: await getAiGlossaryEntries({ language: draftFile.sourceLanguage, artist: options.artist }).catch(() => [])
-  });
+  queuePostGenerationTasks(options, draftFile, pipelineCostSummary, generationStartMs, "saved_translation");
   return {
     status: "saved_translation",
     draftFilePath,
@@ -2796,8 +2169,12 @@ export async function regenerateDraftLines(
 
   const normalizedLine = normalizedSourceLookup.get(representativeSourceLine.order);
 
-  // ── Step 1: Meaning analysis ──────────────────────────────────────────────
-  const meaningResponse = await requestProviderMeaningAnalysis({
+  const usageSinkA = { inputTokens: 0, outputTokens: 0 };
+  const usageSinkB = { inputTokens: 0, outputTokens: 0 };
+  const usageSinkG = { inputTokens: 0, outputTokens: 0 };
+  const verseState = verseStateLookup.get(representativeSourceLine.order) ?? null;
+
+  const meaningResponse = await requestOpenAiMeaningAnalysis({
     title: draft.title,
     artist: draft.artist,
     album: draft.album,
@@ -2819,9 +2196,7 @@ export async function regenerateDraftLines(
   });
 
   const meaningLine = meaningResponse.lines[0];
-
-  // ── Step 2: Draft generation ──────────────────────────────────────────────
-  const draftResponse = await requestProviderTranslationDraft({
+  const generatorAResponse = await requestOpenAiTranslationDraft({
     title: draft.title,
     artist: draft.artist,
     album: draft.album,
@@ -2843,20 +2218,52 @@ export async function regenerateDraftLines(
         register: meaningLine?.register ?? primaryLine.register,
         contextBefore,
         contextAfter,
-        verseState: verseStateLookup.get(representativeSourceLine.order) ?? null,
+        verseState,
         matchingCorrections
       }
     ]
-  });
+  }, usageSinkA);
+  const generatorBResponse = await requestAnthropicTranslationDraft({
+    title: draft.title,
+    artist: draft.artist,
+    album: draft.album,
+    sourceLanguage: draft.sourceLanguage,
+    targetLanguage: draft.targetLanguage,
+    includeTransliteration,
+    includeNotes,
+    glossaryEntries,
+    songContext: draft.songContext,
+    artistMemory,
+    lines: [
+      {
+        index: representativeSourceLine.order + 1,
+        original: representativeSourceLine.original,
+        normalizedOriginal: normalizedLine?.canonical ?? null,
+        normalizationNotes: normalizedLine?.notes ?? [],
+        meaning: meaningLine?.meaning ?? primaryLine.meaning,
+        impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
+        register: meaningLine?.register ?? primaryLine.register,
+        contextBefore,
+        contextAfter,
+        verseState,
+        matchingCorrections,
+        previousTranslation: {
+          chosen: primaryLine.chosen,
+          confidence: primaryLine.confidence,
+          manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
+        }
+      }
+    ]
+  }, usageSinkB);
 
-  const generatedLine = draftResponse.lines[0];
+  const generatorALineResponse = generatorAResponse.lines[0];
+  const generatorBLineResponse = generatorBResponse.lines[0];
 
-  if (!generatedLine) {
-    throw new Error("AI returned no output for the line regeneration.");
+  if (!generatorALineResponse || !generatorBLineResponse) {
+    throw new Error("AI returned no output for the regenerated line.");
   }
 
-  // Build the initial regenerated line
-  let newLine: AiDraftLine = {
+  const generatorALine: AiDraftLine = {
     order: representativeSourceLine.order,
     original: representativeSourceLine.original,
     normalizedOriginal: normalizedLine?.canonical ?? primaryLine.normalizedOriginal,
@@ -2864,76 +2271,119 @@ export async function regenerateDraftLines(
     meaning: meaningLine?.meaning ?? primaryLine.meaning,
     impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
     register: meaningLine?.register ?? primaryLine.register,
-    literal: generatedLine.literal,
-    natural: generatedLine.natural,
-    slangAware: generatedLine.slangAware,
-    chosen: generatedLine.chosen,
-    transliteration: normalizeGeneratedTransliteration(representativeSourceLine.original, generatedLine.transliteration ?? null),
-    note: generatedLine.note ?? null,
-    ambiguity: generatedLine.ambiguity ?? null,
-    confidence: generatedLine.confidence,
-    selectorReason: generatedLine.selectorReason ?? null,
-    selectionWinner: primaryLine.selectionWinner ?? null,
+    literal: generatorALineResponse.literal,
+    natural: generatorALineResponse.natural,
+    slangAware: generatorALineResponse.slangAware,
+    chosen: generatorALineResponse.chosen,
+    transliteration: normalizeGeneratedTransliteration(
+      representativeSourceLine.original,
+      generatorALineResponse.transliteration ?? null
+    ),
+    note: generatorALineResponse.note ?? null,
+    ambiguity: generatorALineResponse.ambiguity ?? null,
+    confidence: generatorALineResponse.confidence,
+    selectorReason: generatorALineResponse.selectorReason ?? null,
+    selectionWinner: "generator_a",
     startMs: representativeSourceLine.startMs,
     endMs: representativeSourceLine.endMs
   };
+  const generatorBLine: AiDraftLine = {
+    ...generatorALine,
+    literal: generatorBLineResponse.literal,
+    natural: generatorBLineResponse.natural,
+    slangAware: generatorBLineResponse.slangAware,
+    chosen: generatorBLineResponse.chosen,
+    transliteration: normalizeGeneratedTransliteration(
+      representativeSourceLine.original,
+      generatorBLineResponse.transliteration ?? null
+    ),
+    note: generatorBLineResponse.note ?? null,
+    ambiguity: generatorBLineResponse.ambiguity ?? null,
+    confidence: generatorBLineResponse.confidence,
+    selectorReason: generatorBLineResponse.selectorReason ?? null,
+    selectionWinner: "generator_b"
+  };
 
-  // ── Step 3: Selection (if needed) ────────────────────────────────────────
-  if (shouldRunSelectionForLine(newLine)) {
-    const selectionResponse = await requestProviderTranslationSelection({
+  const comparisonResponse = await requestGeminiDraftComparison(
+    {
       title: draft.title,
       artist: draft.artist,
       album: draft.album,
       sourceLanguage: draft.sourceLanguage,
       targetLanguage: draft.targetLanguage,
-      includeTransliteration,
-      includeNotes,
       glossaryEntries,
       songContext: draft.songContext,
       artistMemory,
       lines: [
         {
-          index: newLine.order + 1,
-          original: newLine.original,
-          normalizedOriginal: normalizedLine?.canonical ?? newLine.normalizedOriginal ?? null,
-          meaning: newLine.meaning,
-          impliedMeaning: newLine.impliedMeaning,
-          register: newLine.register,
-          literal: newLine.literal,
-          natural: newLine.natural,
-          slangAware: newLine.slangAware,
-          currentChosen: newLine.chosen,
-          note: newLine.note,
-          ambiguity: newLine.ambiguity,
-          confidence: newLine.confidence,
-          contextBefore: buildRefinementContext(sortedDraftLines, newLine.order, -CONTEXT_WINDOW_LINES, -1),
-          contextAfter: buildRefinementContext(sortedDraftLines, newLine.order, 1, CONTEXT_WINDOW_LINES),
-          verseState: verseStateLookup.get(newLine.order) ?? null,
-          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
-            newLine.original,
-            newLine.literal,
-            newLine.natural,
-            newLine.slangAware,
-            newLine.chosen
-          ])
+          index: representativeSourceLine.order + 1,
+          original: representativeSourceLine.original,
+          normalizedOriginal: normalizedLine?.canonical ?? null,
+          meaning: meaningLine?.meaning ?? primaryLine.meaning,
+          impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
+          register: meaningLine?.register ?? primaryLine.register,
+          generatorA: {
+            literal: generatorALine.literal,
+            natural: generatorALine.natural,
+            slangAware: generatorALine.slangAware,
+            chosen: generatorALine.chosen,
+            transliteration: generatorALine.transliteration,
+            note: generatorALine.note,
+            ambiguity: generatorALine.ambiguity,
+            confidence: generatorALine.confidence
+          },
+          generatorB: {
+            literal: generatorBLine.literal,
+            natural: generatorBLine.natural,
+            slangAware: generatorBLine.slangAware,
+            chosen: generatorBLine.chosen,
+            transliteration: generatorBLine.transliteration,
+            note: generatorBLine.note,
+            ambiguity: generatorBLine.ambiguity,
+            confidence: generatorBLine.confidence
+          },
+          contextBefore: buildRefinementContext(sortedDraftLines, representativeSourceLine.order, -CONTEXT_WINDOW_LINES, -1),
+          contextAfter: buildRefinementContext(sortedDraftLines, representativeSourceLine.order, 1, CONTEXT_WINDOW_LINES),
+          verseState,
+          matchingCorrections,
+          previousTranslation: {
+            chosen: primaryLine.chosen,
+            confidence: primaryLine.confidence,
+            manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
+          }
         }
       ]
-    }).catch(() => null);
+    },
+    usageSinkG
+  );
 
-    const selLine = selectionResponse?.lines[0];
+  const evaluationLine = comparisonResponse.lines[0];
+  const baseLine =
+    evaluationLine?.winner === "generator_b"
+      ? generatorBLine
+      : chooseDraftBaseLine(evaluationLine?.chosen ?? generatorALine.chosen, generatorALine, generatorBLine);
 
-    if (selLine) {
-      newLine = {
-        ...newLine,
-        chosen: selLine.chosen ?? newLine.chosen,
-        ambiguity: selLine.ambiguity ?? newLine.ambiguity,
-        note: selLine.note ?? newLine.note,
-        confidence: selLine.confidence ?? newLine.confidence,
-        selectorReason: selLine.selectorReason ?? newLine.selectorReason,
-        selectionWinner: newLine.selectionWinner ?? null
-      };
-    }
-  }
+  const selectedLine: AiDraftLine = {
+    ...baseLine,
+    chosen: evaluationLine?.chosen ?? baseLine.chosen,
+    note: evaluationLine?.note ?? baseLine.note,
+    ambiguity: evaluationLine?.ambiguity ?? baseLine.ambiguity,
+    confidence: evaluationLine?.confidence ?? baseLine.confidence,
+    selectorReason: evaluationLine?.selectorReason ?? baseLine.selectorReason,
+    selectionWinner: evaluationLine?.winner ?? baseLine.selectionWinner ?? null,
+    startMs: representativeSourceLine.startMs,
+    endMs: representativeSourceLine.endMs
+  };
+
+  const newLine: AiDraftLine = chooseGuardrailedEvaluatedLine({
+    sourceLine: representativeSourceLine,
+    selectedLine,
+    generatorALine,
+    generatorBLine,
+    evaluationLine,
+    verseState,
+    seenChoices: new Map()
+  });
 
   // Apply the result to all matching orders (the target line and its repeated occurrences)
   const updatedLines: AiDraftLine[] = [];
@@ -2964,6 +2414,43 @@ export async function regenerateDraftLines(
 }
 
 // ── Generation log helper ─────────────────────────────────────────────────
+
+function queueUsageTracking(run: Parameters<typeof recordAiUsageRun>[0]) {
+  void recordAiUsageRun(run).catch(() => {
+    // Non-fatal analytics side effect.
+  });
+}
+
+function queuePostGenerationTasks(
+  options: Pick<GenerateAiTranslationOptions, "spotifyTrackId" | "title" | "artist">,
+  draftFile: AiTranslationDraftFile,
+  costSummary: AiCostSummary | undefined,
+  startMs: number,
+  resultStatus: string
+) {
+  void recordGenerationLog(options.spotifyTrackId, draftFile, costSummary, startMs, resultStatus);
+  void (async () => {
+    const existingGlossary = await getAiGlossaryEntries({
+      language: draftFile.sourceLanguage,
+      artist: options.artist
+    }).catch(() => []);
+
+    await extractAndStoreGlossarySuggestions({
+      spotifyTrackId: options.spotifyTrackId,
+      title: options.title,
+      artist: options.artist,
+      sourceLanguage: draftFile.sourceLanguage,
+      lines: draftFile.lines.map((line) => ({
+        original: line.original,
+        chosen: line.chosen,
+        meaning: line.meaning
+      })),
+      existingGlossary
+    });
+  })().catch(() => {
+    // Non-fatal glossary side effect.
+  });
+}
 
 async function recordGenerationLog(
   spotifyTrackId: string,

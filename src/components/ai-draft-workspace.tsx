@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FloatingToast } from "@/components/floating-toast";
-import type { AiCostSummary, AiProviderStatus, AiTranslationDraftFile, AiTranslationDraftInspection } from "@/features/ai/types";
+import type { AiCostSummary, AiTranslationDraftFile } from "@/features/ai/types";
 import type { TranslationFileKind } from "@/features/translations/types";
 
 type AiDraftWorkspaceProps = {
@@ -20,10 +20,7 @@ type AiDraftWorkspaceProps = {
   lyricsLanguage: string | null;
   translationKind: TranslationFileKind;
   aiConfigured: boolean;
-  aiModel: string;
-  aiProviderStatus: AiProviderStatus;
   initialDraft: AiTranslationDraftFile | null;
-  initialInspection: AiTranslationDraftInspection;
   initialMessage: string | null;
   initialStatus: string;
 };
@@ -34,10 +31,6 @@ type EditableDraftLine = {
   chosen: string;
   confidence: "low" | "medium" | "high";
 };
-
-function getAiProviderLabel(provider: AiProviderStatus["provider"]) {
-  return provider === "openai" ? "OpenAI" : "Ollama";
-}
 
 function toEditableDraftLine(line: AiTranslationDraftFile["lines"][number]): EditableDraftLine {
   return { order: line.order, original: line.original, chosen: line.chosen, confidence: line.confidence };
@@ -53,10 +46,7 @@ export function AiDraftWorkspace({
   lyricsLanguage,
   translationKind,
   aiConfigured,
-  aiModel,
-  aiProviderStatus,
   initialDraft,
-  initialInspection,
   initialMessage,
   initialStatus
 }: AiDraftWorkspaceProps) {
@@ -386,7 +376,7 @@ export function AiDraftWorkspace({
           <div className="mt-5 rounded-[14px] border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] p-4 text-[13px] leading-[1.65] text-[#ffc87a]">
             {aiConfigured
               ? "Lafz needs readable original lyrics before it can generate a draft."
-              : "Lafz could not initialize the AI provider yet."}
+              : "Lafz could not initialize the 3-model translation pipeline yet."}
           </div>
         )}
       </section>

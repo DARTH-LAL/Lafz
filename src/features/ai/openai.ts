@@ -1,10 +1,9 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
-import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
-  AiProviderStatus,
+  PreviousTranslationRef,
   AiSongContext,
   AiVerseState,
   GeneratedTranslationLineDraft,
@@ -64,39 +63,6 @@ type RequestAiMeaningAnalysisOptions = BasePromptOptions & {
   }>;
 };
 
-type RequestAiTranslationRefinementOptions = BasePromptOptions & {
-  sourceLanguage: string;
-  targetLanguage: string;
-  includeTransliteration: boolean;
-  includeNotes: boolean;
-  songContext: AiSongContext | null;
-  lines: Array<{
-    index: number;
-    original: string;
-    normalizedOriginal?: string | null;
-    meaning: string;
-    impliedMeaning: string | null;
-    register: string | null;
-    literal: string;
-    natural: string;
-    slangAware: string;
-    chosen: string;
-    ambiguity: string | null;
-    confidence: "low" | "medium" | "high";
-    contextBefore?: Array<{
-      original: string;
-      chosen: string;
-    }>;
-    contextAfter?: Array<{
-      original: string;
-      chosen: string;
-    }>;
-    verseState?: AiVerseState | null;
-    matchingCorrections?: AiCorrectionHint[];
-    previousTranslation?: PreviousTranslationRef | null;
-  }>;
-};
-
 type RequestAiSongContextOptions = BasePromptOptions & {
   sourceLanguage: string | null;
   lines: Array<{
@@ -123,40 +89,6 @@ type RequestAiArtistProfileOptions = {
       confidence: "low" | "medium" | "high";
       selectorReason: string | null;
     }>;
-  }>;
-};
-
-type RequestAiTranslationSelectionOptions = BasePromptOptions & {
-  sourceLanguage: string;
-  targetLanguage: string;
-  includeTransliteration: boolean;
-  includeNotes: boolean;
-  songContext: AiSongContext | null;
-  lines: Array<{
-    index: number;
-    original: string;
-    normalizedOriginal?: string | null;
-    meaning: string;
-    impliedMeaning: string | null;
-    register: string | null;
-    literal: string;
-    natural: string;
-    slangAware: string;
-    currentChosen: string;
-    note: string | null;
-    ambiguity: string | null;
-    confidence: "low" | "medium" | "high";
-    contextBefore?: Array<{
-      original: string;
-      chosen: string;
-    }>;
-    contextAfter?: Array<{
-      original: string;
-      chosen: string;
-    }>;
-    verseState?: AiVerseState | null;
-    matchingCorrections?: AiCorrectionHint[];
-    previousTranslation?: PreviousTranslationRef | null;
   }>;
 };
 
@@ -394,43 +326,6 @@ export function buildArtistProfileSchema() {
   };
 }
 
-export function buildSelectionSchema(lineCount: number) {
-  return {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      detectedSourceLanguage: { type: "string" },
-      lines: {
-        type: "array",
-        minItems: lineCount,
-        maxItems: lineCount,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            chosen: { type: "string" },
-            confidence: {
-              type: "string",
-              enum: ["low", "medium", "high"]
-            },
-            ambiguity: {
-              anyOf: [{ type: "string" }, { type: "null" }]
-            },
-            note: {
-              anyOf: [{ type: "string" }, { type: "null" }]
-            },
-            selectorReason: {
-              anyOf: [{ type: "string" }, { type: "null" }]
-            }
-          },
-          required: ["chosen", "confidence", "ambiguity", "note", "selectorReason"]
-        }
-      }
-    },
-    required: ["detectedSourceLanguage", "lines"]
-  };
-}
-
 function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: string | null) {
   const hints: string[] = [];
 
@@ -505,32 +400,6 @@ export function buildMeaningSystemPrompt(options: RequestAiMeaningAnalysisOption
   ].join(" ");
 }
 
-export function buildRefinementSystemPrompt(options: RequestAiTranslationRefinementOptions) {
-  return [
-    "You are reviewing a first-pass lyric translation draft for Lafz, a personal local-first translation tool.",
-    `The source lyrics are in ${options.sourceLanguage}. Refine them into ${options.targetLanguage}.`,
-    "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script.",
-    "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
-    "Review the current literal, natural, slangAware, and chosen translations for each line and improve them only when needed.",
-    "Your main goals are semantic accuracy, slang correctness, and consistency across repeated phrases or recurring terms.",
-    "If a repeated original line appears multiple times, keep its translation candidates consistent unless the local context clearly changes the meaning.",
-    "If verseState is provided, preserve that local block's stance, target, and emotional logic while refining.",
-    "If manual correction examples are provided for a line, preserve their corrected meaning and style for similar phrasing unless the current context clearly changes it.",
-    "If a line includes previousTranslation, use it as a reference — maintain consistency with previous high-confidence choices, give extra attention to improving low-confidence ones, and preserve manually-reviewed choices unless there is a clear error.",
-    "Do not invent imagery, emotional emphasis, or cultural detail that is not present in the original lyric.",
-    "If the draft is uncertain, keep chosen conservative, lower the confidence, and explain ambiguity instead of guessing.",
-    options.includeTransliteration
-      ? "Keep transliteration only if it adds value beyond the original line. Otherwise return null."
-      : "Return null for transliteration on every line.",
-    options.includeNotes
-      ? "Keep note short and use it only for slang, context, or double meaning that really needs explanation."
-      : "Return null for note on every line.",
-    "SelectorReason should briefly explain why the chosen line is preferable among the candidates.",
-    buildSharedContextHints(options, options.sourceLanguage),
-    "Respond only with JSON matching the schema."
-  ].join(" ");
-}
-
 export function buildSongContextSystemPrompt(options: RequestAiSongContextOptions) {
   return [
     "You are summarizing song context for Lafz before translation.",
@@ -556,22 +425,6 @@ export function buildArtistProfileSystemPrompt(options: RequestAiArtistProfileOp
     "toneNotes, voiceNotes, stanceNotes, and perspectiveNotes should help preserve the artist's point of view and social posture in translation.",
     "personaSummary should be a concise paragraph, not generic fluff.",
     "If the evidence is thin, stay conservative and leave weak categories empty rather than guessing.",
-    "Respond only with JSON matching the schema."
-  ].join(" ");
-}
-
-export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectionOptions) {
-  return [
-    "You are the final selector for Lafz lyric translations.",
-    `The source lyrics are in ${options.sourceLanguage}. Select the best final English line for each entry.`,
-    "Choose among the candidate translations by prioritizing semantic accuracy first, then slang correctness, then lyrical naturalness.",
-    "Use song context, artist memory, glossary hints, and nearby chosen lines to keep the whole song consistent.",
-    "If verseState is provided, use it to preserve local block intent and to avoid selecting a line that sounds good but belongs to a different moment in the song.",
-    "If manual correction examples are provided for a line, treat them as strong guidance and stay aligned with their corrected meaning unless the current context clearly changes it.",
-    "If a line includes previousTranslation, factor it into your selection — prefer consistency with previous high-confidence choices, prioritise improving low-confidence ones, and treat manually-reviewed choices as near-final unless there is a clear error.",
-    "Do not rewrite the original meaning into something flashier than the lyric actually says.",
-    "If the candidates are all weak, choose the most conservative one, reduce confidence, and explain ambiguity or note instead of guessing.",
-    buildSharedContextHints(options, options.sourceLanguage),
     "Respond only with JSON matching the schema."
   ].join(" ");
 }
@@ -661,53 +514,6 @@ export function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions)
   );
 }
 
-export function buildRefinementUserPrompt(options: RequestAiTranslationRefinementOptions) {
-  return JSON.stringify(
-    {
-      track: {
-        title: options.title,
-        artist: options.artist,
-        album: options.album
-      },
-      sourceLanguage: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
-      songContext: options.songContext,
-      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
-      outputRules: {
-        exactLineCount: options.lines.length,
-        includeTransliteration: options.includeTransliteration,
-        includeNotes: options.includeNotes,
-        preserveOrder: true,
-        focus: ["semantic_accuracy", "slang_consistency", "candidate_quality"]
-      },
-      glossary: options.glossaryEntries,
-      lines: options.lines.map((line) => ({
-        index: line.index,
-        original: line.original,
-        normalizedOriginal: line.normalizedOriginal ?? null,
-        meaning: line.meaning,
-        impliedMeaning: line.impliedMeaning,
-        register: line.register,
-        currentDraft: {
-          literal: line.literal,
-          natural: line.natural,
-          slangAware: line.slangAware,
-          chosen: line.chosen,
-          ambiguity: line.ambiguity,
-          confidence: line.confidence
-        },
-        contextBefore: line.contextBefore ?? [],
-        contextAfter: line.contextAfter ?? [],
-        verseState: line.verseState ?? null,
-        matchingCorrections: line.matchingCorrections ?? [],
-        previousTranslation: line.previousTranslation ?? null
-      }))
-    },
-    null,
-    2
-  );
-}
-
 export function buildSongContextUserPrompt(options: RequestAiSongContextOptions) {
   return JSON.stringify(
     {
@@ -724,55 +530,6 @@ export function buildSongContextUserPrompt(options: RequestAiSongContextOptions)
         inferNarrativeMode: true
       },
       lines: options.lines
-    },
-    null,
-    2
-  );
-}
-
-export function buildSelectionUserPrompt(options: RequestAiTranslationSelectionOptions) {
-  return JSON.stringify(
-    {
-      track: {
-        title: options.title,
-        artist: options.artist,
-        album: options.album
-      },
-      sourceLanguage: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
-      songContext: options.songContext,
-      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
-      outputRules: {
-        exactLineCount: options.lines.length,
-        includeTransliteration: options.includeTransliteration,
-        includeNotes: options.includeNotes,
-        focus: ["accuracy", "consistency", "conservative_choice"]
-      },
-      glossary: options.glossaryEntries,
-      lines: options.lines.map((line) => ({
-        index: line.index,
-        original: line.original,
-        normalizedOriginal: line.normalizedOriginal ?? null,
-        meaning: line.meaning,
-        impliedMeaning: line.impliedMeaning,
-        register: line.register,
-        candidates: {
-          literal: line.literal,
-          natural: line.natural,
-          slangAware: line.slangAware,
-          currentChosen: line.currentChosen
-        },
-        currentDraftMeta: {
-          note: line.note,
-          ambiguity: line.ambiguity,
-          confidence: line.confidence
-        },
-        contextBefore: line.contextBefore ?? [],
-        contextAfter: line.contextAfter ?? [],
-        verseState: line.verseState ?? null,
-        matchingCorrections: line.matchingCorrections ?? [],
-        previousTranslation: line.previousTranslation ?? null
-      }))
     },
     null,
     2
@@ -995,112 +752,6 @@ export function parseSongContextResponse(parsed: unknown, providerLabel: string)
   };
 }
 
-export function parseSelectionResponse(
-  parsed: unknown,
-  expectedLineCount: number,
-  providerLabel: string
-): {
-  sourceLanguage: string;
-  lines: Array<{
-    chosen: string;
-    confidence: "low" | "medium" | "high";
-    ambiguity: string | null;
-    note: string | null;
-    selectorReason: string | null;
-  }>;
-} {
-  const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
-
-  if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.lines) || parsed.lines.length !== expectedLineCount) {
-    throw new Error(`${providerLabel} returned an invalid selection shape or changed the lyric line count.`);
-  }
-
-  return {
-    sourceLanguage: detectedSourceLanguage,
-    lines: parsed.lines.map((line, index) => {
-      if (!isRecord(line)) {
-        throw new Error(`${providerLabel} returned a non-object selection line at index ${index}.`);
-      }
-
-      const chosen = asString(line.chosen);
-      const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
-
-      if (!chosen || !confidence) {
-        throw new Error(`${providerLabel} returned an invalid selection line at index ${index}.`);
-      }
-
-      return {
-        chosen,
-        confidence,
-        ambiguity: normalizeNullableString(line.ambiguity),
-        note: normalizeNullableString(line.note),
-        selectorReason: normalizeNullableString(line.selectorReason)
-      };
-    })
-  };
-}
-
-export async function inspectOpenAiStatus(): Promise<AiProviderStatus> {
-  const baseUrl = getOpenAiBaseUrl();
-  const model = await resolveOpenAiModel();
-
-  if (!isOpenAiConfigured()) {
-    return {
-      provider: "openai",
-      baseUrl,
-      model,
-      available: false,
-      modelAvailable: false,
-      installedModels: [],
-      errorMessage: "OPENAI_API_KEY is not set in .env.local."
-    };
-  }
-
-  try {
-    const response = await fetch(`${baseUrl}/models/${encodeURIComponent(model)}`, {
-      headers: getOpenAiAuthHeaders(),
-      cache: "no-store",
-      signal: AbortSignal.timeout(4_000)
-    });
-    const payload = (await response.json().catch(() => null)) as unknown;
-
-    if (response.ok) {
-      return {
-        provider: "openai",
-        baseUrl,
-        model,
-        available: true,
-        modelAvailable: true,
-        installedModels: [],
-        errorMessage: null
-      };
-    }
-
-    return {
-      provider: "openai",
-      baseUrl,
-      model,
-      available: response.status !== 401,
-      modelAvailable: false,
-      installedModels: [],
-      errorMessage: extractOpenAiErrorMessage(payload, `OpenAI model lookup failed with status ${response.status}.`)
-    };
-  } catch (error) {
-    return {
-      provider: "openai",
-      baseUrl,
-      model,
-      available: false,
-      modelAvailable: false,
-      installedModels: [],
-      errorMessage:
-        error instanceof Error
-          ? `Could not reach OpenAI at ${baseUrl}: ${error.message}`
-          : `Could not reach OpenAI at ${baseUrl}.`
-    };
-  }
-}
-
 export async function requestOpenAiSongContext(
   options: RequestAiSongContextOptions
 ): Promise<{ model: string; sourceLanguage: string; songContext: AiSongContext }> {
@@ -1228,65 +879,5 @@ export async function requestOpenAiTranslationDraft(
     sourceLanguage: normalized.sourceLanguage,
     lines: normalized.lines,
     usage: localSink
-  };
-}
-
-export async function requestOpenAiTranslationRefinement(
-  options: RequestAiTranslationRefinementOptions
-): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
-  if (options.lines.length === 0) {
-    throw new Error("No lyric lines were provided to the AI refinement generator.");
-  }
-
-  const model = await resolveOpenAiModel();
-  const parsed = await callOpenAiJson<unknown>({
-    model,
-    schemaName: "lafz_translation_refinement",
-    schema: buildDraftSchema(options.lines.length),
-    systemPrompt: buildRefinementSystemPrompt(options),
-    userPrompt: buildRefinementUserPrompt(options),
-    errorLabel: "OpenAI refinement request"
-  });
-  const normalized = parseGeneratedLines(parsed, options.lines.length, "OpenAI");
-
-  return {
-    model,
-    sourceLanguage: normalized.sourceLanguage,
-    lines: normalized.lines
-  };
-}
-
-export async function requestOpenAiTranslationSelection(
-  options: RequestAiTranslationSelectionOptions
-): Promise<{
-  model: string;
-  sourceLanguage: string;
-  lines: Array<{
-    chosen: string;
-    confidence: "low" | "medium" | "high";
-    ambiguity: string | null;
-    note: string | null;
-    selectorReason: string | null;
-  }>;
-}> {
-  if (options.lines.length === 0) {
-    throw new Error("No lyric lines were provided to the AI selector.");
-  }
-
-  const model = await resolveOpenAiModel();
-  const parsed = await callOpenAiJson<unknown>({
-    model,
-    schemaName: "lafz_translation_selection",
-    schema: buildSelectionSchema(options.lines.length),
-    systemPrompt: buildSelectionSystemPrompt(options),
-    userPrompt: buildSelectionUserPrompt(options),
-    errorLabel: "OpenAI selection request"
-  });
-  const normalized = parseSelectionResponse(parsed, options.lines.length, "OpenAI");
-
-  return {
-    model,
-    sourceLanguage: normalized.sourceLanguage,
-    lines: normalized.lines
   };
 }

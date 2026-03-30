@@ -58,11 +58,11 @@ function getStatusMessage(status: string) {
   }
 
   if (status === "missing_ai_config") {
-    return "Configure the active AI provider before generating a translation draft.";
+    return "Configure the full 3-model translation pipeline before generating a translation draft.";
   }
 
   if (status === "provider_unavailable") {
-    return "Lafz could not reach the active AI provider right now.";
+    return "Lafz could not reach one of the translation pipeline models right now.";
   }
 
   if (status === "model_missing") {
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown AI error.";
 
-    if (/could not reach ollama|could not reach openai|econnrefused|fetch failed|connect|timeout|timed out|aborted/i.test(message)) {
+    if (/could not reach openai|could not reach anthropic|could not reach gemini|econnrefused|fetch failed|connect|timeout|timed out|aborted/i.test(message)) {
       if (wantsJsonResponse(request)) {
         return NextResponse.json(
           {

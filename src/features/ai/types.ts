@@ -3,6 +3,11 @@ import type { AiGlossaryEntry } from "@/features/ai/glossary";
 export type AiTranslationDraftMode = "synced" | "plain";
 export type AiTranslationConfidence = "low" | "medium" | "high";
 export type AiSelectedSource = "generator_a" | "generator_b" | "blended";
+export type PreviousTranslationRef = {
+  chosen: string;
+  confidence: AiTranslationConfidence;
+  manuallyReviewed: boolean;
+};
 
 export type AiVerseState = {
   groupIndex: number;
@@ -103,23 +108,13 @@ export type AiTranslationDraftFile = {
   mode: AiTranslationDraftMode;
   sourceLyricsKind: AiTranslationDraftMode;
   generator: {
-    provider: "ollama" | "openai" | "multi";
+    provider: "multi";
     model: string;
   };
   songContext: AiSongContext | null;
   verseStates?: AiVerseState[];
   artistMemory: AiArtistMemory | null;
   lines: AiDraftLine[];
-};
-
-export type AiProviderStatus = {
-  provider: "ollama" | "openai";
-  baseUrl: string;
-  model: string;
-  available: boolean;
-  modelAvailable: boolean;
-  installedModels: string[];
-  errorMessage: string | null;
 };
 
 export type AiTranslationDraftInspection = {

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { LibraryTrackDetail } from "@/components/library-track-detail";
-import { getActiveAiModelAsync, inspectAiProviderStatus, isAiConfigured } from "@/features/ai/provider";
-import { getAiTranslationDraftByTrackId, inspectAiTranslationDraftFile } from "@/features/ai/repository";
+import { isAiConfigured } from "@/features/ai/provider";
+import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { getLibraryTrackRecord } from "@/features/library/queue";
 import { inspectLyricsCache } from "@/features/lyrics/repository";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
@@ -48,7 +48,7 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "missing_ai_config") {
-    return "Configure the active AI provider before generating AI translation drafts.";
+    return "Configure the full 3-model translation pipeline before generating AI translation drafts.";
   }
 
   if (status === "missing_lyrics") {
@@ -56,7 +56,7 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "provider_unavailable") {
-    return detail ?? "Lafz could not reach the active AI provider right now. Check your local or remote AI settings and try again.";
+    return detail ?? "Lafz could not reach one of the translation pipeline models right now. Check your model configuration and try again.";
   }
 
   if (status === "model_missing") {
@@ -83,14 +83,11 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
   const aiStatus = getFirstParamValue(resolvedSearchParams.ai);
   const aiDetail = getFirstParamValue(resolvedSearchParams.aiDetail);
 
-  const [{ record }, translationInspection, lyricsInspection, aiDraftInspection, aiProviderStatus, aiDraft, aiModel] = await Promise.all([
+  const [{ record }, translationInspection, lyricsInspection, aiDraft] = await Promise.all([
     getLibraryTrackRecord(spotifyTrackId),
     inspectTranslationFile(spotifyTrackId),
     inspectLyricsCache(spotifyTrackId),
-    inspectAiTranslationDraftFile(spotifyTrackId),
-    inspectAiProviderStatus(),
-    getAiTranslationDraftByTrackId(spotifyTrackId),
-    getActiveAiModelAsync()
+    getAiTranslationDraftByTrackId(spotifyTrackId)
   ]);
 
   return (
@@ -99,10 +96,7 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       translationInspection={translationInspection}
       lyricsInspection={lyricsInspection}
       aiDraft={aiDraft}
-      aiDraftInspection={aiDraftInspection}
       aiConfigured={isAiConfigured()}
-      aiModel={aiModel}
-      aiProviderStatus={aiProviderStatus}
       lyricsStatus={lyricsStatus}
       lyricsMessage={getLyricsMessage(lyricsStatus)}
       aiStatus={aiStatus}
