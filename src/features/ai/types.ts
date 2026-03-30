@@ -2,6 +2,19 @@ import type { AiGlossaryEntry } from "@/features/ai/glossary";
 
 export type AiTranslationDraftMode = "synced" | "plain";
 export type AiTranslationConfidence = "low" | "medium" | "high";
+export type AiSelectedSource = "generator_a" | "generator_b" | "blended";
+
+export type AiVerseState = {
+  groupIndex: number;
+  startOrder: number;
+  endOrder: number;
+  summary: string;
+  stance: string | null;
+  target: string | null;
+  dominantIntents: string[];
+  tension: string | null;
+  caution: string | null;
+};
 
 export type AiSongContext = {
   summary: string;
@@ -74,6 +87,7 @@ export type AiDraftLine = {
   ambiguity: string | null;
   confidence: AiTranslationConfidence;
   selectorReason: string | null;
+  selectionWinner?: AiSelectedSource | null;
   startMs: number | null;
   endMs: number | null;
 };
@@ -94,6 +108,7 @@ export type AiTranslationDraftFile = {
     model: string;
   };
   songContext: AiSongContext | null;
+  verseStates?: AiVerseState[];
   artistMemory: AiArtistMemory | null;
   lines: AiDraftLine[];
 };

@@ -1,13 +1,11 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import { readArtistProfileFile, writeArtistProfileFile, hasArtistProfileContent } from "@/features/ai/artist-profile-repository";
 import { requestOpenAiArtistProfile, isOpenAiConfigured } from "@/features/ai/openai";
 import { listAiTranslationDraftsByArtistKey } from "@/features/ai/repository";
 import { normalizeArtistKey, readArtistGlossaryFile } from "@/features/ai/glossary-repository";
+import { readCloudDataJson } from "@/features/cloud/data-store";
 import type { AiCorrectionExample, AiDraftLine } from "@/features/ai/types";
 
-const artistMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
+const artistMemoryRoot = "data/ai/memory/artists";
 const MAX_EVIDENCE_SONGS = 6;
 const MAX_EVIDENCE_LINES_PER_SONG = 8;
 
@@ -48,14 +46,9 @@ function parseCorrectionExamples(value: unknown) {
 }
 
 async function readArtistCorrectionExamples(artistKey: string) {
-  const filePath = path.join(artistMemoryRoot, `${artistKey}.json`);
-
-  try {
-    const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
-    return isRecord(parsed) ? parseCorrectionExamples(parsed.correctionExamples) : [];
-  } catch {
-    return [] satisfies AiCorrectionExample[];
-  }
+  const filePath = `${artistMemoryRoot}/${artistKey}.json`;
+  const parsed = await readCloudDataJson<unknown>(filePath);
+  return isRecord(parsed) ? parseCorrectionExamples(parsed.correctionExamples) : ([] satisfies AiCorrectionExample[]);
 }
 
 function scoreDraftLine(line: AiDraftLine) {

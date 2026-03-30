@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { LibraryTrackDetail } from "@/components/library-track-detail";
-import { getActiveAiModel, inspectAiProviderStatus, isAiConfigured } from "@/features/ai/provider";
+import { getActiveAiModelAsync, inspectAiProviderStatus, isAiConfigured } from "@/features/ai/provider";
 import { getAiTranslationDraftByTrackId, inspectAiTranslationDraftFile } from "@/features/ai/repository";
 import { getLibraryTrackRecord } from "@/features/library/queue";
 import { inspectLyricsCache } from "@/features/lyrics/repository";
@@ -83,13 +83,14 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
   const aiStatus = getFirstParamValue(resolvedSearchParams.ai);
   const aiDetail = getFirstParamValue(resolvedSearchParams.aiDetail);
 
-  const [{ record }, translationInspection, lyricsInspection, aiDraftInspection, aiProviderStatus, aiDraft] = await Promise.all([
+  const [{ record }, translationInspection, lyricsInspection, aiDraftInspection, aiProviderStatus, aiDraft, aiModel] = await Promise.all([
     getLibraryTrackRecord(spotifyTrackId),
     inspectTranslationFile(spotifyTrackId),
     inspectLyricsCache(spotifyTrackId),
     inspectAiTranslationDraftFile(spotifyTrackId),
     inspectAiProviderStatus(),
-    getAiTranslationDraftByTrackId(spotifyTrackId)
+    getAiTranslationDraftByTrackId(spotifyTrackId),
+    getActiveAiModelAsync()
   ]);
 
   return (
@@ -100,7 +101,7 @@ export default async function LibraryTrackPage({ params, searchParams }: Library
       aiDraft={aiDraft}
       aiDraftInspection={aiDraftInspection}
       aiConfigured={isAiConfigured()}
-      aiModel={getActiveAiModel()}
+      aiModel={aiModel}
       aiProviderStatus={aiProviderStatus}
       lyricsStatus={lyricsStatus}
       lyricsMessage={getLyricsMessage(lyricsStatus)}

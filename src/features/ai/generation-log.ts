@@ -1,19 +1,13 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { getCloudDataMetadata, isCloudStorageConfigurationError, readCloudDataJson, writeCloudDataJson } from "@/features/cloud/data-store";
 import type { AiCostSummary } from "@/features/ai/types";
 
-const GENERATION_LOG_ROOT = path.join(process.cwd(), "data", "translations", "generation-log");
+const GENERATION_LOG_ROOT = "data/translations/generation-log";
 const MAX_LOG_ENTRIES = 50;
-
-// ── Types ─────────────────────────────────────────────────────────────────
 
 export type GenerationLogEntry = {
   id: string;
   timestampMs: number;
-  /** ISO string when generation started */
   startedAt: string;
-  /** Duration of the full generation pipeline in ms */
   durationMs: number;
   model: string;
   provider: string;
@@ -23,12 +17,9 @@ export type GenerationLogEntry = {
   highCount: number;
   sourceLanguage: string | null;
   targetLanguage: string;
-  /** The terminal result status of the generation */
   resultStatus: string;
   costSummary: AiCostSummary | null;
-  /** Glossary terms from the artist glossary that matched lyrics in this run */
   glossaryTermsMatched?: string[];
-  /** Whether the artist profile was active for this run */
   artistProfileActive?: boolean;
 };
 
@@ -37,57 +28,54 @@ type GenerationLogFile = {
   entries: GenerationLogEntry[];
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-
-function logFilePath(spotifyTrackId: string) {
-  return path.join(GENERATION_LOG_ROOT, `${spotifyTrackId}.json`);
+function logStoragePath(spotifyTrackId: string) {
+  return `${GENERATION_LOG_ROOT}/${spotifyTrackId}.json`;
 }
 
 async function readLogFile(spotifyTrackId: string): Promise<GenerationLogFile> {
-  const filePath = logFilePath(spotifyTrackId);
-  try {
-    const raw = await readFile(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<GenerationLogFile>;
+  const cloudLog = await readCloudDataJson<GenerationLogFile>(logStoragePath(spotifyTrackId));
+  if (cloudLog && Array.isArray(cloudLog.entries)) {
     return {
       spotifyTrackId,
-      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+      entries: cloudLog.entries
     };
-  } catch {
-    return { spotifyTrackId, entries: [] };
   }
+
+  return { spotifyTrackId, entries: [] };
 }
 
-// ── Public API ────────────────────────────────────────────────────────────
-
-/**
- * Append a new generation entry for a track.
- * Non-fatal — if the write fails, generation is not affected.
- */
 export async function appendGenerationLogEntry(
   spotifyTrackId: string,
   entry: GenerationLogEntry
 ): Promise<void> {
   try {
-    await mkdir(GENERATION_LOG_ROOT, { recursive: true });
     const log = await readLogFile(spotifyTrackId);
-    // Prepend newest first, prune to max
     log.entries = [entry, ...log.entries].slice(0, MAX_LOG_ENTRIES);
-    await writeFile(
-      logFilePath(spotifyTrackId),
-      `${JSON.stringify(log, null, 2)}\n`,
-      "utf-8"
-    );
-  } catch {
+    await writeCloudDataJson(logStoragePath(spotifyTrackId), log);
+  } catch (error) {
+    if (isCloudStorageConfigurationError(error)) {
+      throw error;
+    }
     // Non-fatal
   }
 }
 
-/**
- * Read all generation log entries for a track, newest first.
- */
 export async function readGenerationLog(
   spotifyTrackId: string
 ): Promise<GenerationLogEntry[]> {
   const log = await readLogFile(spotifyTrackId);
   return log.entries.sort((a, b) => b.timestampMs - a.timestampMs);
+}
+
+export async function inspectGenerationLog(spotifyTrackId: string) {
+  const [log, metadata] = await Promise.all([
+    readLogFile(spotifyTrackId),
+    getCloudDataMetadata(logStoragePath(spotifyTrackId))
+  ]);
+
+  return {
+    exists: log.entries.length > 0,
+    lastModifiedAt: metadata?.lastModifiedAt ?? null,
+    entryCount: log.entries.length
+  };
 }

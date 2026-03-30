@@ -1,20 +1,33 @@
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import {
+  getCloudDataMetadata,
+  isCloudStorageConfigurationError,
+  listCloudDataObjects,
+  listCloudDataKeys,
+  readCloudDataJson,
+  toCloudDataHint,
+  writeCloudDataJson
+} from "@/features/cloud/data-store";
 import type {
   AiDraftLine,
   AiArtistMemory,
+  AiSelectedSource,
   AiTranslationConfidence,
   AiTranslationDraftFile,
   AiTranslationDraftInspection,
-  AiSongContext
+  AiSongContext,
+  AiVerseState
 } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { normalizeLookupText as normalizeRomanizedLookupText } from "@/features/ai/romanized-normalization";
 import type { TrackTranslation } from "@/features/translations/types";
 
-const aiTranslationDraftsRoot = path.join(process.cwd(), "data", "translations", "drafts");
+const aiTranslationDraftsRoot = "data/translations/drafts";
+
+type SupabaseDraftRecord = {
+  draft: AiTranslationDraftFile;
+  updatedAt: string | null;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -30,6 +43,10 @@ function asNumber(value: unknown) {
 
 function asConfidence(value: unknown): AiTranslationConfidence | null {
   return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function asSelectedSource(value: unknown): AiSelectedSource | null {
+  return value === "generator_a" || value === "generator_b" || value === "blended" ? value : null;
 }
 
 function normalizeLookupText(value: string) {
@@ -121,6 +138,7 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
   const confidence = asConfidence(value.confidence) ?? "medium";
   const selectorReason =
     value.selectorReason === null ? null : typeof value.selectorReason === "string" ? value.selectorReason.trim() || null : null;
+  const selectionWinner = asSelectedSource(value.selectionWinner);
   const startMs = value.startMs === null ? null : asNumber(value.startMs);
   const endMs = value.endMs === null ? null : asNumber(value.endMs);
 
@@ -148,6 +166,7 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
     ambiguity,
     confidence,
     selectorReason,
+    selectionWinner,
     startMs,
     endMs
   };
@@ -182,6 +201,38 @@ function parseSongContext(value: unknown): AiSongContext | null {
     addressee,
     stance,
     narrativeMode
+  };
+}
+
+function parseVerseState(value: unknown): AiVerseState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const groupIndex = asNumber(value.groupIndex);
+  const startOrder = asNumber(value.startOrder);
+  const endOrder = asNumber(value.endOrder);
+  const summary = asString(value.summary);
+  const stance = asString(value.stance);
+  const target = asString(value.target);
+  const dominantIntents = parseStringArray(value.dominantIntents);
+  const tension = asString(value.tension);
+  const caution = asString(value.caution);
+
+  if (groupIndex === null || startOrder === null || endOrder === null || !summary) {
+    return null;
+  }
+
+  return {
+    groupIndex,
+    startOrder,
+    endOrder,
+    summary,
+    stance,
+    target,
+    dominantIntents,
+    tension,
+    caution
   };
 }
 
@@ -299,6 +350,9 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   const sourceLyricsKind =
     value.sourceLyricsKind === "synced" || value.sourceLyricsKind === "plain" ? value.sourceLyricsKind : null;
   const songContext = parseSongContext(value.songContext);
+  const verseStates = Array.isArray(value.verseStates)
+    ? value.verseStates.map((entry) => parseVerseState(entry)).filter((entry): entry is AiVerseState => Boolean(entry))
+    : [];
   const artistMemory = parseArtistMemory(value.artistMemory);
   const generator = isRecord(value.generator) ? value.generator : null;
   const provider =
@@ -342,12 +396,13 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
       model
     },
     songContext,
+    verseStates,
     artistMemory,
     lines
   };
 }
 
-async function readAiTranslationDraftFromSupabase(spotifyTrackId: string) {
+async function readAiTranslationDraftRecordFromSupabase(spotifyTrackId: string): Promise<SupabaseDraftRecord | null> {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
@@ -356,7 +411,7 @@ async function readAiTranslationDraftFromSupabase(spotifyTrackId: string) {
 
   const { data, error } = await supabase
     .from("translation_drafts")
-    .select("spotify_track_id, draft_json")
+    .select("spotify_track_id, draft_json, updated_at")
     .eq("spotify_track_id", spotifyTrackId)
     .maybeSingle();
 
@@ -370,11 +425,178 @@ async function readAiTranslationDraftFromSupabase(spotifyTrackId: string) {
   }
 
   try {
-    return parseAiTranslationDraftFile(data.draft_json, `supabase:translation_drafts/${spotifyTrackId}`);
+    return {
+      draft: parseAiTranslationDraftFile(data.draft_json, `supabase:translation_drafts/${spotifyTrackId}`),
+      updatedAt: asString(data.updated_at)
+    };
   } catch (error) {
     console.error(`Supabase AI draft ${spotifyTrackId} could not be parsed.`, error);
     return null;
   }
+}
+
+async function listAiTranslationDraftRecordsFromSupabase(): Promise<SupabaseDraftRecord[] | null> {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.from("translation_drafts").select("spotify_track_id, draft_json, updated_at");
+
+  if (error) {
+    console.error("Could not list AI drafts from Supabase.", error);
+    return null;
+  }
+
+  const records: SupabaseDraftRecord[] = [];
+
+  for (const row of data ?? []) {
+    try {
+      records.push({
+        draft: parseAiTranslationDraftFile(row.draft_json, `supabase:translation_drafts/${row.spotify_track_id}`),
+        updatedAt: asString(row.updated_at)
+      });
+    } catch (error) {
+      console.error(`Supabase AI draft ${row.spotify_track_id} could not be parsed.`, error);
+    }
+  }
+
+  return records;
+}
+
+function chunkTrackIds(trackIds: string[], size = 200) {
+  const chunks: string[][] = [];
+
+  for (let index = 0; index < trackIds.length; index += size) {
+    chunks.push(trackIds.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+export async function batchInspectAiTranslationDraftFiles(trackIds: Iterable<string>): Promise<Map<string, AiTranslationDraftInspection>> {
+  const uniqueTrackIds = [...new Set([...trackIds].filter(Boolean))];
+  const inspections = new Map<string, AiTranslationDraftInspection>();
+
+  if (uniqueTrackIds.length === 0) {
+    return inspections;
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  if (supabase) {
+    for (const chunk of chunkTrackIds(uniqueTrackIds)) {
+      const { data, error } = await supabase
+        .from("translation_drafts")
+        .select("spotify_track_id, draft_json, updated_at")
+        .in("spotify_track_id", chunk);
+
+      if (error) {
+        console.error("Could not batch inspect AI drafts from Supabase.", error);
+        break;
+      }
+
+      for (const row of data ?? []) {
+        try {
+          const draft = parseAiTranslationDraftFile(row.draft_json, `supabase:translation_drafts/${row.spotify_track_id}`);
+          inspections.set(
+            row.spotify_track_id,
+            buildDraftInspection(draft, {
+              filePath: `supabase:translation_drafts/${row.spotify_track_id}`,
+              lastModifiedAt: asString(row.updated_at)
+            })
+          );
+        } catch (error) {
+          console.error(`Supabase AI draft ${row.spotify_track_id} could not be parsed.`, error);
+          inspections.set(row.spotify_track_id, {
+            exists: true,
+            filePath: `supabase:translation_drafts/${row.spotify_track_id}`,
+            mode: "malformed",
+            lineCount: 0,
+            lowConfidenceCount: 0,
+            mediumConfidenceCount: 0,
+            highConfidenceCount: 0,
+            manualReviewCount: 0,
+            lastModifiedAt: asString(row.updated_at),
+            sourceLanguage: null,
+            targetLanguage: null,
+            model: null,
+            preview: null,
+            parseError: error instanceof Error ? error.message : "Could not parse AI draft JSON."
+          });
+        }
+      }
+    }
+  }
+
+  const unresolvedTrackIds = uniqueTrackIds.filter((trackId) => !inspections.has(trackId));
+
+  if (unresolvedTrackIds.length === 0) {
+    return inspections;
+  }
+
+  const localObjects = await listCloudDataObjects(aiTranslationDraftsRoot);
+  const objectByTrackId = new Map(
+    localObjects
+      .filter((item) => item.key.endsWith(".json"))
+      .map((item) => [item.key.split("/").pop()?.replace(/\.json$/i, "") ?? "", item] as const)
+  );
+
+  await Promise.all(
+    unresolvedTrackIds.map(async (trackId) => {
+      const object = objectByTrackId.get(trackId);
+
+      if (!object) {
+        return;
+      }
+
+      try {
+        const rawDraft = await readCloudDataJson<unknown>(object.key);
+
+        if (!rawDraft) {
+          return;
+        }
+
+        const parsedDraft = parseAiTranslationDraftFile(rawDraft, object.key);
+        inspections.set(
+          trackId,
+          buildDraftInspection(parsedDraft, {
+            filePath: toCloudDataHint(object.key),
+            lastModifiedAt: object.lastModifiedAt
+          })
+        );
+      } catch (error) {
+        if (isCloudStorageConfigurationError(error)) {
+          throw error;
+        }
+
+        inspections.set(trackId, {
+          exists: true,
+          filePath: toCloudDataHint(getAiTranslationDraftFilePath(trackId)),
+          mode: "malformed",
+          lineCount: 0,
+          lowConfidenceCount: 0,
+          mediumConfidenceCount: 0,
+          highConfidenceCount: 0,
+          manualReviewCount: 0,
+          lastModifiedAt: object.lastModifiedAt,
+          sourceLanguage: null,
+          targetLanguage: null,
+          model: null,
+          preview: null,
+          parseError: error instanceof Error ? error.message : "Could not parse AI draft JSON."
+        });
+      }
+    })
+  );
+
+  return inspections;
+}
+
+async function readAiTranslationDraftFromSupabase(spotifyTrackId: string) {
+  const record = await readAiTranslationDraftRecordFromSupabase(spotifyTrackId);
+  return record?.draft ?? null;
 }
 
 async function writeAiTranslationDraftToSupabase(draftFile: AiTranslationDraftFile) {
@@ -403,70 +625,68 @@ async function writeAiTranslationDraftToSupabase(draftFile: AiTranslationDraftFi
 }
 
 export function getAiTranslationDraftFilePath(spotifyTrackId: string) {
-  return path.join(aiTranslationDraftsRoot, `${spotifyTrackId}.json`);
+  return `${aiTranslationDraftsRoot}/${spotifyTrackId}.json`;
+}
+
+function buildDraftInspection(
+  draftFile: AiTranslationDraftFile,
+  options?: {
+    filePath?: string;
+    lastModifiedAt?: string | null;
+  }
+): AiTranslationDraftInspection {
+  return {
+    exists: true,
+    filePath: options?.filePath ?? toCloudDataHint(getAiTranslationDraftFilePath(draftFile.spotifyTrackId)),
+    mode: draftFile.mode,
+    lineCount: draftFile.lines.length,
+    lowConfidenceCount: draftFile.lines.filter((line) => line.confidence === "low").length,
+    mediumConfidenceCount: draftFile.lines.filter((line) => line.confidence === "medium").length,
+    highConfidenceCount: draftFile.lines.filter((line) => line.confidence === "high").length,
+    manualReviewCount: draftFile.lines.filter((line) => line.selectorReason === "Manually reviewed in Lafz.").length,
+    lastModifiedAt: options?.lastModifiedAt ?? null,
+    sourceLanguage: draftFile.sourceLanguage,
+    targetLanguage: draftFile.targetLanguage,
+    model: draftFile.generator.model,
+    preview: JSON.stringify(draftFile, null, 2),
+    parseError: null
+  };
 }
 
 export async function writeAiTranslationDraftFile(draftFile: AiTranslationDraftFile) {
-  await mkdir(aiTranslationDraftsRoot, { recursive: true });
   const filePath = getAiTranslationDraftFilePath(draftFile.spotifyTrackId);
 
   // Snapshot the existing draft before overwriting
   const { backupDraftBeforeOverwrite } = await import("@/features/ai/versioning");
   await backupDraftBeforeOverwrite(draftFile.spotifyTrackId, filePath);
 
-  await writeFile(filePath, `${JSON.stringify(draftFile, null, 2)}\n`, "utf8");
+  await writeCloudDataJson(filePath, draftFile);
   await writeAiTranslationDraftToSupabase(draftFile);
-  return filePath;
+  return toCloudDataHint(filePath);
 }
 
 export async function inspectAiTranslationDraftFile(spotifyTrackId: string): Promise<AiTranslationDraftInspection> {
   const filePath = getAiTranslationDraftFilePath(spotifyTrackId);
 
   try {
-    const [fileStats, fileContents] = await Promise.all([stat(filePath), readFile(filePath, "utf8")]);
+    const supabaseRecord = await readAiTranslationDraftRecordFromSupabase(spotifyTrackId);
 
-    try {
-      const parsedDraftFile = parseAiTranslationDraftFile(JSON.parse(fileContents) as unknown, filePath);
-
-      return {
-        exists: true,
-        filePath,
-        mode: parsedDraftFile.mode,
-        lineCount: parsedDraftFile.lines.length,
-        lowConfidenceCount: parsedDraftFile.lines.filter((line) => line.confidence === "low").length,
-        mediumConfidenceCount: parsedDraftFile.lines.filter((line) => line.confidence === "medium").length,
-        highConfidenceCount: parsedDraftFile.lines.filter((line) => line.confidence === "high").length,
-        manualReviewCount: parsedDraftFile.lines.filter((line) => line.selectorReason === "Manually reviewed in Lafz.").length,
-        lastModifiedAt: fileStats.mtime.toISOString(),
-        sourceLanguage: parsedDraftFile.sourceLanguage,
-        targetLanguage: parsedDraftFile.targetLanguage,
-        model: parsedDraftFile.generator.model,
-        preview: JSON.stringify(parsedDraftFile, null, 2),
-        parseError: null
-      };
-    } catch (error) {
-      return {
-        exists: true,
-        filePath,
-        mode: "malformed",
-        lineCount: 0,
-        lowConfidenceCount: 0,
-        mediumConfidenceCount: 0,
-        highConfidenceCount: 0,
-        manualReviewCount: 0,
-        lastModifiedAt: fileStats.mtime.toISOString(),
-        sourceLanguage: null,
-        targetLanguage: null,
-        model: null,
-        preview: fileContents,
-        parseError: error instanceof Error ? error.message : "Could not parse AI draft JSON."
-      };
+    if (supabaseRecord) {
+      return buildDraftInspection(supabaseRecord.draft, {
+        filePath: `supabase:translation_drafts/${spotifyTrackId}`,
+        lastModifiedAt: supabaseRecord.updatedAt
+      });
     }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+
+    const [rawDraft, fileMeta] = await Promise.all([
+      readCloudDataJson<unknown>(filePath),
+      getCloudDataMetadata(filePath)
+    ]);
+
+    if (!rawDraft) {
       return {
         exists: false,
-        filePath,
+        filePath: toCloudDataHint(filePath),
         mode: "missing",
         lineCount: 0,
         lowConfidenceCount: 0,
@@ -482,7 +702,51 @@ export async function inspectAiTranslationDraftFile(spotifyTrackId: string): Pro
       };
     }
 
-    throw error;
+    try {
+      const parsedDraftFile = parseAiTranslationDraftFile(rawDraft, filePath);
+      return buildDraftInspection(parsedDraftFile, {
+        filePath: toCloudDataHint(filePath),
+        lastModifiedAt: fileMeta?.lastModifiedAt ?? null
+      });
+    } catch (error) {
+      return {
+        exists: true,
+        filePath: toCloudDataHint(filePath),
+        mode: "malformed",
+        lineCount: 0,
+        lowConfidenceCount: 0,
+        mediumConfidenceCount: 0,
+        highConfidenceCount: 0,
+        manualReviewCount: 0,
+        lastModifiedAt: fileMeta?.lastModifiedAt ?? null,
+        sourceLanguage: null,
+        targetLanguage: null,
+        model: null,
+        preview: JSON.stringify(rawDraft, null, 2),
+        parseError: error instanceof Error ? error.message : "Could not parse AI draft JSON."
+      };
+    }
+  } catch (error) {
+    if (isCloudStorageConfigurationError(error)) {
+      throw error;
+    }
+
+    return {
+      exists: true,
+      filePath: toCloudDataHint(filePath),
+      mode: "malformed",
+      lineCount: 0,
+      lowConfidenceCount: 0,
+      mediumConfidenceCount: 0,
+      highConfidenceCount: 0,
+      manualReviewCount: 0,
+      lastModifiedAt: null,
+      sourceLanguage: null,
+      targetLanguage: null,
+      model: null,
+      preview: null,
+      parseError: error instanceof Error ? error.message : "Could not parse AI draft JSON."
+    };
   }
 }
 
@@ -494,41 +758,48 @@ export async function getAiTranslationDraftByTrackId(spotifyTrackId: string) {
   }
 
   const filePath = getAiTranslationDraftFilePath(spotifyTrackId);
-
-  try {
-    const fileContents = await readFile(filePath, "utf8");
-    return parseAiTranslationDraftFile(JSON.parse(fileContents) as unknown, filePath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
+  const rawDraft = await readCloudDataJson<unknown>(filePath);
+  return rawDraft ? parseAiTranslationDraftFile(rawDraft, filePath) : null;
 }
 
 export async function findAiTranslationDraftByMetadata(target: { title: string; artist: string; album?: string | null }) {
-  let fileNames: string[] = [];
+  const supabaseDrafts = await listAiTranslationDraftRecordsFromSupabase();
 
-  try {
-    fileNames = (await readdir(aiTranslationDraftsRoot)).filter((fileName) => fileName.endsWith(".json"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
+  if (supabaseDrafts && supabaseDrafts.length > 0) {
+    let bestSupabaseMatch: {
+      score: number;
+      draft: AiTranslationDraftFile;
+    } | null = null;
+
+    for (const record of supabaseDrafts) {
+      const score = scoreDraftMetadataMatch(record.draft, target);
+
+      if (score !== null && (!bestSupabaseMatch || score > bestSupabaseMatch.score)) {
+        bestSupabaseMatch = {
+          score,
+          draft: record.draft
+        };
+      }
     }
 
-    throw error;
+    if (bestSupabaseMatch) {
+      return bestSupabaseMatch.draft;
+    }
   }
+
+  const fileKeys = (await listCloudDataKeys(aiTranslationDraftsRoot)).filter((fileName) => fileName.endsWith(".json"));
 
   let bestMatch: {
     score: number;
     draft: AiTranslationDraftFile;
   } | null = null;
 
-  for (const fileName of fileNames) {
-    const filePath = path.join(aiTranslationDraftsRoot, fileName);
-    const fileContents = await readFile(filePath, "utf8");
-    const parsedDraft = parseAiTranslationDraftFile(JSON.parse(fileContents) as unknown, filePath);
+  for (const filePath of fileKeys) {
+    const rawDraft = await readCloudDataJson<unknown>(filePath);
+    if (!rawDraft) {
+      continue;
+    }
+    const parsedDraft = parseAiTranslationDraftFile(rawDraft, filePath);
     const score = scoreDraftMetadataMatch(parsedDraft, target);
 
     if (score !== null && (!bestMatch || score > bestMatch.score)) {
@@ -543,33 +814,37 @@ export async function findAiTranslationDraftByMetadata(target: { title: string; 
 }
 
 export async function listAiTranslationDraftsByArtistKey(artistKey: string) {
-  let fileNames: string[] = [];
+  const supabaseDrafts = await listAiTranslationDraftRecordsFromSupabase();
+  const normalizedArtistKey = normalizeLookupText(artistKey.replace(/-/g, " "));
+  if (supabaseDrafts) {
+    const drafts = supabaseDrafts
+      .map((record) => record.draft)
+      .filter((draft) => normalizeArtistTokens(draft.artist).includes(normalizedArtistKey));
 
-  try {
-    fileNames = (await readdir(aiTranslationDraftsRoot)).filter((fileName) => fileName.endsWith(".json"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [] satisfies AiTranslationDraftFile[];
+    if (drafts.length > 0) {
+      return drafts.sort((left, right) => new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime());
     }
-
-    throw error;
   }
 
-  const normalizedArtistKey = normalizeLookupText(artistKey.replace(/-/g, " "));
+  const fileKeys = (await listCloudDataKeys(aiTranslationDraftsRoot)).filter((fileName) => fileName.endsWith(".json"));
   const drafts: AiTranslationDraftFile[] = [];
 
-  for (const fileName of fileNames) {
-    const filePath = path.join(aiTranslationDraftsRoot, fileName);
-
+  for (const filePath of fileKeys) {
     try {
-      const fileContents = await readFile(filePath, "utf8");
-      const parsedDraft = parseAiTranslationDraftFile(JSON.parse(fileContents) as unknown, filePath);
+      const rawDraft = await readCloudDataJson<unknown>(filePath);
+      if (!rawDraft) {
+        continue;
+      }
+      const parsedDraft = parseAiTranslationDraftFile(rawDraft, filePath);
       const artistTokens = normalizeArtistTokens(parsedDraft.artist);
 
       if (artistTokens.includes(normalizedArtistKey)) {
         drafts.push(parsedDraft);
       }
-    } catch {
+    } catch (error) {
+      if (isCloudStorageConfigurationError(error)) {
+        throw error;
+      }
       continue;
     }
   }

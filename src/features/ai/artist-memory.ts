@@ -1,12 +1,10 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import type { AiArtistMemory, AiCorrectionExample } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { readArtistProfileFile } from "@/features/ai/artist-profile-repository";
 import { readArtistGlossaryFile } from "@/features/ai/glossary-repository";
+import { readCloudDataJson } from "@/features/cloud/data-store";
 
-const aiMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
+const aiMemoryRoot = "data/ai/memory/artists";
 
 function normalizeKey(value: string | null) {
   if (!value) {
@@ -138,7 +136,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
     .filter((value): value is string => Boolean(value));
 
   for (const artistKey of artistKeys) {
-    const filePath = path.join(aiMemoryRoot, `${artistKey}.json`);
+    const filePath = `${aiMemoryRoot}/${artistKey}.json`;
     const glossaryFile = await readArtistGlossaryFile(artistKey).catch(() => ({
       displayName: artistKey,
       artistKey,
@@ -149,7 +147,7 @@ export async function getAiArtistMemory(artist: string | null): Promise<{
     const resolvedProfile = await readArtistProfileFile(artistKey).catch(() => null);
 
     try {
-      const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+      const parsed = await readCloudDataJson<unknown>(filePath);
 
       if (!isRecord(parsed)) {
         if (glossaryEntries.length > 0) {

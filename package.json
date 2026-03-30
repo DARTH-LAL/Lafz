@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "backfill:supabase": "node --env-file=.env.local scripts/backfill-supabase.mjs"
+    "backfill:supabase": "node --env-file=.env.local scripts/backfill-supabase.mjs",
+    "backfill:r2": "node --env-file=.env.local scripts/backfill-r2.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1019.0",
     "@supabase/supabase-js": "^2.100.1",
     "@swc/helpers": "^0.5.20",
     "next": "^15.5.2",

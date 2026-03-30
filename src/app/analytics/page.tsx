@@ -12,7 +12,7 @@ export default async function AnalyticsPage() {
   const session = await readSpotifySessionFromCookies();
   if (!session) redirect("/login");
 
-  const initialData = getUsageAnalytics("30d");
+  const initialData = await getUsageAnalytics("30d");
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">

@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
+
+import { getCloudDataMetadata, isCloudStorageConfigurationError, listCloudDataKeys, readCloudDataJson } from "@/features/cloud/data-store";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const DRAFTS_DIR = path.join(process.cwd(), "data", "translations", "drafts");
+const DRAFTS_DIR = "data/translations/drafts";
 
 type DraftLine = {
   order: number;
   original: string;
   chosen: string;
   selectorReason: string | null;
+  selectionWinner?: "generator_a" | "generator_b" | "blended" | null;
   confidence?: string;
 };
 
@@ -28,18 +29,20 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    if (!fs.existsSync(DRAFTS_DIR)) {
-      return NextResponse.json({ items: [] });
-    }
+    const keys = (await listCloudDataKeys(DRAFTS_DIR)).filter((key) => key.endsWith(".json"));
+    const draftsWithTimes = await Promise.all(
+      keys.map(async (key) => ({
+        key,
+        metadata: await getCloudDataMetadata(key)
+      }))
+    );
 
-    const files = fs.readdirSync(DRAFTS_DIR)
-      .filter(f => f.endsWith(".json"))
-      .map(f => {
-        const fullPath = path.join(DRAFTS_DIR, f);
-        const stat = fs.statSync(fullPath);
-        return { file: f, mtime: stat.mtimeMs };
+    const files = draftsWithTimes
+      .sort((a, b) => {
+        const left = a.metadata?.lastModifiedAt ? new Date(a.metadata.lastModifiedAt).getTime() : 0;
+        const right = b.metadata?.lastModifiedAt ? new Date(b.metadata.lastModifiedAt).getTime() : 0;
+        return right - left;
       })
-      .sort((a, b) => b.mtime - a.mtime)
       .slice(0, 5);
 
     const items: Array<{
@@ -51,20 +54,20 @@ export async function GET(request: NextRequest) {
       lineIndex: number;
     }> = [];
 
-    for (const { file } of files) {
+    for (const { key } of files) {
       if (items.length >= 6) break;
       try {
-        const content = fs.readFileSync(path.join(DRAFTS_DIR, file), "utf-8");
-        const draft = JSON.parse(content) as DraftFile;
-        const trackLabel = draft.title ?? file.replace(".json", "");
+        const draft = await readCloudDataJson<DraftFile>(key);
+        if (!draft) continue;
+        const trackLabel = draft.title ?? key.split("/").pop()?.replace(".json", "") ?? "Unknown track";
 
         const withReason = draft.lines
-          .filter(l => l.selectorReason != null && l.selectorReason.trim().length > 0)
+          .filter((line) => line.selectorReason != null && line.selectorReason.trim().length > 0)
           .slice(0, 6 - items.length);
 
         for (const line of withReason) {
           items.push({
-            winner: "generator_a", // default since we don't store winner per line in draft
+            winner: line.selectionWinner ?? "blended",
             original: line.original ?? "",
             chosen: line.chosen ?? "",
             reason: line.selectorReason ?? "",
@@ -73,12 +76,15 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch {
-        // skip malformed files
+        // skip malformed drafts
       }
     }
 
     return NextResponse.json({ items });
-  } catch {
-    return NextResponse.json({ items: [] });
-  }
+    } catch (error) {
+      if (isCloudStorageConfigurationError(error)) {
+        throw error;
+      }
+      return NextResponse.json({ items: [] });
+    }
 }

@@ -4,6 +4,7 @@ import type {
   AiCorrectionHint,
   AiProviderStatus,
   AiSongContext,
+  AiVerseState,
   GeneratedTranslationLineDraft,
   MeaningAnalysisLine
 } from "@/features/ai/types";
@@ -19,6 +20,7 @@ import {
 } from "@/features/ai/ollama";
 import {
   getOpenAiModel,
+  resolveOpenAiModel,
   inspectOpenAiStatus,
   isOpenAiConfigured,
   requestOpenAiSongContext,
@@ -27,8 +29,8 @@ import {
   requestOpenAiTranslationDraft,
   requestOpenAiTranslationRefinement
 } from "@/features/ai/openai";
-import { getAnthropicGeneratorBModel, isAnthropicConfigured } from "@/features/ai/anthropic";
-import { getGeminiEvaluatorModel, isGeminiConfigured } from "@/features/ai/gemini";
+import { getAnthropicGeneratorBModel, isAnthropicConfigured, resolveAnthropicGeneratorBModel } from "@/features/ai/anthropic";
+import { getGeminiEvaluatorModel, isGeminiConfigured, resolveGeminiEvaluatorModel } from "@/features/ai/gemini";
 export type PreviousTranslationRef = {
   chosen: string;
   confidence: "low" | "medium" | "high";
@@ -58,6 +60,7 @@ type RequestAiTranslationDraftOptions = {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -80,6 +83,7 @@ type RequestAiMeaningAnalysisOptions = {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
   }>;
 };
@@ -116,6 +120,7 @@ type RequestAiTranslationRefinementOptions = {
       original: string;
       chosen: string;
     }>;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -167,6 +172,7 @@ type RequestAiTranslationSelectionOptions = {
       original: string;
       chosen: string;
     }>;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -184,8 +190,21 @@ export function getThreeModelPipelineLabel() {
   return `A:${getOpenAiModel()} | B:${getAnthropicGeneratorBModel()} | Eval:${getGeminiEvaluatorModel()}`;
 }
 
+export async function getThreeModelPipelineLabelAsync() {
+  const [generatorA, generatorB, evaluator] = await Promise.all([
+    resolveOpenAiModel(),
+    resolveAnthropicGeneratorBModel(),
+    resolveGeminiEvaluatorModel()
+  ]);
+  return `A:${generatorA} | B:${generatorB} | Eval:${evaluator}`;
+}
+
 export function getActiveAiModel() {
   return getActiveAiProvider() === "openai" ? getOpenAiModel() : getOllamaModel();
+}
+
+export async function getActiveAiModelAsync() {
+  return getActiveAiProvider() === "openai" ? resolveOpenAiModel() : getOllamaModel();
 }
 
 export function isAiConfigured() {

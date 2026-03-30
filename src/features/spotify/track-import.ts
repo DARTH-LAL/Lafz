@@ -1,6 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { writeLibraryPlaylistFile as writeCloudLibraryPlaylistFile } from "@/features/library/playlists-repository";
 import { createTranslationStubFile } from "@/features/translations/stubs";
 import type {
   LafzLibraryPlaylistFile,
@@ -11,7 +9,6 @@ import type {
   TranslationStatus
 } from "@/features/spotify/types";
 
-const libraryPlaylistsRoot = path.join(process.cwd(), "data", "library", "playlists");
 const singleTrackCollectionLabel = "Single song import";
 
 class TrackImportInputError extends Error {}
@@ -168,16 +165,12 @@ function normalizeSpotifyTrack(track: SpotifyTrackResponse, syntheticLibraryId: 
 }
 
 export function getSingleTrackLibraryFilePath(trackId: string) {
-  return path.join(libraryPlaylistsRoot, `single-track-${trackId}.json`);
+  return `r2:data/library/playlists/single-track-${trackId}.json`;
 }
 
 async function writeSingleTrackLibraryFile(libraryFile: LafzLibraryPlaylistFile) {
-  await mkdir(libraryPlaylistsRoot, { recursive: true });
-
-  const filePath = getSingleTrackLibraryFilePath(libraryFile.tracks[0]?.spotify_track_id ?? libraryFile.playlist_id);
-  await writeFile(filePath, `${JSON.stringify(libraryFile, null, 2)}\n`, "utf8");
-
-  return filePath;
+  const trackId = libraryFile.tracks[0]?.spotify_track_id ?? libraryFile.playlist_id;
+  return writeCloudLibraryPlaylistFile(libraryFile, `single-track-${trackId}.json`);
 }
 
 export async function importSpotifyTrackLibrary(

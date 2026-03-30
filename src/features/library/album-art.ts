@@ -1,7 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
-const libraryPlaylistsRoot = path.join(process.cwd(), "data", "library", "playlists");
+import { readLibraryPlaylistByKey, writeLibraryPlaylistFile, listLibraryPlaylistKeys, getLibraryPlaylistFileNameFromKey } from "@/features/library/playlists-repository";
 
 type SpotifyTracksResponse = {
   tracks?: Array<{
@@ -58,12 +55,9 @@ async function fetchAlbumArtFromSpotify(
 }
 
 /**
- * Backfills album_art_url into any playlist JSON files that are missing it,
- * then returns a complete map of { spotifyTrackId -> imageUrl | null }
- * for all tracks in the provided records.
- *
- * Writes updated playlist files back to disk (non-blocking — we don't await
- * the writes in the caller).
+ * Backfills album_art_url into any playlist objects that are missing it,
+ * then returns a complete map of { spotifyTrackId -> imageUrl | null } for all tracks
+ * in the provided records.
  */
 export async function resolveAlbumArtForRecords(
   trackIds: string[],
@@ -85,19 +79,14 @@ export async function resolveAlbumArtForRecords(
 
 async function backfillPlaylistFiles(artMap: Record<string, string | null>) {
   try {
-    const { readdir } = await import("node:fs/promises");
-    const files = (await readdir(libraryPlaylistsRoot)).filter((f) => f.endsWith(".json"));
+    const keys = await listLibraryPlaylistKeys();
 
     await Promise.all(
-      files.map(async (file) => {
-        const filePath = path.join(libraryPlaylistsRoot, file);
+      keys.map(async (key) => {
         try {
-          const raw = await readFile(filePath, "utf-8");
-          const data = JSON.parse(raw) as {
-            tracks?: Array<{ spotify_track_id?: string; album_art_url?: string | null }>;
-          };
+          const data = await readLibraryPlaylistByKey(key);
 
-          if (!Array.isArray(data.tracks)) return;
+          if (!data || !Array.isArray(data.tracks)) return;
 
           let changed = false;
           for (const track of data.tracks) {
@@ -108,7 +97,7 @@ async function backfillPlaylistFiles(artMap: Record<string, string | null>) {
           }
 
           if (changed) {
-            await writeFile(filePath, JSON.stringify(data, null, 2));
+            await writeLibraryPlaylistFile(data, getLibraryPlaylistFileNameFromKey(key));
           }
         } catch {
           // skip malformed

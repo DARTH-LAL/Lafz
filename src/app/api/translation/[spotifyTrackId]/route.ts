@@ -1,7 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 
-import { getLocalTranslationFilePath } from "@/features/translations/stubs";
+import { getTranslationByTrackId } from "@/features/translations/repository";
 import { readSpotifySessionFromCookies } from "@/features/spotify/session";
 
 export const dynamic = "force-dynamic";
@@ -14,17 +13,15 @@ export async function GET(_req: Request, { params }: RouteParams) {
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
   const { spotifyTrackId } = await params;
-  const filePath = getLocalTranslationFilePath(spotifyTrackId);
+  const translation = await getTranslationByTrackId(spotifyTrackId);
 
-  try {
-    const content = await readFile(filePath, "utf8");
-    return new NextResponse(content, {
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `inline; filename="${spotifyTrackId}.json"`
-      }
-    });
-  } catch {
+  if (!translation) {
     return new NextResponse("Translation file not found", { status: 404 });
   }
+
+  return NextResponse.json(translation, {
+    headers: {
+      "Content-Disposition": `inline; filename="${spotifyTrackId}.json"`
+    }
+  });
 }

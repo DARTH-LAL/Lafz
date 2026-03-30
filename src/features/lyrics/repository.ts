@@ -1,10 +1,6 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { getCloudDataMetadata, isCloudStorageConfigurationError, listCloudDataObjects, readCloudDataJson, writeCloudDataJson } from "@/features/cloud/data-store";
 import { formatCueTimestamp, isLikelyLrcText, parseLrcText } from "@/features/lyrics/lrc";
 import type { LyricsCacheFile, LyricsCacheInspection, LyricsCue, LyricsLookupParams } from "@/features/lyrics/types";
-
-const lyricsCacheRoot = path.join(process.cwd(), "data", "lyrics", "cache");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -210,13 +206,12 @@ function splitPlainLyrics(text: string) {
 }
 
 export function getLyricsCacheFilePath(spotifyTrackId: string) {
-  return path.join(lyricsCacheRoot, `${spotifyTrackId}.json`);
+  return `data/lyrics/cache/${spotifyTrackId}.json`;
 }
 
 export async function writeLyricsCacheFile(cacheFile: LyricsCacheFile) {
-  await mkdir(lyricsCacheRoot, { recursive: true });
   const filePath = getLyricsCacheFilePath(cacheFile.spotifyTrackId);
-  await writeFile(filePath, `${JSON.stringify(cacheFile, null, 2)}\n`, "utf8");
+  await writeCloudDataJson(filePath, cacheFile);
   return filePath;
 }
 
@@ -224,27 +219,12 @@ export async function inspectLyricsCache(spotifyTrackId: string): Promise<Lyrics
   const filePath = getLyricsCacheFilePath(spotifyTrackId);
 
   try {
-    const [fileContents, fileStats] = await Promise.all([readFile(filePath, "utf8"), stat(filePath)]);
-    const parsedFile = parseLyricsCacheFile(JSON.parse(fileContents) as unknown);
+    const [rawFile, fileMeta] = await Promise.all([
+      readCloudDataJson<unknown>(filePath),
+      getCloudDataMetadata(filePath)
+    ]);
 
-    return {
-      exists: true,
-      filePath,
-      kind: parsedFile.kind,
-      source: parsedFile.source,
-      sourceLabel: parsedFile.sourceLabel,
-      language: parsedFile.language,
-      lineCount: parsedFile.lines.length,
-      lastModifiedAt: fileStats.mtime.toISOString(),
-      preview: buildPreview(parsedFile),
-      parseError: null,
-      plainLyrics: parsedFile.plainLyrics,
-      lines: parsedFile.lines
-    };
-  } catch (error) {
-    const nodeError = error as NodeJS.ErrnoException;
-
-    if (nodeError.code === "ENOENT") {
+    if (!rawFile) {
       return {
         exists: false,
         filePath,
@@ -259,6 +239,27 @@ export async function inspectLyricsCache(spotifyTrackId: string): Promise<Lyrics
         plainLyrics: null,
         lines: []
       };
+    }
+
+    const parsedFile = parseLyricsCacheFile(rawFile);
+
+    return {
+      exists: true,
+      filePath,
+      kind: parsedFile.kind,
+      source: parsedFile.source,
+      sourceLabel: parsedFile.sourceLabel,
+      language: parsedFile.language,
+      lineCount: parsedFile.lines.length,
+      lastModifiedAt: fileMeta?.lastModifiedAt ?? null,
+      preview: buildPreview(parsedFile),
+      parseError: null,
+      plainLyrics: parsedFile.plainLyrics,
+      lines: parsedFile.lines
+    };
+  } catch (error) {
+    if (isCloudStorageConfigurationError(error)) {
+      throw error;
     }
 
     return {
@@ -278,19 +279,82 @@ export async function inspectLyricsCache(spotifyTrackId: string): Promise<Lyrics
   }
 }
 
+export async function batchInspectLyricsCaches(trackIds: Iterable<string>): Promise<Map<string, LyricsCacheInspection>> {
+  const uniqueTrackIds = [...new Set([...trackIds].filter(Boolean))];
+  const inspections = new Map<string, LyricsCacheInspection>();
+
+  if (uniqueTrackIds.length === 0) {
+    return inspections;
+  }
+
+  const objects = await listCloudDataObjects("data/lyrics/cache");
+  const objectByTrackId = new Map(
+    objects
+      .filter((item) => item.key.endsWith(".json"))
+      .map((item) => [item.key.split("/").pop()?.replace(/\.json$/i, "") ?? "", item] as const)
+  );
+
+  await Promise.all(
+    uniqueTrackIds.map(async (trackId) => {
+      const object = objectByTrackId.get(trackId);
+
+      if (!object) {
+        return;
+      }
+
+      try {
+        const rawFile = await readCloudDataJson<unknown>(object.key);
+
+        if (!rawFile) {
+          return;
+        }
+
+        const parsedFile = parseLyricsCacheFile(rawFile);
+
+        inspections.set(trackId, {
+          exists: true,
+          filePath: getLyricsCacheFilePath(trackId),
+          kind: parsedFile.kind,
+          source: parsedFile.source,
+          sourceLabel: parsedFile.sourceLabel,
+          language: parsedFile.language,
+          lineCount: parsedFile.lines.length,
+          lastModifiedAt: object.lastModifiedAt,
+          preview: buildPreview(parsedFile),
+          parseError: null,
+          plainLyrics: parsedFile.plainLyrics,
+          lines: parsedFile.lines
+        });
+      } catch (error) {
+        if (isCloudStorageConfigurationError(error)) {
+          throw error;
+        }
+
+        inspections.set(trackId, {
+          exists: true,
+          filePath: getLyricsCacheFilePath(trackId),
+          kind: "malformed",
+          source: null,
+          sourceLabel: null,
+          language: null,
+          lineCount: 0,
+          lastModifiedAt: object.lastModifiedAt,
+          preview: null,
+          parseError: error instanceof Error ? error.message : "Could not parse local lyrics cache JSON.",
+          plainLyrics: null,
+          lines: []
+        });
+      }
+    })
+  );
+
+  return inspections;
+}
+
 export async function getLyricsCacheByTrackId(spotifyTrackId: string) {
   const filePath = getLyricsCacheFilePath(spotifyTrackId);
-
-  try {
-    const fileContents = await readFile(filePath, "utf8");
-    return parseLyricsCacheFile(JSON.parse(fileContents) as unknown);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
+  const rawFile = await readCloudDataJson<unknown>(filePath);
+  return rawFile ? parseLyricsCacheFile(rawFile) : null;
 }
 
 export async function importLocalLyrics(options: LyricsLookupParams & { lyricsText: string }) {

@@ -1,6 +1,6 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { bulkAddGlossaryTerms, incrementGlossaryTermUseCounts, normalizeArtistKey, readArtistGlossaryFile, readPendingSuggestions } from "@/features/ai/glossary-repository";
-import { getOpenAiBaseUrl, getOpenAiModel, isOpenAiConfigured } from "@/features/ai/openai";
+import { getOpenAiBaseUrl, isOpenAiConfigured, resolveOpenAiModel } from "@/features/ai/openai";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ async function callExtraction(options: ExtractorOptions): Promise<RawSuggestion[
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured.");
 
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const response = await fetch(`${getOpenAiBaseUrl()}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },

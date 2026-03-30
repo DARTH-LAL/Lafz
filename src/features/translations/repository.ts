@@ -1,13 +1,10 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { listCloudDataKeys, readCloudDataJson, writeCloudDataJson, toCloudDataHint } from "@/features/cloud/data-store";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import type { TrackTranslation, TranslationLine, TranslationStubFile } from "@/features/translations/types";
 
-const translationsRoot = path.join(process.cwd(), "data", "translations");
 const translationSearchDirectories = [
-  path.join(translationsRoot, "local"),
-  path.join(translationsRoot, "samples")
+  "data/translations/local",
+  "data/translations/samples"
 ];
 const TRANSLATION_STUB_SENTINEL = "__LAFZ_TRANSLATION_STUB__";
 
@@ -244,16 +241,14 @@ async function findTrackTranslationByMetadataFromSupabase(target: { title: strin
 }
 
 export function getTranslationFileHint(trackId: string) {
-  return `data/translations/local/${trackId}.json`;
+  return toCloudDataHint(`data/translations/local/${trackId}.json`);
 }
 
 export async function writeTrackTranslationFile(translation: TrackTranslation) {
-  const localTranslationsDirectory = path.join(translationsRoot, "local");
-  const filePath = path.join(localTranslationsDirectory, `${translation.spotifyTrackId}.json`);
-  await mkdir(localTranslationsDirectory, { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(translation, null, 2)}\n`, "utf8");
+  const filePath = `data/translations/local/${translation.spotifyTrackId}.json`;
+  await writeCloudDataJson(filePath, translation);
   await writeTrackTranslationToSupabase(translation);
-  return filePath;
+  return toCloudDataHint(filePath);
 }
 
 export async function getTranslationByTrackId(trackId: string) {
@@ -264,18 +259,17 @@ export async function getTranslationByTrackId(trackId: string) {
   }
 
   for (const directory of translationSearchDirectories) {
-    const filePath = path.join(directory, `${trackId}.json`);
+    const filePath = `${directory}/${trackId}.json`;
 
     try {
-      const fileContents = await readFile(filePath, "utf8");
-      const parsed = JSON.parse(fileContents) as unknown;
+      const parsed = await readCloudDataJson<unknown>(filePath);
 
-      return parseTrackTranslation(parsed, filePath);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      if (!parsed) {
         continue;
       }
 
+      return parseTrackTranslation(parsed, filePath);
+    } catch (error) {
       if (error instanceof Error && error.message === TRANSLATION_STUB_SENTINEL) {
         return null;
       }
@@ -300,24 +294,17 @@ export async function findTranslationByMetadata(target: { title: string; artist:
   } | null = null;
 
   for (const directory of translationSearchDirectories) {
-    let fileNames: string[] = [];
+    const fileKeys = await listCloudDataKeys(directory);
 
-    try {
-      fileNames = (await readdir(directory)).filter((fileName) => fileName.endsWith(".json"));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        continue;
-      }
-
-      throw error;
-    }
-
-    for (const fileName of fileNames) {
-      const filePath = path.join(directory, fileName);
+    for (const filePath of fileKeys.filter((key) => key.endsWith(".json"))) {
 
       try {
-        const fileContents = await readFile(filePath, "utf8");
-        const parsed = parseTrackTranslation(JSON.parse(fileContents) as unknown, filePath);
+        const rawFile = await readCloudDataJson<unknown>(filePath);
+        if (!rawFile) {
+          continue;
+        }
+
+        const parsed = parseTrackTranslation(rawFile, filePath);
         const score = scoreTranslationMetadataMatch(parsed, target);
 
         if (score !== null && (!bestMatch || score > bestMatch.score)) {

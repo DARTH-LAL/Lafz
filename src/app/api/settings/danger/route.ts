@@ -1,21 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import { readdir, unlink, rm } from "node:fs/promises";
-import path from "node:path";
+
+import { clearAiUsageRuns } from "@/features/ai/usage-tracker";
+import { deleteCloudDataJson, listCloudDataKeys } from "@/features/cloud/data-store";
+import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const DATA_ROOT = path.join(process.cwd(), "data");
+async function deleteKeysUnder(prefix: string) {
+  const keys = await listCloudDataKeys(prefix);
+  await Promise.all(keys.map((key) => deleteCloudDataJson(key)));
+  return keys.length;
+}
 
-async function deleteFilesInDir(dir: string) {
-  try {
-    if (!fs.existsSync(dir)) return 0;
-    const files = await readdir(dir);
-    await Promise.all(files.map((f) => unlink(path.join(dir, f)).catch(() => {})));
-    return files.length;
-  } catch { return 0; }
+async function wipeSupabaseCoreData() {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+
+  await Promise.all([
+    supabase.from("translation_drafts").delete().neq("spotify_track_id", ""),
+    supabase.from("published_translations").delete().neq("spotify_track_id", ""),
+    supabase.from("artist_profiles").delete().neq("artist_key", "")
+  ]);
 }
 
 export async function POST(request: NextRequest) {
@@ -26,23 +33,26 @@ export async function POST(request: NextRequest) {
 
   switch (action) {
     case "clear-lyrics-cache": {
-      const count = await deleteFilesInDir(path.join(DATA_ROOT, "lyrics", "cache"));
-      return NextResponse.json({ success: true, message: `Cleared ${count} cached lyrics files.` });
+      const count = await deleteKeysUnder("data/lyrics/cache");
+      return NextResponse.json({ success: true, message: `Cleared ${count} cached lyrics objects.` });
     }
     case "delete-drafts": {
-      const count = await deleteFilesInDir(path.join(DATA_ROOT, "translations", "drafts"));
-      return NextResponse.json({ success: true, message: `Deleted ${count} AI draft files.` });
+      const count = await deleteKeysUnder("data/translations/drafts");
+      const supabase = getSupabaseServerClient();
+      if (supabase) {
+        await supabase.from("translation_drafts").delete().neq("spotify_track_id", "");
+      }
+      return NextResponse.json({ success: true, message: `Deleted ${count} AI draft objects.` });
     }
     case "reset-analytics": {
-      try {
-        const usageFile = path.join(DATA_ROOT, "ai", "usage-runs.json");
-        if (fs.existsSync(usageFile)) await unlink(usageFile);
-      } catch {}
+      await clearAiUsageRuns();
       return NextResponse.json({ success: true, message: "Analytics reset." });
     }
     case "wipe-all": {
-      try { await rm(DATA_ROOT, { recursive: true, force: true }); } catch {}
-      return NextResponse.json({ success: true, message: "All data wiped." });
+      const count = await deleteKeysUnder("data");
+      await clearAiUsageRuns();
+      await wipeSupabaseCoreData();
+      return NextResponse.json({ success: true, message: `All cloud data wiped (${count} objects).` });
     }
     default:
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });

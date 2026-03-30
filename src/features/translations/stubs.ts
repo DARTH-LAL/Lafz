@@ -1,13 +1,9 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { readCloudDataJson, writeCloudDataJson, toCloudDataHint } from "@/features/cloud/data-store";
 import type { LafzLibraryTrack } from "@/features/spotify/types";
 import type { TranslationStubFile } from "@/features/translations/types";
 
-const translationStubsRoot = path.join(process.cwd(), "data", "translations", "local");
-
 export function getLocalTranslationFilePath(trackId: string) {
-  return path.join(translationStubsRoot, `${trackId}.json`);
+  return `data/translations/local/${trackId}.json`;
 }
 
 export function getTranslationStubFilePath(trackId: string) {
@@ -15,12 +11,7 @@ export function getTranslationStubFilePath(trackId: string) {
 }
 
 async function fileExists(filePath: string) {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+  return (await readCloudDataJson<unknown>(filePath)) !== null;
 }
 
 export async function createTranslationStubFile(options: {
@@ -28,15 +19,13 @@ export async function createTranslationStubFile(options: {
   language: string | null;
   overwriteExistingStub: boolean;
 }) {
-  await mkdir(translationStubsRoot, { recursive: true });
-
   const filePath = getLocalTranslationFilePath(options.spotifyTrackId);
   const exists = await fileExists(filePath);
 
   // Preserve any local translation work unless the caller explicitly opts into overwriting stubs.
   if (exists && !options.overwriteExistingStub) {
     return {
-      filePath,
+      filePath: toCloudDataHint(filePath),
       created: false,
       overwritten: false,
       skipped: true
@@ -49,10 +38,10 @@ export async function createTranslationStubFile(options: {
     lines: []
   };
 
-  await writeFile(filePath, `${JSON.stringify(stub, null, 2)}\n`, "utf8");
+  await writeCloudDataJson(filePath, stub);
 
   return {
-    filePath,
+    filePath: toCloudDataHint(filePath),
     created: !exists,
     overwritten: exists,
     skipped: false
@@ -63,8 +52,6 @@ export async function createTranslationStubsForTracks(
   tracks: LafzLibraryTrack[],
   options: { overwriteExistingStubs: boolean }
 ) {
-  await mkdir(translationStubsRoot, { recursive: true });
-
   let createdCount = 0;
   let overwrittenCount = 0;
   let skippedCount = 0;

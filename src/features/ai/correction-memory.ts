@@ -1,11 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import { readArtistProfileFile } from "@/features/ai/artist-profile-repository";
+import { readCloudDataJson, writeCloudDataJson } from "@/features/cloud/data-store";
 import type { AiCorrectionExample, AiDraftLine, AiTranslationDraftFile } from "@/features/ai/types";
 
-const aiGlossariesRoot = path.join(process.cwd(), "data", "ai", "glossaries", "local");
-const artistMemoryRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
+const aiGlossariesRoot = "data/ai/glossaries/local";
+const artistMemoryRoot = "data/ai/memory/artists";
 
 type PreferredRenderingEntry = {
   term: string;
@@ -127,17 +125,8 @@ function parseCorrectionExamples(value: unknown) {
 }
 
 async function readJsonRecord(filePath: string) {
-  try {
-    const text = await readFile(filePath, "utf8");
-    const parsed = JSON.parse(text) as unknown;
-    return isRecord(parsed) ? parsed : null;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-
-    return null;
-  }
+  const parsed = await readCloudDataJson<unknown>(filePath);
+  return isRecord(parsed) ? parsed : null;
 }
 
 function mergePreferredRenderings(existingEntries: PreferredRenderingEntry[], corrections: LearnedCorrection[]) {
@@ -232,7 +221,7 @@ function getLearnedCorrections(previousDraft: AiTranslationDraftFile, nextDraft:
 }
 
 async function writeTrackCorrectionGlossary(spotifyTrackId: string, corrections: LearnedCorrectionsResult["corrections"]) {
-  const filePath = path.join(aiGlossariesRoot, "tracks", `${spotifyTrackId}.json`);
+  const filePath = `${aiGlossariesRoot}/tracks/${spotifyTrackId}.json`;
   const existing = await readJsonRecord(filePath);
   const mergedPreferredRenderings = mergePreferredRenderings(
     parsePreferredRenderings(existing?.preferredRenderings),
@@ -240,20 +229,11 @@ async function writeTrackCorrectionGlossary(spotifyTrackId: string, corrections:
   );
   const mergedCorrectionExamples = mergeCorrectionExamples(parseCorrectionExamples(existing?.correctionExamples), corrections);
 
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(
-    filePath,
-    `${JSON.stringify(
-      {
-        ...(existing ?? {}),
-        preferredRenderings: mergedPreferredRenderings,
-        correctionExamples: mergedCorrectionExamples
-      },
-      null,
-      2
-    )}\n`,
-    "utf8"
-  );
+  await writeCloudDataJson(filePath, {
+    ...(existing ?? {}),
+    preferredRenderings: mergedPreferredRenderings,
+    correctionExamples: mergedCorrectionExamples
+  });
 
   return filePath;
 }
@@ -269,7 +249,7 @@ async function writeArtistCorrectionMemory(
     return null;
   }
 
-  const filePath = path.join(artistMemoryRoot, `${artistKey}.json`);
+  const filePath = `${artistMemoryRoot}/${artistKey}.json`;
   const existing = await readJsonRecord(filePath);
   const existingProfile = await readArtistProfileFile(artistKey).catch(() => null);
   const mergedPreferredRenderings = mergePreferredRenderings(
@@ -278,33 +258,24 @@ async function writeArtistCorrectionMemory(
   );
   const mergedCorrectionExamples = mergeCorrectionExamples(parseCorrectionExamples(existing?.correctionExamples), corrections);
 
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(
-    filePath,
-    `${JSON.stringify(
-      {
-        ...(existing ?? {}),
-        displayName: existingProfile?.displayName ?? asString(existing?.displayName) ?? primaryArtist,
-        updatedAt: existingProfile?.updatedAt ?? asString(existing?.updatedAt) ?? new Date().toISOString(),
-        personaSummary: existingProfile?.personaSummary ?? asString(existing?.personaSummary) ?? null,
-        translationPreferences: existingProfile?.translationPreferences ?? asStringArray(existing?.translationPreferences),
-        translationDirectives: existingProfile?.translationDirectives ?? asStringArray(existing?.translationDirectives),
-        recurringThemes: existingProfile?.recurringThemes ?? asStringArray(existing?.recurringThemes),
-        recurringMotifs: existingProfile?.recurringMotifs ?? asStringArray(existing?.recurringMotifs),
-        relationshipPatterns: existingProfile?.relationshipPatterns ?? asStringArray(existing?.relationshipPatterns),
-        toneNotes: existingProfile?.toneNotes ?? asStringArray(existing?.toneNotes),
-        voiceNotes: existingProfile?.voiceNotes ?? asStringArray(existing?.voiceNotes),
-        stanceNotes: existingProfile?.stanceNotes ?? asStringArray(existing?.stanceNotes),
-        perspectiveNotes: existingProfile?.perspectiveNotes ?? asStringArray(existing?.perspectiveNotes),
-        notes: existingProfile?.notes ?? asStringArray(existing?.notes),
-        preferredRenderings: mergedPreferredRenderings,
-        correctionExamples: mergedCorrectionExamples
-      },
-      null,
-      2
-    )}\n`,
-    "utf8"
-  );
+  await writeCloudDataJson(filePath, {
+    ...(existing ?? {}),
+    displayName: existingProfile?.displayName ?? asString(existing?.displayName) ?? primaryArtist,
+    updatedAt: existingProfile?.updatedAt ?? asString(existing?.updatedAt) ?? new Date().toISOString(),
+    personaSummary: existingProfile?.personaSummary ?? asString(existing?.personaSummary) ?? null,
+    translationPreferences: existingProfile?.translationPreferences ?? asStringArray(existing?.translationPreferences),
+    translationDirectives: existingProfile?.translationDirectives ?? asStringArray(existing?.translationDirectives),
+    recurringThemes: existingProfile?.recurringThemes ?? asStringArray(existing?.recurringThemes),
+    recurringMotifs: existingProfile?.recurringMotifs ?? asStringArray(existing?.recurringMotifs),
+    relationshipPatterns: existingProfile?.relationshipPatterns ?? asStringArray(existing?.relationshipPatterns),
+    toneNotes: existingProfile?.toneNotes ?? asStringArray(existing?.toneNotes),
+    voiceNotes: existingProfile?.voiceNotes ?? asStringArray(existing?.voiceNotes),
+    stanceNotes: existingProfile?.stanceNotes ?? asStringArray(existing?.stanceNotes),
+    perspectiveNotes: existingProfile?.perspectiveNotes ?? asStringArray(existing?.perspectiveNotes),
+    notes: existingProfile?.notes ?? asStringArray(existing?.notes),
+    preferredRenderings: mergedPreferredRenderings,
+    correctionExamples: mergedCorrectionExamples
+  });
 
   return filePath;
 }
@@ -335,7 +306,7 @@ export async function learnFromDraftCorrections(previousDraft: AiTranslationDraf
 }
 
 export async function getTrackCorrectionExamples(spotifyTrackId: string) {
-  const filePath = path.join(aiGlossariesRoot, "tracks", `${spotifyTrackId}.json`);
+  const filePath = `${aiGlossariesRoot}/tracks/${spotifyTrackId}.json`;
   const existing = await readJsonRecord(filePath);
   return parseCorrectionExamples(existing?.correctionExamples);
 }

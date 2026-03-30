@@ -6,6 +6,7 @@ import type {
   AiCorrectionHint,
   AiProviderStatus,
   AiSongContext,
+  AiVerseState,
   GeneratedTranslationLineDraft,
   MeaningAnalysisLine
 } from "@/features/ai/types";
@@ -40,6 +41,7 @@ type RequestAiTranslationDraftOptions = BasePromptOptions & {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -57,6 +59,7 @@ type RequestAiMeaningAnalysisOptions = BasePromptOptions & {
     contextAfter?: string[];
     groupIndex?: number;
     groupText?: string;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
   }>;
 };
@@ -88,6 +91,7 @@ type RequestAiTranslationRefinementOptions = BasePromptOptions & {
       original: string;
       chosen: string;
     }>;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -150,6 +154,7 @@ type RequestAiTranslationSelectionOptions = BasePromptOptions & {
       original: string;
       chosen: string;
     }>;
+    verseState?: AiVerseState | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -183,8 +188,23 @@ export function getOpenAiGeneratorAModel() {
   return DEFAULT_OPENAI_GENERATOR_A_MODEL;
 }
 
+export async function resolveOpenAiGeneratorAModel() {
+  const value = process.env.OPENAI_GENERATOR_A_MODEL ?? process.env.OPENAI_MODEL;
+  if (value && value.trim().length > 0) return value.trim();
+
+  const { readSettings } = (await import("@/features/settings/repository")) as {
+    readSettings: () => Promise<{ generatorAModel: string }>;
+  };
+  const model = (await readSettings()).generatorAModel;
+  return model || DEFAULT_OPENAI_GENERATOR_A_MODEL;
+}
+
 export function getOpenAiModel() {
   return getOpenAiGeneratorAModel();
+}
+
+export async function resolveOpenAiModel() {
+  return resolveOpenAiGeneratorAModel();
 }
 
 export function isOpenAiConfigured() {
@@ -471,6 +491,7 @@ export function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
     "Chosen should be the strongest conservative final line for display.",
     "Do not invent scenes, emotions, or metaphors that are not present in the original line.",
     "Use nearby context, verse group context, song context, artist memory, and glossary hints to disambiguate meaning.",
+    "If verseState is provided for a line, treat it as a strong local-context signal for stance, target, and what the surrounding block is doing.",
     "If a line includes correction examples, treat them as strong guidance for similar phrasing unless the current context clearly changes the meaning.",
     "If a line includes previousTranslation, use it as a reference baseline — think independently but maintain terminology and tone consistency with previous high-confidence choices.",
     "If previousTranslation.manuallyReviewed is true, treat that choice as user-approved and preserve it unless you identify a clear semantic error.",
@@ -516,6 +537,7 @@ export function buildRefinementSystemPrompt(options: RequestAiTranslationRefinem
     "Review the current literal, natural, slangAware, and chosen translations for each line and improve them only when needed.",
     "Your main goals are semantic accuracy, slang correctness, and consistency across repeated phrases or recurring terms.",
     "If a repeated original line appears multiple times, keep its translation candidates consistent unless the local context clearly changes the meaning.",
+    "If verseState is provided, preserve that local block's stance, target, and emotional logic while refining.",
     "If manual correction examples are provided for a line, preserve their corrected meaning and style for similar phrasing unless the current context clearly changes it.",
     "If a line includes previousTranslation, use it as a reference — maintain consistency with previous high-confidence choices, give extra attention to improving low-confidence ones, and preserve manually-reviewed choices unless there is a clear error.",
     "Do not invent imagery, emotional emphasis, or cultural detail that is not present in the original lyric.",
@@ -567,6 +589,7 @@ export function buildSelectionSystemPrompt(options: RequestAiTranslationSelectio
     `The source lyrics are in ${options.sourceLanguage}. Select the best final English line for each entry.`,
     "Choose among the candidate translations by prioritizing semantic accuracy first, then slang correctness, then lyrical naturalness.",
     "Use song context, artist memory, glossary hints, and nearby chosen lines to keep the whole song consistent.",
+    "If verseState is provided, use it to preserve local block intent and to avoid selecting a line that sounds good but belongs to a different moment in the song.",
     "If manual correction examples are provided for a line, treat them as strong guidance and stay aligned with their corrected meaning unless the current context clearly changes it.",
     "If a line includes previousTranslation, factor it into your selection — prefer consistency with previous high-confidence choices, prioritise improving low-confidence ones, and treat manually-reviewed choices as near-final unless there is a clear error.",
     "Do not rewrite the original meaning into something flashier than the lyric actually says.",
@@ -621,6 +644,7 @@ export function buildUserPrompt(options: RequestAiTranslationDraftOptions) {
         contextAfter: line.contextAfter ?? [],
         groupIndex: line.groupIndex ?? null,
         groupText: line.groupText ?? null,
+        verseState: line.verseState ?? null,
         matchingCorrections: line.matchingCorrections ?? [],
         previousTranslation: line.previousTranslation ?? null
       }))
@@ -651,6 +675,7 @@ export function buildMeaningUserPrompt(options: RequestAiMeaningAnalysisOptions)
         contextAfter: line.contextAfter ?? [],
         groupIndex: line.groupIndex ?? null,
         groupText: line.groupText ?? null,
+        verseState: line.verseState ?? null,
         matchingCorrections: line.matchingCorrections ?? []
       }))
     },
@@ -696,6 +721,7 @@ export function buildRefinementUserPrompt(options: RequestAiTranslationRefinemen
         },
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
+        verseState: line.verseState ?? null,
         matchingCorrections: line.matchingCorrections ?? [],
         previousTranslation: line.previousTranslation ?? null
       }))
@@ -766,6 +792,7 @@ export function buildSelectionUserPrompt(options: RequestAiTranslationSelectionO
         },
         contextBefore: line.contextBefore ?? [],
         contextAfter: line.contextAfter ?? [],
+        verseState: line.verseState ?? null,
         matchingCorrections: line.matchingCorrections ?? [],
         previousTranslation: line.previousTranslation ?? null
       }))
@@ -1046,7 +1073,7 @@ export function parseSelectionResponse(
 
 export async function inspectOpenAiStatus(): Promise<AiProviderStatus> {
   const baseUrl = getOpenAiBaseUrl();
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
 
   if (!isOpenAiConfigured()) {
     return {
@@ -1108,7 +1135,7 @@ export async function inspectOpenAiStatus(): Promise<AiProviderStatus> {
 export async function requestOpenAiSongContext(
   options: RequestAiSongContextOptions
 ): Promise<{ model: string; sourceLanguage: string; songContext: AiSongContext }> {
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_song_context",
@@ -1143,7 +1170,7 @@ export async function requestOpenAiArtistProfile(options: RequestAiArtistProfile
     notes: string[];
   };
 }> {
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_artist_profile",
@@ -1183,7 +1210,7 @@ export async function requestOpenAiMeaningAnalysis(
     throw new Error("No lyric lines were provided to the AI meaning-analysis generator.");
   }
 
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_meaning_analysis",
@@ -1210,7 +1237,7 @@ export async function requestOpenAiTranslationDraft(
   }
 
   const localSink = { inputTokens: 0, outputTokens: 0 };
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_translation_draft",
@@ -1242,7 +1269,7 @@ export async function requestOpenAiTranslationRefinement(
     throw new Error("No lyric lines were provided to the AI refinement generator.");
   }
 
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_translation_refinement",
@@ -1277,7 +1304,7 @@ export async function requestOpenAiTranslationSelection(
     throw new Error("No lyric lines were provided to the AI selector.");
   }
 
-  const model = getOpenAiModel();
+  const model = await resolveOpenAiModel();
   const parsed = await callOpenAiJson<unknown>({
     model,
     schemaName: "lafz_translation_selection",

@@ -1,10 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { readCloudDataJson, writeCloudDataJson } from "@/features/cloud/data-store";
 import type { AiArtistMemory, AiCanonicalRendering } from "@/features/ai/types";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 
-const artistProfilesRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
+const artistProfilesRoot = "data/ai/memory/artists";
 
 type ArtistProfileFields = Omit<AiArtistMemory, "glossaryEntries" | "artistKey">;
 
@@ -187,30 +185,14 @@ export async function readArtistProfileFile(artistKey: string): Promise<ArtistPr
     return cloudProfile;
   }
 
-  const filePath = path.join(artistProfilesRoot, `${artistKey}.json`);
-
-  try {
-    const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
-    return parseArtistProfileObject(artistKey, parsed);
-  } catch {
-    return emptyProfile(artistKey);
-  }
+  const filePath = `${artistProfilesRoot}/${artistKey}.json`;
+  const parsed = await readCloudDataJson<unknown>(filePath);
+  return parsed ? parseArtistProfileObject(artistKey, parsed) : emptyProfile(artistKey);
 }
 
 export async function writeArtistProfileFile(file: ArtistProfileFile) {
-  const filePath = path.join(artistProfilesRoot, `${file.artistKey}.json`);
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(
-    filePath,
-    `${JSON.stringify(
-      {
-        ...file
-      },
-      null,
-      2
-    )}\n`,
-    "utf8"
-  );
+  const filePath = `${artistProfilesRoot}/${file.artistKey}.json`;
+  await writeCloudDataJson(filePath, file);
   await writeArtistProfileToSupabase(file);
 }
 

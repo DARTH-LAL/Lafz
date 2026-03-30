@@ -1,20 +1,18 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { readCloudDataJson, writeCloudDataJson } from "@/features/cloud/data-store";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { getGlossarySearchTerms } from "@/features/ai/glossary";
 import { normalizeLookupText } from "@/features/ai/romanized-normalization";
 
 // ── Paths ──────────────────────────────────────────────────────────────────
 
-const artistsRoot = path.join(process.cwd(), "data", "ai", "glossaries", "local", "artists");
+const artistsRoot = "data/ai/glossaries/local/artists";
 
 function artistGlossaryPath(artistKey: string) {
-  return path.join(artistsRoot, `${artistKey}.json`);
+  return `${artistsRoot}/${artistKey}.json`;
 }
 
 function artistSuggestionsPath(artistKey: string) {
-  return path.join(artistsRoot, `${artistKey}.suggestions.json`);
+  return `${artistsRoot}/${artistKey}.suggestions.json`;
 }
 
 // ── Key normalisation ─────────────────────────────────────────────────────
@@ -49,30 +47,23 @@ export type PendingGlossarySuggestion = AiGlossaryEntry & {
 // ── Artist glossary CRUD ──────────────────────────────────────────────────
 
 export async function readArtistGlossaryFile(artistKey: string): Promise<ArtistGlossaryFile> {
-  try {
-    const text = await readFile(artistGlossaryPath(artistKey), "utf8");
-    const parsed = JSON.parse(text) as unknown;
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      Array.isArray((parsed as Record<string, unknown>).entries)
-    ) {
-      const file = parsed as ArtistGlossaryFile;
-      return { displayName: file.displayName ?? artistKey, artistKey, updatedAt: file.updatedAt ?? new Date().toISOString(), entries: file.entries };
-    }
-    // Legacy: bare array
-    if (Array.isArray(parsed)) {
-      return { displayName: artistKey, artistKey, updatedAt: new Date().toISOString(), entries: parsed as AiGlossaryEntry[] };
-    }
-    return { displayName: artistKey, artistKey, updatedAt: new Date().toISOString(), entries: [] };
-  } catch {
-    return { displayName: artistKey, artistKey, updatedAt: new Date().toISOString(), entries: [] };
+  const parsed = await readCloudDataJson<unknown>(artistGlossaryPath(artistKey));
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    Array.isArray((parsed as Record<string, unknown>).entries)
+  ) {
+    const file = parsed as ArtistGlossaryFile;
+    return { displayName: file.displayName ?? artistKey, artistKey, updatedAt: file.updatedAt ?? new Date().toISOString(), entries: file.entries };
   }
+  if (Array.isArray(parsed)) {
+    return { displayName: artistKey, artistKey, updatedAt: new Date().toISOString(), entries: parsed as AiGlossaryEntry[] };
+  }
+  return { displayName: artistKey, artistKey, updatedAt: new Date().toISOString(), entries: [] };
 }
 
 async function writeArtistGlossaryFile(file: ArtistGlossaryFile): Promise<void> {
-  await mkdir(artistsRoot, { recursive: true });
-  await writeFile(artistGlossaryPath(file.artistKey), JSON.stringify(file, null, 2), "utf8");
+  await writeCloudDataJson(artistGlossaryPath(file.artistKey), file);
 }
 
 export async function addOrUpdateGlossaryTerm(
@@ -146,19 +137,12 @@ function normalizeTermForDedup(term: string): string {
 // ── Pending suggestions ───────────────────────────────────────────────────
 
 export async function readPendingSuggestions(artistKey: string): Promise<PendingGlossarySuggestion[]> {
-  try {
-    const text = await readFile(artistSuggestionsPath(artistKey), "utf8");
-    const parsed = JSON.parse(text) as unknown;
-    if (Array.isArray(parsed)) return parsed as PendingGlossarySuggestion[];
-    return [];
-  } catch {
-    return [];
-  }
+  const parsed = await readCloudDataJson<unknown>(artistSuggestionsPath(artistKey));
+  return Array.isArray(parsed) ? (parsed as PendingGlossarySuggestion[]) : [];
 }
 
 async function writePendingSuggestions(artistKey: string, suggestions: PendingGlossarySuggestion[]): Promise<void> {
-  await mkdir(artistsRoot, { recursive: true });
-  await writeFile(artistSuggestionsPath(artistKey), JSON.stringify(suggestions, null, 2), "utf8");
+  await writeCloudDataJson(artistSuggestionsPath(artistKey), suggestions);
 }
 
 export async function storePendingSuggestions(

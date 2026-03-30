@@ -1,6 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { writeLibraryPlaylistFile as writeCloudLibraryPlaylistFile } from "@/features/library/playlists-repository";
 import { createTranslationStubsForTracks } from "@/features/translations/stubs";
 import type {
   LafzLibraryPlaylistFile,
@@ -11,8 +9,6 @@ import type {
   PlaylistImportSkippedReason,
   TranslationStatus
 } from "@/features/spotify/types";
-
-const libraryPlaylistsRoot = path.join(process.cwd(), "data", "library", "playlists");
 
 const skipReasonOrder = [
   "duplicate_track",
@@ -334,16 +330,11 @@ async function fetchSpotifyPlaylistTracks(accessToken: string, playlistId: strin
 }
 
 export function getPlaylistLibraryFilePath(playlistId: string) {
-  return path.join(libraryPlaylistsRoot, `${playlistId}.json`);
+  return `r2:data/library/playlists/${playlistId}.json`;
 }
 
 async function writePlaylistLibraryFile(libraryFile: LafzLibraryPlaylistFile) {
-  await mkdir(libraryPlaylistsRoot, { recursive: true });
-
-  const filePath = getPlaylistLibraryFilePath(libraryFile.playlist_id);
-  await writeFile(filePath, `${JSON.stringify(libraryFile, null, 2)}\n`, "utf8");
-
-  return filePath;
+  return writeCloudLibraryPlaylistFile(libraryFile);
 }
 
 export async function importSpotifyPlaylistLibrary(

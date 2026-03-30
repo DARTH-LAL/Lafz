@@ -4,7 +4,8 @@ import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
-  AiSongContext
+  AiSongContext,
+  AiVerseState
 } from "@/features/ai/types";
 
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -46,6 +47,7 @@ type GeminiDraftComparisonLine = {
     original: string;
     chosen: string;
   }>;
+  verseState?: AiVerseState | null;
   matchingCorrections?: AiCorrectionHint[];
   previousTranslation?: PreviousTranslationRef | null;
 };
@@ -60,6 +62,14 @@ type RequestGeminiDraftComparisonOptions = {
   songContext: AiSongContext | null;
   artistMemory: AiArtistMemory | null;
   lines: GeminiDraftComparisonLine[];
+};
+
+type GeminiCandidateScore = {
+  semanticAccuracy: number;
+  contextFit: number;
+  perspectiveFidelity: number;
+  repetitionRisk: number;
+  driftRisk: number;
 };
 
 function normalizeGeminiBaseUrl(value: string | undefined) {
@@ -77,6 +87,10 @@ function asString(value: unknown) {
 
 function normalizeNullableString(value: unknown) {
   return value === null ? null : asString(value);
+}
+
+function normalizeScore(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(5, Math.round(value))) : null;
 }
 
 function extractGeminiErrorMessage(payload: unknown, fallbackMessage: string) {
@@ -126,9 +140,13 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
     "Do not reward flashier wording if it drifts away from the original meaning.",
     "You may choose Generator A, choose Generator B, or synthesize a blended line only if the blend stays grounded in the original lyric.",
     "Use song context, glossary hints, artist memory, nearby lines, and manual correction hints to stay consistent.",
+    "Use verseState when provided to preserve the local block's stance, target, and escalation instead of treating every line as the same song-wide mood.",
     "If a line includes previousTranslation, factor it in when evaluating — prefer consistency with previous high-confidence choices, prioritise meaningful improvement for low-confidence ones, and treat manually-reviewed choices as near-final unless a candidate clearly corrects an error.",
     "If both candidates are weak, choose the more conservative option or synthesize a conservative correction.",
-    "Return only JSON with detectedSourceLanguage and lines. Each line must include winner, chosen, confidence, ambiguity, note, and selectorReason.",
+    "Heavily penalize duplicated outputs for different original lines unless the original lyric itself is repeated.",
+    "Heavily penalize ad-lib collapse: never reduce a meaningful lyric line to an ad-lib like 'uh-huh', 'yeah', or a tag.",
+    "scoreA and scoreB must each rate semanticAccuracy, contextFit, perspectiveFidelity, repetitionRisk, and driftRisk on a 0-5 scale.",
+    "Return only JSON with detectedSourceLanguage and lines. Each line must include winner, chosen, confidence, ambiguity, note, selectorReason, suspiciousDuplicate, adlibCollapseRisk, semanticDriftRisk, scoreA, and scoreB.",
     "winner must be one of: generator_a, generator_b, blended."
   ];
 
@@ -182,6 +200,17 @@ export function getGeminiEvaluatorModel() {
     if (model) return model;
   } catch {}
   return DEFAULT_GEMINI_EVALUATOR_MODEL;
+}
+
+export async function resolveGeminiEvaluatorModel() {
+  const value = process.env.GEMINI_EVALUATOR_MODEL?.trim();
+  if (value && value.length > 0) return value;
+
+  const { readSettings } = (await import("@/features/settings/repository")) as {
+    readSettings: () => Promise<{ judgeModel: string }>;
+  };
+  const model = (await readSettings()).judgeModel;
+  return model || DEFAULT_GEMINI_EVALUATOR_MODEL;
 }
 
 export function isGeminiConfigured() {
@@ -260,6 +289,11 @@ export async function requestGeminiDraftComparison(
     ambiguity: string | null;
     note: string | null;
     selectorReason: string | null;
+    suspiciousDuplicate: boolean;
+    adlibCollapseRisk: boolean;
+    semanticDriftRisk: boolean;
+    scoreA: GeminiCandidateScore | null;
+    scoreB: GeminiCandidateScore | null;
   }>;
   usage: { inputTokens: number; outputTokens: number };
 }> {
@@ -268,7 +302,7 @@ export async function requestGeminiDraftComparison(
   }
 
   const localSink = { inputTokens: 0, outputTokens: 0 };
-  const model = getGeminiEvaluatorModel();
+  const model = await resolveGeminiEvaluatorModel();
   const parsed = await callGeminiJson<unknown>({
     model,
     systemPrompt: buildGeminiComparisonSystemPrompt(options),
@@ -311,7 +345,28 @@ export async function requestGeminiDraftComparison(
         confidence,
         ambiguity: normalizeNullableString(line.ambiguity),
         note: normalizeNullableString(line.note),
-        selectorReason: normalizeNullableString(line.selectorReason)
+        selectorReason: normalizeNullableString(line.selectorReason),
+        suspiciousDuplicate: line.suspiciousDuplicate === true,
+        adlibCollapseRisk: line.adlibCollapseRisk === true,
+        semanticDriftRisk: line.semanticDriftRisk === true,
+        scoreA: isRecord(line.scoreA)
+          ? {
+              semanticAccuracy: normalizeScore(line.scoreA.semanticAccuracy) ?? 0,
+              contextFit: normalizeScore(line.scoreA.contextFit) ?? 0,
+              perspectiveFidelity: normalizeScore(line.scoreA.perspectiveFidelity) ?? 0,
+              repetitionRisk: normalizeScore(line.scoreA.repetitionRisk) ?? 0,
+              driftRisk: normalizeScore(line.scoreA.driftRisk) ?? 0
+            }
+          : null,
+        scoreB: isRecord(line.scoreB)
+          ? {
+              semanticAccuracy: normalizeScore(line.scoreB.semanticAccuracy) ?? 0,
+              contextFit: normalizeScore(line.scoreB.contextFit) ?? 0,
+              perspectiveFidelity: normalizeScore(line.scoreB.perspectiveFidelity) ?? 0,
+              repetitionRisk: normalizeScore(line.scoreB.repetitionRisk) ?? 0,
+              driftRisk: normalizeScore(line.scoreB.driftRisk) ?? 0
+            }
+          : null
       };
     }),
     usage: localSink

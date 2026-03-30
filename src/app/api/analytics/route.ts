@@ -10,6 +10,6 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const period = (request.nextUrl.searchParams.get("period") ?? "30d") as "24h" | "7d" | "30d" | "all";
-  const data = getUsageAnalytics(period);
+  const data = await getUsageAnalytics(period);
   return NextResponse.json({ success: true, data });
 }

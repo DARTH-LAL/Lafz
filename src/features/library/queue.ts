@@ -1,12 +1,13 @@
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
-
-import { inspectAiTranslationDraftFile } from "@/features/ai/repository";
+import { batchInspectAiTranslationDraftFiles } from "@/features/ai/repository";
+import type { AiTranslationDraftInspection } from "@/features/ai/types";
+import { listLibraryPlaylistKeys, readLibraryPlaylistByKey } from "@/features/library/playlists-repository";
 import { deriveStudioStatus } from "@/features/library/studio-status";
-import { inspectLyricsCache } from "@/features/lyrics/repository";
+import { batchInspectLyricsCaches } from "@/features/lyrics/repository";
+import type { LyricsCacheInspection } from "@/features/lyrics/types";
 import type { LafzLibraryPlaylistFile, LafzLibraryTrack, TranslationStatus } from "@/features/spotify/types";
-import { inspectTranslationFile } from "@/features/translations/inspection";
+import { batchInspectTranslationFiles } from "@/features/translations/inspection";
 import { createTranslationStubFile } from "@/features/translations/stubs";
+import type { TranslationFileInspection } from "@/features/translations/types";
 import type {
   LibraryQueueFilters,
   LibraryQueueRecord,
@@ -17,7 +18,6 @@ import type {
   QueueSortOption
 } from "@/features/library/types";
 
-const libraryPlaylistsRoot = path.join(process.cwd(), "data", "library", "playlists");
 const libraryStatusPriority: Record<TranslationStatus, number> = {
   pending: 0,
   in_progress: 1,
@@ -45,18 +45,6 @@ type QueueRecordSeed = {
   explicit_translation_status: TranslationStatus | null;
   spotify_track_url: string | null;
 };
-
-async function ensureTranslationFilesForSeeds(seeds: Iterable<QueueRecordSeed>) {
-  await Promise.all(
-    [...seeds].map((seed) =>
-      createTranslationStubFile({
-        spotifyTrackId: seed.spotify_track_id,
-        language: seed.language,
-        overwriteExistingStub: false
-      })
-    )
-  );
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -161,7 +149,7 @@ function parseLibraryPlaylistFile(value: unknown, filePath: string): LafzLibrary
     total_tracks_fetched,
     imported_track_count,
     skipped_track_count,
-    // Parse local playlist JSON defensively so one malformed file becomes a warning instead of taking down the whole queue.
+    // Parse cloud playlist JSON defensively so one malformed object becomes a warning instead of taking down the whole queue.
     tracks: tracks
       .map((track, index) => parseLibraryTrack(track, filePath, index))
       .filter((track): track is LafzLibraryTrack => Boolean(track))
@@ -169,16 +157,7 @@ function parseLibraryPlaylistFile(value: unknown, filePath: string): LafzLibrary
 }
 
 async function readLibraryPlaylistFiles() {
-  try {
-    const fileNames = await readdir(libraryPlaylistsRoot);
-    return fileNames.filter((fileName) => fileName.endsWith(".json")).sort(compareStrings);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-
-    throw error;
-  }
+  return (await listLibraryPlaylistKeys()).sort(compareStrings);
 }
 
 function buildQueueSummary(records: LibraryQueueRecord[]): LibraryQueueSummary {
@@ -205,12 +184,79 @@ function buildQueueSummary(records: LibraryQueueRecord[]): LibraryQueueSummary {
   );
 }
 
-async function hydrateQueueRecord(seed: QueueRecordSeed): Promise<LibraryQueueRecord> {
-  const [translationInspection, aiDraftInspection, lyricsInspection] = await Promise.all([
-    inspectTranslationFile(seed.spotify_track_id),
-    inspectAiTranslationDraftFile(seed.spotify_track_id),
-    inspectLyricsCache(seed.spotify_track_id)
-  ]);
+function buildMissingTranslationInspection(trackId: string): TranslationFileInspection {
+  return {
+    exists: false,
+    filePath: `r2:data/translations/local/${trackId}.json`,
+    kind: "missing",
+    lineCount: 0,
+    lastModifiedAt: null,
+    language: null,
+    preview: null,
+    parsedJson: null,
+    parseError: null
+  };
+}
+
+function buildStubTranslationInspection(trackId: string, language: string | null): TranslationFileInspection {
+  return {
+    exists: true,
+    filePath: `r2:data/translations/local/${trackId}.json`,
+    kind: "stub",
+    lineCount: 0,
+    lastModifiedAt: new Date().toISOString(),
+    language,
+    preview: null,
+    parsedJson: null,
+    parseError: null
+  };
+}
+
+function buildMissingDraftInspection(trackId: string): AiTranslationDraftInspection {
+  return {
+    exists: false,
+    filePath: `r2:data/translations/drafts/${trackId}.json`,
+    mode: "missing",
+    lineCount: 0,
+    lowConfidenceCount: 0,
+    mediumConfidenceCount: 0,
+    highConfidenceCount: 0,
+    manualReviewCount: 0,
+    lastModifiedAt: null,
+    sourceLanguage: null,
+    targetLanguage: null,
+    model: null,
+    preview: null,
+    parseError: null
+  };
+}
+
+function buildMissingLyricsInspection(trackId: string): LyricsCacheInspection {
+  return {
+    exists: false,
+    filePath: `data/lyrics/cache/${trackId}.json`,
+    kind: "missing",
+    source: null,
+    sourceLabel: null,
+    language: null,
+    lineCount: 0,
+    lastModifiedAt: null,
+    preview: null,
+    parseError: null,
+    plainLyrics: null,
+    lines: []
+  };
+}
+
+async function hydrateQueueRecord(
+  seed: QueueRecordSeed,
+  inspections: {
+    translationInspection: TranslationFileInspection;
+    aiDraftInspection: AiTranslationDraftInspection;
+    lyricsInspection: LyricsCacheInspection;
+  }
+): Promise<LibraryQueueRecord> {
+  const { translationInspection, aiDraftInspection, lyricsInspection } = inspections;
   const studioStatus = deriveStudioStatus({
     lyricsInspection,
     translationInspection,
@@ -266,12 +312,9 @@ export async function buildLibraryQueue(): Promise<LibraryQueueResult> {
   const queueSeeds = new Map<string, QueueRecordSeed>();
 
   for (const fileName of fileNames) {
-    const filePath = path.join(libraryPlaylistsRoot, fileName);
-
     try {
-      const fileContents = await readFile(filePath, "utf8");
-      const parsedJson = JSON.parse(fileContents) as unknown;
-      const playlistFile = parseLibraryPlaylistFile(parsedJson, filePath);
+      const parsedJson = await readLibraryPlaylistByKey(fileName);
+      const playlistFile = parseLibraryPlaylistFile(parsedJson, fileName);
       const sourcePlaylist: LibrarySourcePlaylist = {
         playlist_id: playlistFile.playlist_id,
         playlist_name: playlistFile.playlist_name,
@@ -317,15 +360,45 @@ export async function buildLibraryQueue(): Promise<LibraryQueueResult> {
       }
     } catch (error) {
       warnings.push({
-        source: filePath,
+        source: fileName,
         message: error instanceof Error ? error.message : "Could not read playlist library JSON."
       });
     }
   }
 
-  await ensureTranslationFilesForSeeds(queueSeeds.values());
+  const seeds = [...queueSeeds.values()];
+  const trackIds = seeds.map((seed) => seed.spotify_track_id);
 
-  const records = await Promise.all([...queueSeeds.values()].map((seed) => hydrateQueueRecord(seed)));
+  const [translationInspections, aiDraftInspections, lyricsInspections] = await Promise.all([
+    batchInspectTranslationFiles(trackIds),
+    batchInspectAiTranslationDraftFiles(trackIds),
+    batchInspectLyricsCaches(trackIds)
+  ]);
+
+  const missingTranslationSeeds = seeds.filter((seed) => !translationInspections.has(seed.spotify_track_id));
+
+  if (missingTranslationSeeds.length > 0) {
+    await Promise.all(
+      missingTranslationSeeds.map(async (seed) => {
+        await createTranslationStubFile({
+          spotifyTrackId: seed.spotify_track_id,
+          language: seed.language,
+          overwriteExistingStub: false
+        });
+        translationInspections.set(seed.spotify_track_id, buildStubTranslationInspection(seed.spotify_track_id, seed.language));
+      })
+    );
+  }
+
+  const records = await Promise.all(
+    seeds.map((seed) =>
+      hydrateQueueRecord(seed, {
+        translationInspection: translationInspections.get(seed.spotify_track_id) ?? buildMissingTranslationInspection(seed.spotify_track_id),
+        aiDraftInspection: aiDraftInspections.get(seed.spotify_track_id) ?? buildMissingDraftInspection(seed.spotify_track_id),
+        lyricsInspection: lyricsInspections.get(seed.spotify_track_id) ?? buildMissingLyricsInspection(seed.spotify_track_id)
+      })
+    )
+  );
   const sortedRecords = sortQueueRecords(records, "status");
   const languages = [...new Set(sortedRecords.map((record) => record.language))].sort(compareStrings);
   const playlists = [

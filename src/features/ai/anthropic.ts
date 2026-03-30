@@ -155,6 +155,17 @@ export function getAnthropicGeneratorBModel() {
   return DEFAULT_ANTHROPIC_GENERATOR_B_MODEL;
 }
 
+export async function resolveAnthropicGeneratorBModel() {
+  const value = process.env.ANTHROPIC_GENERATOR_B_MODEL?.trim();
+  if (value && value.length > 0) return value;
+
+  const { readSettings } = (await import("@/features/settings/repository")) as {
+    readSettings: () => Promise<{ generatorBModel: string }>;
+  };
+  const model = (await readSettings()).generatorBModel;
+  return model || DEFAULT_ANTHROPIC_GENERATOR_B_MODEL;
+}
+
 export function isAnthropicConfigured() {
   return typeof process.env.ANTHROPIC_API_KEY === "string" && process.env.ANTHROPIC_API_KEY.trim().length > 0;
 }
@@ -233,7 +244,7 @@ export async function requestAnthropicTranslationDraft(
   }
 
   const localSink = { inputTokens: 0, outputTokens: 0 };
-  const model = getAnthropicGeneratorBModel();
+  const model = await resolveAnthropicGeneratorBModel();
   const parsed = await callAnthropicJson<unknown>({
     model,
     systemPrompt: buildAnthropicSystemPrompt(options),
