@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "backfill:supabase": "node --env-file=.env.local scripts/backfill-supabase.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
     "@swc/helpers": "^0.5.20",
     "next": "^15.5.2",
     "react": "^19.1.1",

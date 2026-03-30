@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { AiArtistMemory, AiCanonicalRendering } from "@/features/ai/types";
+import { getSupabaseServerClient } from "@/features/cloud/supabase";
 
 const artistProfilesRoot = path.join(process.cwd(), "data", "ai", "memory", "artists");
 
@@ -42,6 +43,84 @@ function parseCanonicalRenderings(value: unknown): AiCanonicalRendering[] {
       return note ? { term, rendering, note } : { term, rendering };
     })
     .filter((r): r is AiCanonicalRendering => r !== null);
+}
+
+function parseArtistProfileObject(artistKey: string, parsed: unknown): ArtistProfileFile {
+  if (!isRecord(parsed)) {
+    return emptyProfile(artistKey);
+  }
+
+  return {
+    artistKey,
+    displayName: asString(parsed.displayName) ?? artistKey,
+    updatedAt: asString(parsed.updatedAt) ?? new Date().toISOString(),
+    builtFromSongs: typeof parsed.builtFromSongs === "number" ? parsed.builtFromSongs : undefined,
+    builtFromGlossaryTerms: typeof parsed.builtFromGlossaryTerms === "number" ? parsed.builtFromGlossaryTerms : undefined,
+    personaSummary: asString(parsed.personaSummary),
+    translationPreferences: asStringArray(parsed.translationPreferences),
+    translationDirectives: asStringArray(parsed.translationDirectives),
+    recurringThemes: asStringArray(parsed.recurringThemes),
+    recurringMotifs: asStringArray(parsed.recurringMotifs),
+    relationshipPatterns: asStringArray(parsed.relationshipPatterns),
+    toneNotes: asStringArray(parsed.toneNotes),
+    voiceNotes: asStringArray(parsed.voiceNotes),
+    stanceNotes: asStringArray(parsed.stanceNotes),
+    perspectiveNotes: asStringArray(parsed.perspectiveNotes),
+    notes: asStringArray(parsed.notes),
+    canonicalRenderings: parseCanonicalRenderings(parsed.canonicalRenderings),
+  } satisfies ArtistProfileFile;
+}
+
+async function readArtistProfileFromSupabase(artistKey: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("artist_profiles")
+    .select("artist_key, profile_json, updated_at")
+    .eq("artist_key", artistKey)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Could not read artist profile ${artistKey} from Supabase.`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return parseArtistProfileObject(artistKey, {
+    ...(isRecord(data.profile_json) ? data.profile_json : {}),
+    artistKey,
+    updatedAt: asString(data.updated_at) ?? new Date().toISOString()
+  });
+}
+
+async function writeArtistProfileToSupabase(file: ArtistProfileFile) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.from("artist_profiles").upsert(
+    {
+      artist_key: file.artistKey,
+      profile_json: file,
+      updated_at: file.updatedAt
+    },
+    {
+      onConflict: "artist_key"
+    }
+  );
+
+  if (error) {
+    console.error(`Could not write artist profile ${file.artistKey} to Supabase.`, error);
+  }
 }
 
 function emptyProfile(artistKey: string) {
@@ -102,34 +181,17 @@ export function hasArtistProfileContent(
 }
 
 export async function readArtistProfileFile(artistKey: string): Promise<ArtistProfileFile> {
+  const cloudProfile = await readArtistProfileFromSupabase(artistKey);
+
+  if (cloudProfile) {
+    return cloudProfile;
+  }
+
   const filePath = path.join(artistProfilesRoot, `${artistKey}.json`);
 
   try {
     const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
-
-    if (!isRecord(parsed)) {
-      return emptyProfile(artistKey);
-    }
-
-    return {
-      artistKey,
-      displayName: asString(parsed.displayName) ?? artistKey,
-      updatedAt: asString(parsed.updatedAt) ?? new Date().toISOString(),
-      builtFromSongs: typeof parsed.builtFromSongs === "number" ? parsed.builtFromSongs : undefined,
-      builtFromGlossaryTerms: typeof parsed.builtFromGlossaryTerms === "number" ? parsed.builtFromGlossaryTerms : undefined,
-      personaSummary: asString(parsed.personaSummary),
-      translationPreferences: asStringArray(parsed.translationPreferences),
-      translationDirectives: asStringArray(parsed.translationDirectives),
-      recurringThemes: asStringArray(parsed.recurringThemes),
-      recurringMotifs: asStringArray(parsed.recurringMotifs),
-      relationshipPatterns: asStringArray(parsed.relationshipPatterns),
-      toneNotes: asStringArray(parsed.toneNotes),
-      voiceNotes: asStringArray(parsed.voiceNotes),
-      stanceNotes: asStringArray(parsed.stanceNotes),
-      perspectiveNotes: asStringArray(parsed.perspectiveNotes),
-      notes: asStringArray(parsed.notes),
-      canonicalRenderings: parseCanonicalRenderings(parsed.canonicalRenderings),
-    } satisfies ArtistProfileFile;
+    return parseArtistProfileObject(artistKey, parsed);
   } catch {
     return emptyProfile(artistKey);
   }
@@ -149,6 +211,7 @@ export async function writeArtistProfileFile(file: ArtistProfileFile) {
     )}\n`,
     "utf8"
   );
+  await writeArtistProfileToSupabase(file);
 }
 
 export async function updateArtistProfileFile(

@@ -10,6 +10,7 @@ import type {
   AiSongContext
 } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { normalizeLookupText as normalizeRomanizedLookupText } from "@/features/ai/romanized-normalization";
 import type { TrackTranslation } from "@/features/translations/types";
 
@@ -346,6 +347,61 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   };
 }
 
+async function readAiTranslationDraftFromSupabase(spotifyTrackId: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("translation_drafts")
+    .select("spotify_track_id, draft_json")
+    .eq("spotify_track_id", spotifyTrackId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Could not read AI draft ${spotifyTrackId} from Supabase.`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  try {
+    return parseAiTranslationDraftFile(data.draft_json, `supabase:translation_drafts/${spotifyTrackId}`);
+  } catch (error) {
+    console.error(`Supabase AI draft ${spotifyTrackId} could not be parsed.`, error);
+    return null;
+  }
+}
+
+async function writeAiTranslationDraftToSupabase(draftFile: AiTranslationDraftFile) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.from("translation_drafts").upsert(
+    {
+      spotify_track_id: draftFile.spotifyTrackId,
+      source_language: draftFile.sourceLanguage,
+      target_language: draftFile.targetLanguage,
+      draft_json: draftFile,
+      updated_at: new Date().toISOString()
+    },
+    {
+      onConflict: "spotify_track_id"
+    }
+  );
+
+  if (error) {
+    console.error(`Could not write AI draft ${draftFile.spotifyTrackId} to Supabase.`, error);
+  }
+}
+
 export function getAiTranslationDraftFilePath(spotifyTrackId: string) {
   return path.join(aiTranslationDraftsRoot, `${spotifyTrackId}.json`);
 }
@@ -359,6 +415,7 @@ export async function writeAiTranslationDraftFile(draftFile: AiTranslationDraftF
   await backupDraftBeforeOverwrite(draftFile.spotifyTrackId, filePath);
 
   await writeFile(filePath, `${JSON.stringify(draftFile, null, 2)}\n`, "utf8");
+  await writeAiTranslationDraftToSupabase(draftFile);
   return filePath;
 }
 
@@ -430,6 +487,12 @@ export async function inspectAiTranslationDraftFile(spotifyTrackId: string): Pro
 }
 
 export async function getAiTranslationDraftByTrackId(spotifyTrackId: string) {
+  const cloudDraft = await readAiTranslationDraftFromSupabase(spotifyTrackId);
+
+  if (cloudDraft) {
+    return cloudDraft;
+  }
+
   const filePath = getAiTranslationDraftFilePath(spotifyTrackId);
 
   try {

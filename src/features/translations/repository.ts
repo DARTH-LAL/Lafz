@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import type { TrackTranslation, TranslationLine, TranslationStubFile } from "@/features/translations/types";
 
 const translationsRoot = path.join(process.cwd(), "data", "translations");
@@ -144,6 +145,104 @@ function parseTrackTranslation(value: unknown, filePath: string): TrackTranslati
   };
 }
 
+async function readTrackTranslationFromSupabase(trackId: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("published_translations")
+    .select("spotify_track_id, translation_json")
+    .eq("spotify_track_id", trackId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Could not read published translation ${trackId} from Supabase.`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  try {
+    return parseTrackTranslation(data.translation_json, `supabase:published_translations/${trackId}`);
+  } catch (error) {
+    if (error instanceof Error && error.message === TRANSLATION_STUB_SENTINEL) {
+      return null;
+    }
+
+    console.error(`Supabase published translation ${trackId} could not be parsed.`, error);
+    return null;
+  }
+}
+
+async function writeTrackTranslationToSupabase(translation: TrackTranslation) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.from("published_translations").upsert(
+    {
+      spotify_track_id: translation.spotifyTrackId,
+      translation_json: translation,
+      is_synced: true,
+      updated_at: new Date().toISOString()
+    },
+    {
+      onConflict: "spotify_track_id"
+    }
+  );
+
+  if (error) {
+    console.error(`Could not write published translation ${translation.spotifyTrackId} to Supabase.`, error);
+  }
+}
+
+async function findTrackTranslationByMetadataFromSupabase(target: { title: string; artist: string }) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.from("published_translations").select("spotify_track_id, translation_json");
+
+  if (error) {
+    console.error("Could not search published translations in Supabase.", error);
+    return null;
+  }
+
+  let bestMatch: {
+    score: number;
+    translation: TrackTranslation;
+  } | null = null;
+
+  for (const row of data ?? []) {
+    try {
+      const parsed = parseTrackTranslation(row.translation_json, `supabase:published_translations/${row.spotify_track_id}`);
+      const score = scoreTranslationMetadataMatch(parsed, target);
+
+      if (score !== null && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = {
+          score,
+          translation: parsed
+        };
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === TRANSLATION_STUB_SENTINEL) {
+        continue;
+      }
+    }
+  }
+
+  return bestMatch?.translation ?? null;
+}
+
 export function getTranslationFileHint(trackId: string) {
   return `data/translations/local/${trackId}.json`;
 }
@@ -153,10 +252,17 @@ export async function writeTrackTranslationFile(translation: TrackTranslation) {
   const filePath = path.join(localTranslationsDirectory, `${translation.spotifyTrackId}.json`);
   await mkdir(localTranslationsDirectory, { recursive: true });
   await writeFile(filePath, `${JSON.stringify(translation, null, 2)}\n`, "utf8");
+  await writeTrackTranslationToSupabase(translation);
   return filePath;
 }
 
 export async function getTranslationByTrackId(trackId: string) {
+  const cloudTranslation = await readTrackTranslationFromSupabase(trackId);
+
+  if (cloudTranslation) {
+    return cloudTranslation;
+  }
+
   for (const directory of translationSearchDirectories) {
     const filePath = path.join(directory, `${trackId}.json`);
 
@@ -182,6 +288,12 @@ export async function getTranslationByTrackId(trackId: string) {
 }
 
 export async function findTranslationByMetadata(target: { title: string; artist: string }) {
+  const cloudMatch = await findTrackTranslationByMetadataFromSupabase(target);
+
+  if (cloudMatch) {
+    return cloudMatch;
+  }
+
   let bestMatch: {
     score: number;
     translation: TrackTranslation;
