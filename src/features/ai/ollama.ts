@@ -205,9 +205,6 @@ function buildDraftSchema(lineCount: number) {
             confidence: {
               type: "string",
               enum: ["low", "medium", "high"]
-            },
-            selectorReason: {
-              anyOf: [{ type: "string" }, { type: "null" }]
             }
           },
           required: [
@@ -221,8 +218,7 @@ function buildDraftSchema(lineCount: number) {
             "transliteration",
             "note",
             "ambiguity",
-            "confidence",
-            "selectorReason"
+            "confidence"
           ]
         }
       }
@@ -363,7 +359,7 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       : `First infer the lyric language from the provided lines, then translate each line into ${options.targetLanguage}.`,
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script, not English.",
     "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
-    "For each line, produce meaning, impliedMeaning, register, literal, natural, slangAware, chosen, transliteration, note, ambiguity, confidence, and selectorReason.",
+    "For each line, produce meaning, impliedMeaning, register, literal, natural, slangAware, chosen, transliteration, note, ambiguity, and confidence.",
     "Treat meaning as a concise semantic gloss of what the line is saying before polishing it into display English.",
     "Treat impliedMeaning as optional cultural/subtextual explanation when the line hints at swagger, warning, romance, or disrespect beyond the literal meaning.",
     "Treat register as a short label like flex, romantic, warning, teasing, devotional, boastful, reflective, or null if not useful.",
@@ -383,7 +379,6 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       ? "Return a short note only when slang, cultural context, wordplay, or double meaning needs explanation. Otherwise return null."
       : "Return null for note on every line.",
     "Set confidence to low, medium, or high based on how certain you are about the line meaning.",
-    "Set selectorReason to a short phrase explaining why chosen is the best candidate, or null if unnecessary.",
     buildSharedContextHints(options, options.sourceLanguage),
     "Respond only with JSON matching the schema."
   ].join(" ");
@@ -713,7 +708,7 @@ function parseGeneratedLines(
       note: normalizeNullableString(line.note),
       ambiguity: normalizeNullableString(line.ambiguity),
       confidence,
-      selectorReason: normalizeNullableString(line.selectorReason)
+      selectorReason: null
     } satisfies GeneratedTranslationLineDraft;
   });
 

@@ -250,9 +250,6 @@ export function buildDraftSchema(lineCount: number) {
             confidence: {
               type: "string",
               enum: ["low", "medium", "high"]
-            },
-            selectorReason: {
-              anyOf: [{ type: "string" }, { type: "null" }]
             }
           },
           required: [
@@ -266,8 +263,7 @@ export function buildDraftSchema(lineCount: number) {
             "transliteration",
             "note",
             "ambiguity",
-            "confidence",
-            "selectorReason"
+            "confidence"
           ]
         }
       }
@@ -498,7 +494,6 @@ export function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       ? "Return a short note only when slang, cultural context, wordplay, or double meaning needs explanation. Otherwise return null."
       : "Return null for note on every line.",
     "Set confidence to low, medium, or high based on how certain you are about the line meaning.",
-    "Set selectorReason to a short phrase explaining why chosen is the best candidate, or null if unnecessary.",
     buildSharedContextHints(options, options.sourceLanguage),
     "Respond only with JSON matching the schema."
   ].join(" ");
@@ -941,7 +936,7 @@ export function parseGeneratedLines(
       note: normalizeNullableString(line.note),
       ambiguity: normalizeNullableString(line.ambiguity),
       confidence,
-      selectorReason: normalizeNullableString(line.selectorReason)
+      selectorReason: null
     } satisfies GeneratedTranslationLineDraft;
   });
 
