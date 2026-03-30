@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { buildArtistMemoryPromptSnippet, serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
+import { serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
 import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
@@ -151,13 +151,9 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
   ];
 
   if (options.artistMemory) {
-    const artistMemoryHint = buildArtistMemoryPromptSnippet(options.artistMemory);
-    if (artistMemoryHint) {
-      sharedHints.push(artistMemoryHint);
-      sharedHints.push(
-        "Preserve perspective fidelity: the winning line should sound true to the artist's persona, stance, and relationship dynamic, not just semantically correct."
-      );
-    }
+    sharedHints.push(
+      "Artist memory is provided in the request. Factor in the artist's translationPreferences, translationDirectives, and canonicalRenderings when selecting the best line. Preserve perspective fidelity: the winning line should sound true to the artist's persona, stance, and relationship dynamic, not just semantically correct."
+    );
   }
 
   if (options.glossaryEntries.length > 0) {

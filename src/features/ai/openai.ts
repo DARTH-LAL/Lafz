@@ -1,5 +1,5 @@
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
-import { buildArtistMemoryPromptSnippet, serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
+import { serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-format";
 import type { PreviousTranslationRef } from "@/features/ai/provider";
 import type {
   AiArtistMemory,
@@ -455,13 +455,9 @@ function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: str
   }
 
   if (options.artistMemory) {
-    const artistMemoryHint = buildArtistMemoryPromptSnippet(options.artistMemory);
-    if (artistMemoryHint) {
-      hints.push(artistMemoryHint);
-      hints.push(
-        "Preserve the artist's perspective and speaker posture: keep recurring flex, tenderness, warning, pride, or vulnerability cues intact instead of flattening them into generic English."
-      );
-    }
+    hints.push(
+      "Artist memory is provided in the request. Apply the artist's translationPreferences, translationDirectives, and canonicalRenderings to every line without exception. Preserve the artist's persona, stance, and relationship posture: keep recurring flex, tenderness, warning, pride, or vulnerability cues intact instead of flattening them into generic English."
+    );
   }
 
   if (options.glossaryEntries.length > 0) {
