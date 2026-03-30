@@ -67,8 +67,6 @@ export function serializeArtistMemoryForPrompt(memory: AiArtistMemory | null) {
     return null;
   }
 
-  const sorted = sortGlossaryEntries(memory.glossaryEntries);
-
   return {
     artistKey: memory.artistKey,
     displayName: memory.displayName,
@@ -88,12 +86,5 @@ export function serializeArtistMemoryForPrompt(memory: AiArtistMemory | null) {
       ? { canonicalRenderings: memory.canonicalRenderings }
       : {}),
     glossaryCount: memory.glossaryEntries.length,
-    // Top 12 glossary highlights sorted by importance (preferred_rendering first, then by use count)
-    glossaryHighlights: sorted.slice(0, 12).map((entry) => ({
-      term: entry.term,
-      meaning: entry.meaning,
-      category: entry.category ?? "entry",
-      ...(entry.useCount ? { usedInSongs: entry.useCount } : {}),
-    })),
   };
 }
