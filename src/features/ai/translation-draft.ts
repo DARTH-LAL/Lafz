@@ -1125,29 +1125,27 @@ async function generateMeaningLinesInBatches(
   let inferredSourceLanguage = normalizeRequestedSourceLanguage(requestedSourceLanguage);
   let model = "";
 
-  for (const batch of batches) {
-    const glossaryEntries = await loadRelevantGlossaryEntries({
-      sourceLanguage: inferredSourceLanguage,
-      artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: batch.flatMap((line) => {
-        const group = groupLookup.get(line.order);
-        const normalizedLine = normalizedSourceLookup.get(line.order);
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage: inferredSourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sourceLines.flatMap((line) => {
+      const group = groupLookup.get(line.order);
+      const normalizedLine = normalizedSourceLookup.get(line.order);
+      return [
+        line.original,
+        normalizedLine?.canonical ?? "",
+        includeGroupText ? group?.text ?? "" : ""
+      ];
+    }),
+    preferredRenderings
+  });
+  const correctionExamples = mergeCorrectionExampleSources([
+    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+  ]);
 
-        return [
-          line.original,
-          normalizedLine?.canonical ?? "",
-          ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-          ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-          includeGroupText ? group?.text ?? "" : ""
-        ];
-      }),
-      preferredRenderings
-    });
-    const correctionExamples = mergeCorrectionExampleSources([
-      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-    ]);
+  for (const batch of batches) {
 
     const aiResponse = await requestProviderMeaningAnalysis({
       title: options.title,
@@ -1229,27 +1227,25 @@ async function generateDraftLinesInBatches(
   let inferredSourceLanguage = normalizeRequestedSourceLanguage(requestedSourceLanguage);
   let model = "";
 
-  for (const batch of batches) {
-    const glossaryEntries = await loadRelevantGlossaryEntries({
-      sourceLanguage: inferredSourceLanguage,
-      artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: batch.flatMap((line) => {
-        const group = groupLookup.get(line.order);
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage: inferredSourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sourceLines.flatMap((line) => {
+      const group = groupLookup.get(line.order);
+      return [
+        line.original,
+        includeGroupText ? group?.text ?? "" : ""
+      ];
+    }),
+    preferredRenderings
+  });
+  const correctionExamples = mergeCorrectionExampleSources([
+    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+  ]);
 
-        return [
-          line.original,
-          ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-          ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-          includeGroupText ? group?.text ?? "" : ""
-        ];
-      }),
-      preferredRenderings
-    });
-    const correctionExamples = mergeCorrectionExampleSources([
-      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-    ]);
+  for (const batch of batches) {
 
     const aiResponse = await requestDraft({
       title: options.title,
@@ -1354,6 +1350,24 @@ async function refineDraftLinesInBatches(
   const refinedLines: AiDraftLine[] = [];
   let model = "";
 
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sourceLines.flatMap((line) => [
+      line.original,
+      draftLines[line.order]?.literal ?? "",
+      draftLines[line.order]?.natural ?? "",
+      draftLines[line.order]?.chosen ?? ""
+    ]),
+    preferredRenderings
+  });
+  const correctionExamples = mergeCorrectionExampleSources([
+    currentSongCorrectionExamples,
+    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+  ]);
+
   for (const batch of batches) {
     const unlockedBatch = batch.filter((line) => !lockedOrders?.has(line.order));
 
@@ -1371,26 +1385,6 @@ async function refineDraftLinesInBatches(
     const batchDraftLines = unlockedBatch
       .map((line) => draftLines[line.order])
       .filter((line): line is AiDraftLine => Boolean(line));
-    const glossaryEntries = await loadRelevantGlossaryEntries({
-      sourceLanguage,
-      artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: unlockedBatch.flatMap((line) => [
-        line.original,
-        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow),
-        draftLines[line.order]?.literal ?? "",
-        draftLines[line.order]?.natural ?? "",
-        draftLines[line.order]?.slangAware ?? "",
-        draftLines[line.order]?.chosen ?? ""
-      ]),
-      preferredRenderings
-    });
-    const correctionExamples = mergeCorrectionExampleSources([
-      currentSongCorrectionExamples,
-      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-    ]);
 
     const aiResponse = await requestProviderTranslationRefinement({
       title: options.title,
@@ -1508,6 +1502,24 @@ async function selectDraftLinesInBatches(
   const selectedLines: AiDraftLine[] = [];
   let model = "";
 
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sourceLines.flatMap((line) => [
+      line.original,
+      draftLines[line.order]?.literal ?? "",
+      draftLines[line.order]?.natural ?? "",
+      draftLines[line.order]?.chosen ?? ""
+    ]),
+    preferredRenderings
+  });
+  const correctionExamples = mergeCorrectionExampleSources([
+    currentSongCorrectionExamples,
+    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+  ]);
+
   for (const batch of batches) {
     const unlockedBatch = batch.filter(
       (line) => !lockedOrders?.has(line.order) && shouldRunSelectionForLine(draftLines[line.order])
@@ -1523,27 +1535,6 @@ async function selectDraftLinesInBatches(
       );
       continue;
     }
-
-    const glossaryEntries = await loadRelevantGlossaryEntries({
-      sourceLanguage,
-      artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: unlockedBatch.flatMap((line) => [
-        line.original,
-        draftLines[line.order]?.literal ?? "",
-        draftLines[line.order]?.natural ?? "",
-        draftLines[line.order]?.slangAware ?? "",
-        draftLines[line.order]?.chosen ?? "",
-        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
-      ]),
-      preferredRenderings
-    });
-    const correctionExamples = mergeCorrectionExampleSources([
-      currentSongCorrectionExamples,
-      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-    ]);
 
     const aiResponse = await requestProviderTranslationSelection({
       title: options.title,
@@ -1975,26 +1966,25 @@ async function evaluateDraftAlternativesInBatches(
   const seenChoices = new Map<string, Array<{ order: number; original: string }>>();
   let model = "";
 
+  const glossaryEntries = await loadRelevantGlossaryEntries({
+    sourceLanguage,
+    artist: options.artist,
+    spotifyTrackId: options.spotifyTrackId,
+    candidateTexts: sourceLines.flatMap((line) => [
+      line.original,
+      generatorALines[line.order]?.chosen ?? "",
+      generatorBLines[line.order]?.chosen ?? "",
+      generatorALines[line.order]?.literal ?? "",
+      generatorBLines[line.order]?.literal ?? ""
+    ]),
+    preferredRenderings
+  });
+  const correctionExamples = mergeCorrectionExampleSources([
+    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
+    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
+  ]);
+
   for (const batch of batches) {
-    const glossaryEntries = await loadRelevantGlossaryEntries({
-      sourceLanguage,
-      artist: options.artist,
-      spotifyTrackId: options.spotifyTrackId,
-      candidateTexts: batch.flatMap((line) => [
-        line.original,
-        generatorALines[line.order]?.chosen ?? "",
-        generatorBLines[line.order]?.chosen ?? "",
-        generatorALines[line.order]?.literal ?? "",
-        generatorBLines[line.order]?.literal ?? "",
-        ...buildContextLines(sourceLines, line.order, -refinementContextWindow, -1),
-        ...buildContextLines(sourceLines, line.order, 1, refinementContextWindow)
-      ]),
-      preferredRenderings
-    });
-    const correctionExamples = mergeCorrectionExampleSources([
-      trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-      artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-    ]);
 
     const comparisonLines = batch.map((line) => {
       const generatorALine = generatorALines[line.order];
