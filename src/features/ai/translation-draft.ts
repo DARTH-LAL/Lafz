@@ -1111,8 +1111,6 @@ async function generateMeaningLinesInBatches(
   songContext: AiSongContext | null,
   artistMemory: Awaited<ReturnType<typeof getAiArtistMemory>>["memory"],
   preferredRenderings: AiGlossaryEntry[],
-  artistCorrectionExamples: AiCorrectionExample[],
-  trackCorrectionExamples: AiCorrectionExample[],
   normalizedSourceLookup: Map<number, NormalizedSourceLine>
 ) {
   const batchSize = getInitialBatchSize(sourceLyricsKind, sourceLines.length);
@@ -1140,10 +1138,6 @@ async function generateMeaningLinesInBatches(
     }),
     preferredRenderings
   });
-  const correctionExamples = mergeCorrectionExampleSources([
-    trackCorrectionExamples.map((example) => ({ ...example, source: "track_memory" as const })),
-    artistCorrectionExamples.map((example) => ({ ...example, source: "artist_memory" as const }))
-  ]);
 
   for (const batch of batches) {
 
@@ -1167,14 +1161,7 @@ async function generateMeaningLinesInBatches(
           contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
           contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
           groupIndex: group?.index,
-          groupText: includeGroupText ? group?.text : undefined,
-          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
-            line.original,
-            normalizedLine?.canonical ?? "",
-            ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-            ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-            includeGroupText ? group?.text ?? "" : ""
-          ])
+          groupText: includeGroupText ? group?.text : undefined
         };
       })
     });
@@ -2410,8 +2397,6 @@ export async function generateAiTranslationDraft(
     contextResponse.songContext,
     contextResponse.artistMemory,
     contextResponse.preferredRenderings,
-    contextResponse.artistCorrectionExamples,
-    contextResponse.trackCorrectionExamples,
     normalizedSourceLookup
   );
   const sourceGroups = buildSourceLineGroups(sourceLines, lyricsCache.kind);
