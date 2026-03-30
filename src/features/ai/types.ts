@@ -140,9 +140,6 @@ export type AiTranslationDraftInspection = {
 };
 
 export type GeneratedTranslationLineDraft = {
-  meaning: string;
-  impliedMeaning: string | null;
-  register: string | null;
   literal: string;
   natural: string;
   slangAware: string;

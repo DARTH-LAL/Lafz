@@ -183,13 +183,6 @@ function buildDraftSchema(lineCount: number) {
           additionalProperties: false,
           properties: {
             literal: { type: "string" },
-            meaning: { type: "string" },
-            impliedMeaning: {
-              anyOf: [{ type: "string" }, { type: "null" }]
-            },
-            register: {
-              anyOf: [{ type: "string" }, { type: "null" }]
-            },
             natural: { type: "string" },
             slangAware: { type: "string" },
             chosen: { type: "string" },
@@ -209,9 +202,6 @@ function buildDraftSchema(lineCount: number) {
           },
           required: [
             "literal",
-            "meaning",
-            "impliedMeaning",
-            "register",
             "natural",
             "slangAware",
             "chosen",
@@ -359,10 +349,8 @@ function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       : `First infer the lyric language from the provided lines, then translate each line into ${options.targetLanguage}.`,
     "These lyrics may be romanized Punjabi, Hindi, or Urdu written in Latin script, not English.",
     "Preserve the input order exactly. Do not merge, split, reorder, or omit lines.",
-    "For each line, produce meaning, impliedMeaning, register, literal, natural, slangAware, chosen, transliteration, note, ambiguity, and confidence.",
-    "Treat meaning as a concise semantic gloss of what the line is saying before polishing it into display English.",
-    "Treat impliedMeaning as optional cultural/subtextual explanation when the line hints at swagger, warning, romance, or disrespect beyond the literal meaning.",
-    "Treat register as a short label like flex, romantic, warning, teasing, devotional, boastful, reflective, or null if not useful.",
+    "For each line, produce literal, natural, slangAware, chosen, transliteration, note, ambiguity, and confidence.",
+    "The meaning, impliedMeaning, and register for each line are already provided as input — use them to guide translation but do not output them.",
     "Literal must stay very close to the original meaning, even if the English sounds plain.",
     "Natural should sound like clean English while keeping the actual meaning.",
     "SlangAware should preserve swagger, idiom, and lyrical tone without inventing new meaning.",
@@ -683,23 +671,17 @@ function parseGeneratedLines(
       throw new Error(`${providerLabel} returned a non-object line at index ${index}.`);
     }
 
-    const meaning = asString(line.meaning);
-    const impliedMeaning = normalizeNullableString(line.impliedMeaning);
-    const register = normalizeNullableString(line.register);
     const literal = asString(line.literal);
     const natural = asString(line.natural);
     const slangAware = asString(line.slangAware) ?? natural;
     const chosen = asString(line.chosen);
     const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
 
-    if (!meaning || !literal || !natural || !slangAware || !chosen || !confidence) {
+    if (!literal || !natural || !slangAware || !chosen || !confidence) {
       throw new Error(`${providerLabel} returned an empty translated line at index ${index}.`);
     }
 
     return {
-      meaning,
-      impliedMeaning,
-      register,
       literal,
       natural,
       slangAware,
