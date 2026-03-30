@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
               lines: aiDraft.lines.map((line) => ({
                 order: line.order,
                 original: line.original,
-                translated: line.translated,
+                translated: line.chosen,
                 transliteration: line.transliteration,
                 note: line.note
               }))
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
                 lines: aiDraft.lines.map((line) => ({
                   order: line.order,
                   original: line.original,
-                  translated: line.translated,
+                  translated: line.chosen,
                   transliteration: line.transliteration,
                   note: line.note
                 }))

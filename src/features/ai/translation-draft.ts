@@ -858,8 +858,7 @@ function alignDraftLinesToSource(
       literal: draftLine?.literal ?? "",
       natural: draftLine?.natural ?? "",
       slangAware: draftLine?.slangAware ?? draftLine?.natural ?? draftLine?.literal ?? "",
-      chosen: draftLine?.chosen ?? draftLine?.translated ?? "",
-      translated: draftLine?.chosen ?? draftLine?.translated ?? "",
+      chosen: draftLine?.chosen ?? "",
       transliteration: normalizeGeneratedTransliteration(sourceLine.original, draftLine?.transliteration ?? null),
       note: draftLine?.note ?? null,
       ambiguity: draftLine?.ambiguity ?? null,
@@ -900,7 +899,6 @@ function applyDuplicateLineReuse(lines: AiDraftLine[]) {
       natural: firstSeen.natural,
       slangAware: firstSeen.slangAware,
       chosen: firstSeen.chosen,
-      translated: firstSeen.chosen,
       transliteration: firstSeen.transliteration,
       note: firstSeen.note,
       ambiguity: firstSeen.ambiguity,
@@ -966,7 +964,6 @@ function propagateLockedDuplicateLines(draftLines: AiDraftLine[], initialLockedO
       natural: lockedLine.natural,
       slangAware: lockedLine.slangAware,
       chosen: lockedLine.chosen,
-      translated: lockedLine.chosen,
       transliteration: lockedLine.transliteration,
       note: lockedLine.note,
       ambiguity: lockedLine.ambiguity,
@@ -1308,15 +1305,13 @@ async function generateDraftLinesInBatches(
         meaning: aiResponse.lines[index]?.meaning ?? meaningLines[line.order]?.meaning ?? line.original,
         impliedMeaning: aiResponse.lines[index]?.impliedMeaning ?? meaningLines[line.order]?.impliedMeaning ?? null,
         register: aiResponse.lines[index]?.register ?? meaningLines[line.order]?.register ?? null,
-        literal: aiResponse.lines[index]?.literal ?? aiResponse.lines[index]?.translated ?? "",
-        natural: aiResponse.lines[index]?.natural ?? aiResponse.lines[index]?.translated ?? "",
+        literal: aiResponse.lines[index]?.literal ?? "",
+        natural: aiResponse.lines[index]?.natural ?? "",
         slangAware:
           aiResponse.lines[index]?.slangAware ??
           aiResponse.lines[index]?.natural ??
-          aiResponse.lines[index]?.translated ??
           "",
-        chosen: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
-        translated: aiResponse.lines[index]?.chosen ?? aiResponse.lines[index]?.translated ?? "",
+        chosen: aiResponse.lines[index]?.chosen ?? "",
         transliteration: normalizeGeneratedTransliteration(line.original, aiResponse.lines[index]?.transliteration ?? null),
         note: aiResponse.lines[index]?.note ?? null,
         ambiguity: aiResponse.lines[index]?.ambiguity ?? null,
@@ -1467,8 +1462,7 @@ async function refineDraftLinesInBatches(
           literal: responseLine?.literal ?? existingLine?.literal ?? "",
           natural: responseLine?.natural ?? existingLine?.natural ?? "",
           slangAware: responseLine?.slangAware ?? existingLine?.slangAware ?? "",
-          chosen: responseLine?.chosen ?? responseLine?.translated ?? existingLine?.chosen ?? "",
-          translated: responseLine?.chosen ?? responseLine?.translated ?? existingLine?.chosen ?? "",
+          chosen: responseLine?.chosen ?? existingLine?.chosen ?? "",
           transliteration: normalizeGeneratedTransliteration(
             line.original,
             responseLine?.transliteration ?? existingLine?.transliteration ?? null
@@ -1612,7 +1606,6 @@ async function selectDraftLinesInBatches(
         return {
           ...draftLines[line.order],
           chosen: responseLine?.chosen ?? draftLines[line.order]?.chosen ?? "",
-          translated: responseLine?.chosen ?? draftLines[line.order]?.chosen ?? "",
           note: responseLine?.note ?? draftLines[line.order]?.note ?? null,
           ambiguity: responseLine?.ambiguity ?? draftLines[line.order]?.ambiguity ?? null,
           confidence: responseLine?.confidence ?? draftLines[line.order]?.confidence ?? "medium",
@@ -2115,7 +2108,6 @@ async function evaluateDraftAlternativesInBatches(
         const selectedLine = {
           ...baseLine,
           chosen: evaluationLine?.chosen ?? baseLine.chosen,
-          translated: evaluationLine?.chosen ?? baseLine.chosen,
           note: evaluationLine?.note ?? baseLine.note,
           ambiguity: evaluationLine?.ambiguity ?? baseLine.ambiguity,
           confidence: evaluationLine?.confidence ?? baseLine.confidence,
@@ -2375,7 +2367,6 @@ export function applyManualCorrectionPropagation(
     return {
       ...line,
       chosen: propagatedChosen,
-      translated: propagatedChosen,
       note: line.note ?? bestCorrection.note ?? null,
       confidence: bestCorrection.similarity === "exact" ? "high" : line.confidence === "low" ? "medium" : line.confidence,
       selectorReason:
@@ -2902,7 +2893,6 @@ export async function regenerateDraftLines(
     natural: generatedLine.natural,
     slangAware: generatedLine.slangAware,
     chosen: generatedLine.chosen,
-    translated: generatedLine.chosen,
     transliteration: normalizeGeneratedTransliteration(representativeSourceLine.original, generatedLine.transliteration ?? null),
     note: generatedLine.note ?? null,
     ambiguity: generatedLine.ambiguity ?? null,
@@ -2961,7 +2951,6 @@ export async function regenerateDraftLines(
       newLine = {
         ...newLine,
         chosen: selLine.chosen ?? newLine.chosen,
-        translated: selLine.chosen ?? newLine.chosen,
         ambiguity: selLine.ambiguity ?? newLine.ambiguity,
         note: selLine.note ?? newLine.note,
         confidence: selLine.confidence ?? newLine.confidence,

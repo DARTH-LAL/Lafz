@@ -160,7 +160,6 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
     natural,
     slangAware: finalSlangAware,
     chosen,
-    translated: chosen,
     transliteration,
     note,
     ambiguity,

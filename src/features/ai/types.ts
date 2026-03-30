@@ -81,7 +81,6 @@ export type AiDraftLine = {
   natural: string;
   slangAware: string;
   chosen: string;
-  translated: string;
   transliteration: string | null;
   note: string | null;
   ambiguity: string | null;
@@ -148,7 +147,6 @@ export type GeneratedTranslationLineDraft = {
   natural: string;
   slangAware: string;
   chosen: string;
-  translated: string;
   transliteration: string | null;
   note: string | null;
   ambiguity: string | null;

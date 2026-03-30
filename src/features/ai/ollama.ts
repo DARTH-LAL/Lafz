@@ -193,7 +193,6 @@ function buildDraftSchema(lineCount: number) {
             natural: { type: "string" },
             slangAware: { type: "string" },
             chosen: { type: "string" },
-            translated: { type: "string" },
             transliteration: {
               anyOf: [{ type: "string" }, { type: "null" }]
             },
@@ -219,7 +218,6 @@ function buildDraftSchema(lineCount: number) {
             "natural",
             "slangAware",
             "chosen",
-            "translated",
             "transliteration",
             "note",
             "ambiguity",
@@ -694,17 +692,16 @@ function parseGeneratedLines(
       throw new Error(`${providerLabel} returned a non-object line at index ${index}.`);
     }
 
-    const translated = asString(line.translated);
     const meaning = asString(line.meaning);
     const impliedMeaning = normalizeNullableString(line.impliedMeaning);
     const register = normalizeNullableString(line.register);
     const literal = asString(line.literal);
     const natural = asString(line.natural);
     const slangAware = asString(line.slangAware) ?? natural;
-    const chosen = asString(line.chosen) ?? translated;
+    const chosen = asString(line.chosen);
     const confidence = line.confidence === "low" || line.confidence === "medium" || line.confidence === "high" ? line.confidence : null;
 
-    if (!translated || !meaning || !literal || !natural || !slangAware || !chosen || !confidence) {
+    if (!meaning || !literal || !natural || !slangAware || !chosen || !confidence) {
       throw new Error(`${providerLabel} returned an empty translated line at index ${index}.`);
     }
 
@@ -716,7 +713,6 @@ function parseGeneratedLines(
       natural,
       slangAware,
       chosen,
-      translated,
       transliteration: normalizeNullableString(line.transliteration),
       note: normalizeNullableString(line.note),
       ambiguity: normalizeNullableString(line.ambiguity),
