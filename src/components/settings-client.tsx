@@ -5,6 +5,8 @@ import type { LafzSettings } from "@/features/settings/types";
 
 // ── Model cost table ──────────────────────────────────────────────────────
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
+  "gpt-5.4":              { input: 2.5,  output: 15.0 },
+  "gpt-5.4-mini":         { input: 0.75, output: 4.5 },
   "gpt-4.1":              { input: 2.0,  output: 8.0 },
   "gpt-4.1-mini":         { input: 0.4,  output: 1.6 },
   "gpt-4o":               { input: 2.5,  output: 10.0 },
@@ -260,8 +262,12 @@ export function SettingsClient({
               <ModelCostChips model={s.generatorAModel} colorClass="border-[rgba(255,77,150,0.2)] bg-[rgba(255,77,150,0.10)] text-[#ff4d96]" />
             </Label>
             <StyledSelect value={s.generatorAModel} onChange={(v) => update("generatorAModel", v)}>
-              <option value="gpt-4.1">GPT-4.1 (default)</option>
-              <option value="gpt-4.1-mini">GPT-4.1 Mini (cheaper)</option>
+              <option value="gpt-5.4-mini">GPT-5.4 Mini (default)</option>
+              <option value="gpt-5.4">GPT-5.4 (best)</option>
+              <option value="gpt-5.1">GPT-5.1</option>
+              <option value="gpt-5-mini">GPT-5 Mini (cheaper)</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
               <option value="gpt-4o">GPT-4o</option>
               <option value="gpt-4o-mini">GPT-4o Mini</option>
             </StyledSelect>

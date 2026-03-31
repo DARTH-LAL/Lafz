@@ -2,13 +2,14 @@ import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import {
   buildDraftSchema,
   buildSystemPrompt,
-  buildUserPrompt,
   parseGeneratedLines
 } from "@/features/ai/openai";
 import type {
   AiArtistMemory,
   AiCorrectionHint,
   AiVerseState,
+  AiWorldModel,
+  AiWorldModelLine,
   PreviousTranslationRef,
   GeneratedTranslationLineDraft
 } from "@/features/ai/types";
@@ -36,6 +37,7 @@ type RequestAnthropicTranslationDraftOptions = {
     stance: string | null;
     narrativeMode: string | null;
   } | null;
+  worldModel: AiWorldModel | null;
   artistMemory: AiArtistMemory | null;
   lines: Array<{
     index: number;
@@ -50,6 +52,7 @@ type RequestAnthropicTranslationDraftOptions = {
     groupIndex?: number;
     groupText?: string;
     verseState?: AiVerseState | null;
+    lineWorldModel?: AiWorldModelLine | null;
     matchingCorrections?: AiCorrectionHint[];
     previousTranslation?: PreviousTranslationRef | null;
   }>;
@@ -140,6 +143,186 @@ function getAnthropicAuthHeaders() {
     "anthropic-version": "2023-06-01",
     "content-type": "application/json"
   };
+}
+
+function trimStringArray(values: string[] | undefined, limit: number) {
+  return (values ?? []).filter(Boolean).slice(0, limit);
+}
+
+function compactSongContext(songContext: RequestAnthropicTranslationDraftOptions["songContext"]) {
+  if (!songContext) {
+    return null;
+  }
+
+  return {
+    summary: songContext.summary,
+    tone: songContext.tone,
+    speaker: songContext.speaker,
+    addressee: songContext.addressee,
+    stance: songContext.stance,
+    themes: trimStringArray(songContext.themes, 4),
+    notablePhrases: trimStringArray(songContext.notablePhrases, 4)
+  };
+}
+
+function compactWorldModel(worldModel: AiWorldModel | null) {
+  if (!worldModel) {
+    return null;
+  }
+
+  return {
+    summary: worldModel.summary,
+    speakerPersona: worldModel.speakerPersona,
+    addressee: worldModel.addressee,
+    narrativeDrive: worldModel.narrativeDrive,
+    dominantConflict: worldModel.dominantConflict,
+    relationshipFrame: worldModel.relationshipFrame,
+    worldState: worldModel.worldState,
+    coreMotifs: trimStringArray(worldModel.coreMotifs, 6),
+    recurringSymbols: trimStringArray(worldModel.recurringSymbols, 5),
+    powerDynamics: trimStringArray(worldModel.powerDynamics, 5),
+    continuityRules: trimStringArray(worldModel.continuityRules, 6),
+    entities: worldModel.entities.slice(0, 8).map((entity) => ({
+      entityKey: entity.entityKey,
+      label: entity.label,
+      role: entity.role,
+      salience: entity.salience
+    })),
+    relationshipGraph: worldModel.relationshipGraph.slice(0, 8).map((relationship) => ({
+      sourceEntity: relationship.sourceEntity,
+      targetEntity: relationship.targetEntity,
+      dynamic: relationship.dynamic,
+      powerBalance: relationship.powerBalance,
+      confidence: relationship.confidence
+    }))
+  };
+}
+
+function compactArtistMemory(artistMemory: AiArtistMemory | null) {
+  if (!artistMemory) {
+    return null;
+  }
+
+  return {
+    displayName: artistMemory.displayName,
+    personaSummary: artistMemory.personaSummary,
+    translationDirectives: trimStringArray(artistMemory.translationDirectives, 8),
+    translationPreferences: trimStringArray(artistMemory.translationPreferences, 5),
+    recurringMotifs: trimStringArray(artistMemory.recurringMotifs, 6),
+    voiceNotes: trimStringArray(artistMemory.voiceNotes, 4),
+    stanceNotes: trimStringArray(artistMemory.stanceNotes, 4),
+    perspectiveNotes: trimStringArray(artistMemory.perspectiveNotes, 4),
+    canonicalRenderings: (artistMemory.canonicalRenderings ?? []).slice(0, 8).map((entry) => ({
+      term: entry.term,
+      rendering: entry.rendering
+    }))
+  };
+}
+
+function compactGlossary(glossaryEntries: AiGlossaryEntry[]) {
+  return glossaryEntries.slice(0, 8).map((entry) => ({
+    term: entry.term,
+    meaning: entry.meaning,
+    category: entry.category ?? null
+  }));
+}
+
+function compactVerseState(verseState: AiVerseState | null | undefined) {
+  if (!verseState) {
+    return null;
+  }
+
+  return {
+    summary: verseState.summary,
+    stance: verseState.stance,
+    target: verseState.target,
+    dominantIntents: trimStringArray(verseState.dominantIntents, 4),
+    tension: verseState.tension,
+    caution: verseState.caution
+  };
+}
+
+function compactLineWorldModel(lineWorldModel: AiWorldModelLine | null | undefined) {
+  if (!lineWorldModel) {
+    return null;
+  }
+
+  return {
+    subject: lineWorldModel.subject,
+    action: lineWorldModel.action,
+    target: lineWorldModel.target,
+    socialMove: lineWorldModel.socialMove,
+    emotionalColor: lineWorldModel.emotionalColor,
+    hiddenMeaning: lineWorldModel.hiddenMeaning,
+    imagery: trimStringArray(lineWorldModel.imagery, 4),
+    referents: trimStringArray(lineWorldModel.referents, 4),
+    entityLinks: trimStringArray(lineWorldModel.entityLinks, 4),
+    caution: lineWorldModel.caution
+  };
+}
+
+function compactCorrections(matchingCorrections: AiCorrectionHint[] | undefined) {
+  return (matchingCorrections ?? []).slice(0, 2).map((entry) => ({
+    original: entry.original,
+    chosen: entry.chosen,
+    source: entry.source,
+    similarity: entry.similarity,
+    note: entry.note
+  }));
+}
+
+function compactPreviousTranslation(previousTranslation: PreviousTranslationRef | null | undefined) {
+  if (!previousTranslation) {
+    return null;
+  }
+
+  if (!previousTranslation.manuallyReviewed && previousTranslation.confidence === "high") {
+    return null;
+  }
+
+  return previousTranslation;
+}
+
+function buildAnthropicUserPrompt(options: RequestAnthropicTranslationDraftOptions) {
+  return JSON.stringify(
+    {
+      track: {
+        title: options.title,
+        artist: options.artist,
+        album: options.album
+      },
+      sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
+      targetLanguage: options.targetLanguage,
+      compactContext: {
+        songContext: compactSongContext(options.songContext),
+        lafzWorldModel: compactWorldModel(options.worldModel),
+        artistMemory: compactArtistMemory(options.artistMemory),
+        glossary: compactGlossary(options.glossaryEntries)
+      },
+      outputRules: {
+        exactLineCount: options.lines.length,
+        includeTransliteration: options.includeTransliteration,
+        includeNotes: options.includeNotes
+      },
+      lines: options.lines.map((line) => ({
+        index: line.index,
+        original: line.original,
+        ...(line.normalizedOriginal ? { normalizedOriginal: line.normalizedOriginal } : {}),
+        ...(line.meaning ? { meaning: line.meaning } : {}),
+        ...(line.impliedMeaning ? { impliedMeaning: line.impliedMeaning } : {}),
+        ...(line.register ? { register: line.register } : {}),
+        ...(line.contextBefore?.length ? { contextBefore: line.contextBefore } : {}),
+        ...(line.contextAfter?.length ? { contextAfter: line.contextAfter } : {}),
+        ...(typeof line.groupIndex === "number" ? { groupIndex: line.groupIndex } : {}),
+        verseState: compactVerseState(line.verseState),
+        lineWorldModel: compactLineWorldModel(line.lineWorldModel),
+        matchingCorrections: compactCorrections(line.matchingCorrections),
+        previousTranslation: compactPreviousTranslation(line.previousTranslation)
+      }))
+    },
+    null,
+    2
+  );
 }
 
 export function getAnthropicBaseUrl() {
@@ -233,7 +416,7 @@ function buildAnthropicSystemPrompt(options: RequestAnthropicTranslationDraftOpt
   const schema = JSON.stringify(buildDraftSchema(lineCount), null, 2);
   return buildSystemPrompt(options).replace(
     "Respond only with JSON matching the schema.",
-    `Respond only with a JSON object matching this exact schema (exactly ${lineCount} lines):\n${schema}`
+    `The user payload is intentionally compacted for efficiency. Treat compactContext, verseState, and lineWorldModel as the highest-signal guidance. If compactContext.lafzWorldModel includes entities or relationshipGraph, preserve those entity roles and relationships in the English.\nRespond only with a JSON object matching this exact schema (exactly ${lineCount} lines):\n${schema}`
   );
 }
 
@@ -250,7 +433,7 @@ export async function requestAnthropicTranslationDraft(
   const parsed = await callAnthropicJson<unknown>({
     model,
     systemPrompt: buildAnthropicSystemPrompt(options),
-    userPrompt: buildUserPrompt(options),
+    userPrompt: buildAnthropicUserPrompt(options),
     errorLabel: "Anthropic translation request",
     usageSink: localSink
   });

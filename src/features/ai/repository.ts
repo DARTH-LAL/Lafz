@@ -15,7 +15,12 @@ import type {
   AiTranslationDraftFile,
   AiTranslationDraftInspection,
   AiSongContext,
-  AiVerseState
+  AiVerseState,
+  AiWorldEntity,
+  AiWorldModel,
+  AiWorldModelLine,
+  AiWorldModelVerse,
+  AiWorldRelationship
 } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
@@ -235,6 +240,185 @@ function parseVerseState(value: unknown): AiVerseState | null {
   };
 }
 
+function parseWorldModelVerse(value: unknown): AiWorldModelVerse | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const groupIndex = asNumber(value.groupIndex);
+  const startOrder = asNumber(value.startOrder);
+  const endOrder = asNumber(value.endOrder);
+  const sceneSummary = asString(value.sceneSummary);
+  const stance = asString(value.stance);
+  const target = asString(value.target);
+  const dominantIntents = parseStringArray(value.dominantIntents);
+  const tension = asString(value.tension);
+  const powerMove = asString(value.powerMove);
+  const continuityNote = asString(value.continuityNote);
+  const imagery = parseStringArray(value.imagery);
+  const activeEntities = parseStringArray(value.activeEntities);
+  const interactionType = asString(value.interactionType);
+
+  if (groupIndex === null || startOrder === null || endOrder === null || !sceneSummary) {
+    return null;
+  }
+
+  return {
+    groupIndex,
+    startOrder,
+    endOrder,
+    sceneSummary,
+    stance,
+    target,
+    dominantIntents,
+    tension,
+    powerMove,
+    continuityNote,
+    imagery,
+    activeEntities,
+    interactionType
+  };
+}
+
+function parseWorldModelLine(value: unknown): AiWorldModelLine | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const order = asNumber(value.order);
+  const subject = asString(value.subject);
+  const action = asString(value.action);
+  const target = asString(value.target);
+  const socialMove = asString(value.socialMove);
+  const emotionalColor = asString(value.emotionalColor);
+  const hiddenMeaning = asString(value.hiddenMeaning);
+  const imagery = parseStringArray(value.imagery);
+  const referents = parseStringArray(value.referents);
+  const entityLinks = parseStringArray(value.entityLinks);
+  const caution = asString(value.caution);
+
+  if (order === null) {
+    return null;
+  }
+
+  return {
+    order,
+    subject,
+    action,
+    target,
+    socialMove,
+    emotionalColor,
+    hiddenMeaning,
+    imagery,
+    referents,
+    entityLinks,
+    caution
+  };
+}
+
+function parseWorldEntity(value: unknown): AiWorldEntity | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const entityKey = asString(value.entityKey);
+  const label = asString(value.label);
+  const salience =
+    value.salience === "low" || value.salience === "medium" || value.salience === "high" ? value.salience : null;
+
+  if (!entityKey || !label || !salience) {
+    return null;
+  }
+
+  return {
+    entityKey,
+    label,
+    role: asString(value.role),
+    description: asString(value.description),
+    aliases: parseStringArray(value.aliases),
+    salience
+  };
+}
+
+function parseWorldRelationship(value: unknown): AiWorldRelationship | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const sourceEntity = asString(value.sourceEntity);
+  const targetEntity = asString(value.targetEntity);
+  const dynamic = asString(value.dynamic);
+  const confidence =
+    value.confidence === "low" || value.confidence === "medium" || value.confidence === "high" ? value.confidence : null;
+
+  if (!sourceEntity || !targetEntity || !dynamic || !confidence) {
+    return null;
+  }
+
+  return {
+    sourceEntity,
+    targetEntity,
+    dynamic,
+    powerBalance: asString(value.powerBalance),
+    evidence: asString(value.evidence),
+    confidence
+  };
+}
+
+function parseWorldModel(value: unknown): AiWorldModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const summary = asString(value.summary);
+  const speakerPersona = asString(value.speakerPersona);
+  const addressee = asString(value.addressee);
+  const narrativeDrive = asString(value.narrativeDrive);
+  const dominantConflict = asString(value.dominantConflict);
+  const relationshipFrame = asString(value.relationshipFrame);
+  const worldState = asString(value.worldState);
+  const coreMotifs = parseStringArray(value.coreMotifs);
+  const recurringSymbols = parseStringArray(value.recurringSymbols);
+  const powerDynamics = parseStringArray(value.powerDynamics);
+  const continuityRules = parseStringArray(value.continuityRules);
+  const entities = Array.isArray(value.entities)
+    ? value.entities.map((entry) => parseWorldEntity(entry)).filter((entry): entry is AiWorldEntity => Boolean(entry))
+    : [];
+  const relationshipGraph = Array.isArray(value.relationshipGraph)
+    ? value.relationshipGraph
+        .map((entry) => parseWorldRelationship(entry))
+        .filter((entry): entry is AiWorldRelationship => Boolean(entry))
+    : [];
+  const verseModels = Array.isArray(value.verseModels)
+    ? value.verseModels.map((entry) => parseWorldModelVerse(entry)).filter((entry): entry is AiWorldModelVerse => Boolean(entry))
+    : [];
+  const lineModels = Array.isArray(value.lineModels)
+    ? value.lineModels.map((entry) => parseWorldModelLine(entry)).filter((entry): entry is AiWorldModelLine => Boolean(entry))
+    : [];
+
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    summary,
+    speakerPersona,
+    addressee,
+    narrativeDrive,
+    dominantConflict,
+    relationshipFrame,
+    worldState,
+    coreMotifs,
+    recurringSymbols,
+    powerDynamics,
+    continuityRules,
+    entities,
+    relationshipGraph,
+    verseModels,
+    lineModels
+  };
+}
+
 function parseArtistMemory(value: unknown): AiArtistMemory | null {
   if (!isRecord(value)) {
     return null;
@@ -349,6 +533,7 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
   const sourceLyricsKind =
     value.sourceLyricsKind === "synced" || value.sourceLyricsKind === "plain" ? value.sourceLyricsKind : null;
   const songContext = parseSongContext(value.songContext);
+  const worldModel = parseWorldModel(value.worldModel);
   const verseStates = Array.isArray(value.verseStates)
     ? value.verseStates.map((entry) => parseVerseState(entry)).filter((entry): entry is AiVerseState => Boolean(entry))
     : [];
@@ -395,6 +580,7 @@ function parseAiTranslationDraftFile(value: unknown, filePath: string): AiTransl
       model
     },
     songContext,
+    worldModel,
     verseStates,
     artistMemory,
     lines

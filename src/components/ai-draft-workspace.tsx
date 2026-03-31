@@ -234,7 +234,7 @@ export function AiDraftWorkspace({
       <section className="lafz-card p-6">
         <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">AI Translation</p>
         <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.12)] px-3 py-1 text-[12px] font-semibold text-[#ff6aaa]">
-          <span>✦</span> gpt-5.1 + claude-sonnet-4.6 → gemini-2.5-pro
+          <span>✦</span> GPT-5.4 Mini + Claude + Gemini judge
         </div>
         <h2 className="mt-3 text-[22px] font-bold tracking-[-0.5px]">
           Generate a translation draft.

@@ -1,5 +1,5 @@
 {
-  "generatorAModel": "gpt-4.1",
+  "generatorAModel": "gpt-5.4-mini",
   "generatorBModel": "claude-sonnet-4-20250514",
   "judgeModel": "gemini-2.5-flash",
   "targetLanguage": "English",

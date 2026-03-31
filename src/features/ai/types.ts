@@ -21,6 +21,72 @@ export type AiVerseState = {
   caution: string | null;
 };
 
+export type AiWorldModelVerse = {
+  groupIndex: number;
+  startOrder: number;
+  endOrder: number;
+  sceneSummary: string;
+  stance: string | null;
+  target: string | null;
+  dominantIntents: string[];
+  tension: string | null;
+  powerMove: string | null;
+  continuityNote: string | null;
+  imagery: string[];
+  activeEntities: string[];
+  interactionType: string | null;
+};
+
+export type AiWorldModelLine = {
+  order: number;
+  subject: string | null;
+  action: string | null;
+  target: string | null;
+  socialMove: string | null;
+  emotionalColor: string | null;
+  hiddenMeaning: string | null;
+  imagery: string[];
+  referents: string[];
+  entityLinks: string[];
+  caution: string | null;
+};
+
+export type AiWorldEntity = {
+  entityKey: string;
+  label: string;
+  role: string | null;
+  description: string | null;
+  aliases: string[];
+  salience: "low" | "medium" | "high";
+};
+
+export type AiWorldRelationship = {
+  sourceEntity: string;
+  targetEntity: string;
+  dynamic: string;
+  powerBalance: string | null;
+  evidence: string | null;
+  confidence: "low" | "medium" | "high";
+};
+
+export type AiWorldModel = {
+  summary: string;
+  speakerPersona: string | null;
+  addressee: string | null;
+  narrativeDrive: string | null;
+  dominantConflict: string | null;
+  relationshipFrame: string | null;
+  worldState: string | null;
+  coreMotifs: string[];
+  recurringSymbols: string[];
+  powerDynamics: string[];
+  continuityRules: string[];
+  entities: AiWorldEntity[];
+  relationshipGraph: AiWorldRelationship[];
+  verseModels: AiWorldModelVerse[];
+  lineModels: AiWorldModelLine[];
+};
+
 export type AiSongContext = {
   summary: string;
   themes: string[];
@@ -112,6 +178,7 @@ export type AiTranslationDraftFile = {
     model: string;
   };
   songContext: AiSongContext | null;
+  worldModel: AiWorldModel | null;
   verseStates?: AiVerseState[];
   artistMemory: AiArtistMemory | null;
   lines: AiDraftLine[];

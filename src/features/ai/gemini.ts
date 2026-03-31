@@ -5,7 +5,9 @@ import type {
   AiCorrectionHint,
   PreviousTranslationRef,
   AiSongContext,
-  AiVerseState
+  AiVerseState,
+  AiWorldModel,
+  AiWorldModelLine
 } from "@/features/ai/types";
 
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -48,6 +50,7 @@ type GeminiDraftComparisonLine = {
     chosen: string;
   }>;
   verseState?: AiVerseState | null;
+  lineWorldModel?: AiWorldModelLine | null;
   matchingCorrections?: AiCorrectionHint[];
   previousTranslation?: PreviousTranslationRef | null;
 };
@@ -60,6 +63,7 @@ type RequestGeminiDraftComparisonOptions = {
   targetLanguage: string;
   glossaryEntries: AiGlossaryEntry[];
   songContext: AiSongContext | null;
+  worldModel: AiWorldModel | null;
   artistMemory: AiArtistMemory | null;
   lines: GeminiDraftComparisonLine[];
 };
@@ -140,7 +144,9 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
     "Do not reward flashier wording if it drifts away from the original meaning.",
     "You may choose Generator A, choose Generator B, or synthesize a blended line only if the blend stays grounded in the original lyric.",
     "Use song context, glossary hints, artist memory, nearby lines, and manual correction hints to stay consistent.",
+    "If lafzWorldModel is provided, treat it as the hidden semantic map of the song. Reject candidates that violate its speaker persona, addressee, conflict, power dynamics, imagery, continuity rules, entity roles, or relationshipGraph dynamics.",
     "Use verseState when provided to preserve the local block's stance, target, and escalation instead of treating every line as the same song-wide mood.",
+    "Use lineWorldModel when provided to preserve who is acting, what social move the line performs, and what referents or imagery must survive into English.",
     "If a line includes previousTranslation, factor it in when evaluating — prefer consistency with previous high-confidence choices, prioritise meaningful improvement for low-confidence ones, and treat manually-reviewed choices as near-final unless a candidate clearly corrects an error.",
     "If both candidates are weak, choose the more conservative option or synthesize a conservative correction.",
     "Heavily penalize duplicated outputs for different original lines unless the original lyric itself is repeated.",
@@ -174,6 +180,7 @@ function buildGeminiComparisonUserPrompt(options: RequestGeminiDraftComparisonOp
       sourceLanguage: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
       songContext: options.songContext,
+      lafzWorldModel: options.worldModel,
       artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
       glossary: options.glossaryEntries,
       lines: options.lines
