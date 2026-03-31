@@ -255,18 +255,19 @@ export function BrainClient() {
     [selectedNode, hoveredNode]
   );
 
-  const paintEdge = useCallback(
-    (edge: GraphEdge, ctx: CanvasRenderingContext2D) => {
-      const sourceId = typeof edge.source === "object" ? edge.source.id : edge.source;
-      const targetId = typeof edge.target === "object" ? edge.target.id : edge.target;
-      const isHighlighted = highlightEdges.current.has(`${sourceId}-${targetId}`);
+  const getLinkColor = useCallback((edge: object) => {
+    const e = edge as GraphEdge;
+    const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
+    const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
+    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? "#ff6ba8" : "rgba(255,20,100,0.18)";
+  }, []);
 
-      ctx.globalAlpha = isHighlighted ? 0.85 : 0.25;
-      ctx.strokeStyle = isHighlighted ? "#ff6ba8" : "#ff146444";
-      ctx.lineWidth = isHighlighted ? edge.weight * 2 : edge.weight * 0.8;
-    },
-    []
-  );
+  const getLinkWidth = useCallback((edge: object) => {
+    const e = edge as GraphEdge;
+    const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
+    const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
+    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? (e.weight ?? 0.5) * 2.5 : 0.8;
+  }, []);
 
   const activeNode = hoveredNode ?? selectedNode;
 
@@ -392,21 +393,18 @@ export function BrainClient() {
               linkSource="source"
               linkTarget="target"
               nodeCanvasObject={paintNode as never}
-              linkCanvasObjectMode={() => "replace"}
-              linkCanvasObject={paintEdge as never}
+              linkColor={getLinkColor as never}
+              linkWidth={getLinkWidth as never}
               onNodeClick={handleNodeClick as never}
               onNodeHover={handleNodeHover as never}
               backgroundColor="transparent"
-              linkDirectionalParticles={2}
-              linkDirectionalParticleWidth={(edge) => {
-                const sourceId = typeof (edge as GraphEdge).source === "object"
-                  ? ((edge as GraphEdge).source as GraphNode).id
-                  : (edge as GraphEdge).source as string;
-                const targetId = typeof (edge as GraphEdge).target === "object"
-                  ? ((edge as GraphEdge).target as GraphNode).id
-                  : (edge as GraphEdge).target as string;
-                return highlightEdges.current.has(`${sourceId}-${targetId}`) ? 2 : 0;
+              linkDirectionalParticles={(edge) => {
+                const e = edge as GraphEdge;
+                const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
+                const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
+                return highlightEdges.current.has(`${sourceId}-${targetId}`) ? 3 : 0;
               }}
+              linkDirectionalParticleWidth={2}
               linkDirectionalParticleColor={() => "#ff6ba8"}
               cooldownTicks={120}
               d3AlphaDecay={0.03}
