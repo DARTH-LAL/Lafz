@@ -40,6 +40,14 @@ function AnalyticsIcon() {
   );
 }
 
+function BrainIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+      <path d="M13 3C9.23 3 6.19 5.95 6 9.66l-1.92 2.4A.5.5 0 0 0 4.5 13H6v3a2 2 0 0 0 2 2h1v3h7v-4.08A7 7 0 0 0 13 3zm0 2a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5zm-1 2v3H9l3 4h1v-3h3l-3-4h-1z" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
@@ -120,6 +128,13 @@ export function AppTopBar({ connected = false, className }: AppTopBarProps) {
           aria-label="AI analytics"
         >
           <AnalyticsIcon />
+        </Link>
+        <Link
+          href="/brain"
+          className={buildNavItemClass(pathname === "/brain")}
+          aria-label="Lafz Brain"
+        >
+          <BrainIcon />
         </Link>
         <Link
           href="/settings"
