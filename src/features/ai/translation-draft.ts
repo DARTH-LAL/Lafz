@@ -5,6 +5,8 @@ import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } fr
 import { extractAndStoreGlossarySuggestions } from "@/features/ai/glossary-extractor";
 import { normalizeArtistKey } from "@/features/ai/glossary-repository";
 import { isThreeModelPipelineConfigured } from "@/features/ai/provider";
+import { buildSongTranslationMemoryPack, mergeBrainMemoryIntoArtistContext } from "@/features/brain/memory-pack";
+import { syncDraftIntoLafzBrain } from "@/features/brain/sync";
 import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
 import { requestGeminiDraftComparison } from "@/features/ai/gemini";
 import {
@@ -1020,9 +1022,20 @@ async function generateSongContext(
   previousSongContext?: AiSongContext | null
 ) {
   const requestedSourceLanguage = normalizeRequestedSourceLanguage(options.sourceLanguage);
-  const { memory: artistMemory, preferredRenderings, correctionExamples: artistCorrectionExamples } =
+  const { memory: loadedArtistMemory, preferredRenderings: loadedPreferredRenderings, correctionExamples: artistCorrectionExamples } =
     await getHydratedArtistMemory(options.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(options.spotifyTrackId).catch(() => []);
+  const brainPack = await buildSongTranslationMemoryPack({
+    spotifyTrackId: options.spotifyTrackId,
+    artist: options.artist,
+    candidateTexts: sourceLines.slice(0, SONG_CONTEXT_MAX_LINES).map((line) => line.original)
+  }).catch(() => null);
+  const { artistMemory, preferredRenderings } = mergeBrainMemoryIntoArtistContext({
+    artist: options.artist,
+    artistMemory: loadedArtistMemory,
+    preferredRenderings: loadedPreferredRenderings,
+    pack: brainPack
+  });
 
   // Reuse previous song context if available — saves an API call and keeps analysis stable
   if (previousSongContext) {
@@ -2552,20 +2565,34 @@ export async function regenerateDraftLines(
 
   // Load artist memory and correction examples
   const {
-    memory: artistMemory,
-    preferredRenderings,
+    memory: loadedArtistMemory,
+    preferredRenderings: loadedPreferredRenderings,
     correctionExamples: artistCorrectionExamples
   } = await getHydratedArtistMemory(draft.artist);
   const trackCorrectionExamples = await getTrackCorrectionExamples(draft.spotifyTrackId).catch(() => []);
+  const contextBefore = buildContextLines(allSourceLines, representativeSourceLine.order, -CONTEXT_WINDOW_LINES, -1);
+  const contextAfter = buildContextLines(allSourceLines, representativeSourceLine.order, 1, CONTEXT_WINDOW_LINES);
+  const candidateTexts = [representativeSourceLine.original, ...contextBefore, ...contextAfter];
+  const brainPack = await buildSongTranslationMemoryPack({
+    spotifyTrackId: draft.spotifyTrackId,
+    artist: draft.artist,
+    candidateTexts
+  }).catch(() => null);
+  const {
+    artistMemory,
+    preferredRenderings
+  } = mergeBrainMemoryIntoArtistContext({
+    artist: draft.artist,
+    artistMemory: loadedArtistMemory,
+    preferredRenderings: loadedPreferredRenderings,
+    pack: brainPack
+  });
 
   const correctionExamples = mergeCorrectionExampleSources([
     trackCorrectionExamples.map((e) => ({ ...e, source: "track_memory" as const })),
     artistCorrectionExamples.map((e) => ({ ...e, source: "artist_memory" as const }))
   ]);
 
-  const contextBefore = buildContextLines(allSourceLines, representativeSourceLine.order, -CONTEXT_WINDOW_LINES, -1);
-  const contextAfter = buildContextLines(allSourceLines, representativeSourceLine.order, 1, CONTEXT_WINDOW_LINES);
-  const candidateTexts = [representativeSourceLine.original, ...contextBefore, ...contextAfter];
   const matchingCorrections = buildMatchingCorrectionHints(correctionExamples, candidateTexts);
 
   const glossaryEntries = await loadRelevantGlossaryEntries({
@@ -2865,6 +2892,9 @@ function queuePostGenerationTasks(
   resultStatus: string
 ) {
   void recordGenerationLog(options.spotifyTrackId, draftFile, costSummary, startMs, resultStatus);
+  void syncDraftIntoLafzBrain(draftFile).catch(() => {
+    // Non-fatal Lafz Brain side effect.
+  });
   void (async () => {
     const existingGlossary = await getAiGlossaryEntries({
       language: draftFile.sourceLanguage,
