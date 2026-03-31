@@ -150,6 +150,7 @@ export function BrainClient() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fgRef = useRef<any>(null);
   const bloomAdded = useRef(false);
+  const initialFitDone = useRef(false);
 
   useEffect(() => {
     function measure() {
@@ -177,6 +178,7 @@ export function BrainClient() {
       if (!res.ok) throw new Error("Failed to load brain data");
       const data = await res.json();
       setGraphData(data);
+      initialFitDone.current = false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -381,7 +383,10 @@ export function BrainClient() {
               d3AlphaDecay={0.03}
               d3VelocityDecay={0.4}
               onEngineStop={() => {
-                fgRef.current?.zoomToFit(400, 80);
+                if (!initialFitDone.current) {
+                  fgRef.current?.zoomToFit(400, 80);
+                  initialFitDone.current = true;
+                }
                 // Add bloom glow effect once
                 if (!bloomAdded.current) {
                   try {
