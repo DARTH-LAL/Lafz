@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (seedNodes.length === 0) {
-      return NextResponse.json({ nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0 } });
+      return NextResponse.json({ nodes: [], edges: [], stats: { nodeCount: 0, edgeCount: 0, nodeTypeCounts: {} } });
     }
 
     const seedNodeIds = seedNodes.map((n) => n.id);

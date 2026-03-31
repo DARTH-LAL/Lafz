@@ -59,20 +59,6 @@ export function UntimedLyricsPanel({ draft, trackTitle, trackArtist, trackHref }
         </div>
       </div>
 
-      <div className="px-5 pt-5 lg:px-8">
-        <div className="rounded-[20px] border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] p-4 text-sm leading-7 text-[#fff0f6]">
-          Lafz found a translation draft for this song, but the lyrics do not have timestamps yet. So for now it shows
-          the translation as a plain reading view instead of karaoke-style synced lines.
-          <div className="mt-4">
-            <Link
-              href={trackHref}
-              className="inline-flex items-center justify-center rounded-full border border-[rgba(255,45,120,0.22)] bg-[rgba(255,45,120,0.09)] px-4 py-2 text-sm font-semibold text-[#fff0f6] transition hover:bg-[rgba(255,45,120,0.14)]"
-            >
-              Open track detail
-            </Link>
-          </div>
-        </div>
-      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-20 pt-4 lg:px-6">
         {draft.lines.map((line, index) => {

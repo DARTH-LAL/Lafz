@@ -11,16 +11,12 @@ export default async function BrainPage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="relative min-h-screen">
+    <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
       <AnimatedBackground />
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <div className="px-4 pt-4">
-          <AppTopBar connected />
-        </div>
-        <div className="flex flex-1 flex-col px-4 pb-4 pt-4">
-          <BrainClient />
-        </div>
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8 lg:px-10">
+        <AppTopBar connected className="mb-8" />
+        <BrainClient />
       </div>
-    </div>
+    </main>
   );
 }

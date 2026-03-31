@@ -41,6 +41,19 @@ type GraphData = {
   };
 };
 
+const NODE_COLORS: Record<string, string> = {
+  artist: "#ff1464",
+  song: "#ff6ba8",
+  term_surface: "#ff8c42",
+  term_sense: "#ffb347",
+  rendering: "#c084fc",
+  motif: "#38bdf8",
+  symbol: "#34d399",
+  entity_instance: "#f472b6",
+  entity_type: "#fb7185",
+  persona_style: "#a78bfa"
+};
+
 const NODE_TYPE_LABELS: Record<string, string> = {
   artist: "Artist",
   song: "Song",
@@ -64,8 +77,9 @@ function StatPill({ label, value }: { label: string; value: string | number }) {
     <div
       className="flex flex-col items-center gap-0.5 rounded-xl px-4 py-2"
       style={{
-        background: "rgba(255,20,100,0.07)",
-        border: "1px solid rgba(255,20,100,0.20)"
+        background: "rgba(6,2,5,0.92)",
+        border: "1px solid rgba(255,20,100,0.45)",
+        boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 14px rgba(255,20,100,0.30), inset 0 1px 0 rgba(255,20,100,0.12)"
       }}
     >
       <span className="text-[18px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
@@ -144,6 +158,7 @@ export function BrainClient() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [graphKey, setGraphKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightNodes = useRef(new Set<string>());
   const highlightEdges = useRef(new Set<string>());
@@ -177,8 +192,16 @@ export function BrainClient() {
       const res = await fetch(`/api/brain?${params}`);
       if (!res.ok) throw new Error("Failed to load brain data");
       const data = await res.json();
+      // Clear stale node references before swapping in new data
+      highlightNodes.current = new Set();
+      highlightEdges.current = new Set();
+      setSelectedNode(null);
+      setHoveredNode(null);
       setGraphData(data);
+      // Increment key to fully remount ForceGraph3D — prevents stale internal Three.js refs
+      setGraphKey(k => k + 1);
       initialFitDone.current = false;
+      bloomAdded.current = false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -191,7 +214,7 @@ export function BrainClient() {
   }, [fetchGraph]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
-    setSelectedNode(node);
+    setSelectedNode((prev) => (prev?.id === node.id ? null : node));
     highlightNodes.current = new Set([node.id]);
     highlightEdges.current = new Set();
     if (graphData) {
@@ -243,26 +266,35 @@ export function BrainClient() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1
-            className="text-[22px] font-extrabold tracking-[-0.5px] text-white"
-            style={{ fontFamily: "var(--font-display)", textShadow: "0 0 18px rgba(255,20,100,0.40)" }}
-          >
-            la<span className="text-[#ff1464]" style={{ filter: "drop-shadow(0 0 8px rgba(255,20,100,0.8))" }}>F</span>z Brain
-          </h1>
-          <p className="text-[12px] text-[#8a7898] mt-0.5">Knowledge graph — every connection the brain has learned</p>
+      <header className="mb-8 pb-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-0.5 w-7 rounded-full bg-[linear-gradient(90deg,#ff1464,transparent)] shadow-[0_0_8px_#ff1464]" />
+          <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#ff1464] [text-shadow:0_0_16px_rgba(255,20,100,0.6)]">
+            Knowledge Graph
+          </p>
         </div>
-
-        {/* Search */}
-        <div className="flex items-center gap-2">
+        <h1 className="font-display text-5xl font-extrabold leading-[1.04] tracking-[-2.2px] text-white [text-shadow:0_0_30px_rgba(255,255,255,0.30),0_0_70px_rgba(255,255,255,0.12)]">
+          la
+          <span
+            className="bg-clip-text text-transparent"
+            style={{
+              backgroundImage: "linear-gradient(110deg,#ff1464 0%,#ff8ab0 22%,#ffffff 45%,#ff8ab0 68%,#ff1464 100%)",
+              backgroundSize: "250% 100%",
+              animation: "lafz-shimmer 3.5s linear infinite",
+              filter: "drop-shadow(0 0 18px rgba(255,20,100,0.55))"
+            }}
+          >
+            Fz Brain
+          </span>
+        </h1>
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           <input
             type="text"
             placeholder="Search nodes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && fetchGraph(search || undefined, filterType ?? undefined)}
-            className="h-9 rounded-xl px-3 text-[13px] text-white placeholder-[#8a7898] outline-none transition"
+            className="h-9 rounded-xl px-3 text-[13px] text-white placeholder-white/60 outline-none transition"
             style={{
               background: "rgba(6,2,5,0.80)",
               border: "1px solid rgba(255,20,100,0.30)",
@@ -283,14 +315,35 @@ export function BrainClient() {
           {(search || filterType) && (
             <button
               onClick={() => { setSearch(""); setFilterType(null); fetchGraph(); }}
-              className="h-9 rounded-xl px-3 text-[12px] font-bold text-[#8a7898] transition hover:text-white"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="h-9 rounded-xl px-4 text-[12px] font-bold text-white transition hover:brightness-110"
+              style={{
+                background: "rgba(255,20,100,0.18)",
+                border: "1px solid rgba(255,20,100,0.50)",
+                boxShadow: "0 0 12px rgba(255,20,100,0.25)"
+              }}
             >
               Clear
             </button>
           )}
+          <a
+            href="/brain/fullscreen"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold text-white transition hover:brightness-110"
+            style={{
+              background: "rgba(255,20,100,0.18)",
+              border: "1px solid rgba(255,20,100,0.50)",
+              boxShadow: "0 0 12px rgba(255,20,100,0.25)"
+            }}
+            title="Open fullscreen"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+            </svg>
+            Fullscreen
+          </a>
         </div>
-      </div>
+      </header>
 
       {/* Stats */}
       {graphData && (
@@ -298,27 +351,33 @@ export function BrainClient() {
           <StatPill label="Total nodes" value={graphData.stats.nodeCount} />
           <StatPill label="Total edges" value={graphData.stats.edgeCount} />
           <StatPill label="Showing" value={graphData.nodes.length} />
-          {Object.entries(graphData.stats.nodeTypeCounts).map(([type, count]) => (
-            <button
-              key={type}
-              onClick={() => {
-                const next = filterType === type ? null : type;
-                setFilterType(next);
-                fetchGraph(search || undefined, next ?? undefined);
-              }}
-              className="flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition"
-              style={{
-                background: filterType === type ? "rgba(255,20,100,0.18)" : "rgba(255,255,255,0.03)",
-                border: filterType === type ? "1px solid rgba(255,20,100,0.50)" : "1px solid rgba(255,255,255,0.08)",
-                boxShadow: filterType === type ? "0 0 12px rgba(255,20,100,0.25)" : "none"
-              }}
-            >
-              <span className="text-[13px] font-bold text-white">{count}</span>
-              <span className="text-[9px] uppercase tracking-widest font-semibold text-[#8a7898]">
-                {NODE_TYPE_LABELS[type] ?? type}
-              </span>
-            </button>
-          ))}
+          {Object.entries(graphData.stats.nodeTypeCounts).map(([type, count]) => {
+            const c = NODE_COLORS[type] ?? "#ff1464";
+            const active = filterType === type;
+            return (
+              <button
+                key={type}
+                onClick={() => {
+                  const next = filterType === type ? null : type;
+                  setFilterType(next);
+                  fetchGraph(search || undefined, next ?? undefined);
+                }}
+                className="flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition"
+                style={{
+                  background: active ? `${c}28` : "rgba(6,2,5,0.92)",
+                  border: `1px solid ${active ? c : c + "55"}`,
+                  boxShadow: active
+                    ? `0 0 0 1px ${c}22, 0 0 16px ${c}66, inset 0 1px 0 ${c}30`
+                    : `0 0 0 1px ${c}0a, 0 0 10px ${c}33, inset 0 1px 0 ${c}15`
+                }}
+              >
+                <span className="text-[13px] font-bold" style={{ color: c, textShadow: active ? `0 0 10px ${c}` : `0 0 6px ${c}88` }}>{count}</span>
+                <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: active ? c : c + "99" }}>
+                  {NODE_TYPE_LABELS[type] ?? type}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -352,12 +411,20 @@ export function BrainClient() {
             </div>
           )}
 
-          {!loading && !error && graphData && (
+          {!loading && !error && graphData && (() => {
+            const nodeIds = new Set(graphData.nodes.map(n => n.id));
+            const safeEdges = graphData.edges.filter(e => {
+              const s = typeof e.source === "object" ? e.source.id : e.source;
+              const t = typeof e.target === "object" ? e.target.id : e.target;
+              return nodeIds.has(s) && nodeIds.has(t);
+            });
+            return (
             <ForceGraph3D
+              key={graphKey}
               ref={fgRef}
               width={dimensions.width}
               height={dimensions.height}
-              graphData={{ nodes: graphData.nodes as never[], links: graphData.edges as never[] }}
+              graphData={{ nodes: graphData.nodes as never[], links: safeEdges as never[] }}
               nodeId="id"
               linkSource="source"
               linkTarget="target"
@@ -370,7 +437,7 @@ export function BrainClient() {
               linkOpacity={0.6}
               onNodeClick={handleNodeClick as never}
               onNodeHover={handleNodeHover as never}
-              backgroundColor="#2a0d14"
+              backgroundColor="#000000"
               linkDirectionalParticles={(edge) => {
                 const e = edge as GraphEdge;
                 const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
@@ -379,14 +446,22 @@ export function BrainClient() {
               }}
               linkDirectionalParticleWidth={3}
               linkDirectionalParticleColor={() => "#ff6ba8"}
-              cooldownTicks={120}
-              d3AlphaDecay={0.03}
-              d3VelocityDecay={0.4}
+              cooldownTicks={150}
+              d3AlphaDecay={0.04}
+              d3VelocityDecay={0.6}
               onEngineStop={() => {
                 if (!initialFitDone.current) {
                   fgRef.current?.zoomToFit(400, 80);
                   initialFitDone.current = true;
                 }
+                // Freeze all nodes in place so they don't flee on hover
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                graphData?.nodes.forEach((n: any) => { n.fx = n.x; n.fy = n.y; n.fz = n.z; });
+                // Boost zoom speed
+                try {
+                  const controls = fgRef.current?.controls();
+                  if (controls) controls.zoomSpeed = 3;
+                } catch {}
                 // Add bloom glow effect once
                 if (!bloomAdded.current) {
                   try {
@@ -396,9 +471,9 @@ export function BrainClient() {
                     const { UnrealBloomPass } = require("three/examples/jsm/postprocessing/UnrealBloomPass.js");
                     const bloomPass = new UnrealBloomPass(
                       new THREE.Vector2(dimensions.width, dimensions.height),
-                      1.8,
                       0.6,
-                      0.1
+                      0.4,
+                      0.2
                     );
                     fgRef.current?.postProcessingComposer()?.addPass(bloomPass);
                     bloomAdded.current = true;
@@ -406,7 +481,8 @@ export function BrainClient() {
                 }
               }}
             />
-          )}
+            );
+          })()}
 
           {!loading && !error && graphData?.nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -419,68 +495,45 @@ export function BrainClient() {
         <div className="flex w-64 flex-shrink-0 flex-col gap-3">
           <NodeDetail node={activeNode} />
 
-          {!activeNode && (
-            <div
-              className="rounded-2xl p-4 text-center"
-              style={{
-                background: "rgba(6,2,5,0.85)",
-                border: "1px solid rgba(255,255,255,0.06)"
-              }}
-            >
-              <p className="text-[12px] text-[#8a7898]">Click any node to explore its connections</p>
-            </div>
-          )}
 
           {/* Legend */}
           <div
-            className="rounded-2xl p-4 flex flex-col gap-2"
+            className="rounded-2xl p-4 flex flex-col gap-1.5"
             style={{
-              background: "rgba(6,2,5,0.85)",
-              border: "1px solid rgba(255,255,255,0.06)"
+              background: "rgba(6,2,5,0.92)",
+              border: "1px solid rgba(255,20,100,0.20)",
+              boxShadow: "0 0 12px rgba(255,20,100,0.10)"
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898] mb-1">Node types</p>
-            {NODE_TYPE_ORDER.map((type) => (
-              <button
-                key={type}
-                onClick={() => {
-                  const next = filterType === type ? null : type;
-                  setFilterType(next);
-                  fetchGraph(search || undefined, next ?? undefined);
-                }}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-white/5"
-              >
-                <span
-                  className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                  style={{
-                    background: Object.entries(NODE_TYPE_LABELS).find(([k]) => k === type)?.[0]
-                      ? "#ff1464"
-                      : "#fff",
-                    backgroundColor: (() => {
-                      const colors: Record<string, string> = {
-                        artist: "#ff1464", song: "#ff6ba8", term_surface: "#ff8c42",
-                        term_sense: "#ffb347", rendering: "#c084fc", motif: "#38bdf8",
-                        symbol: "#34d399", entity_instance: "#f472b6",
-                        entity_type: "#fb7185", persona_style: "#a78bfa"
-                      };
-                      return colors[type] ?? "#fff";
-                    })(),
-                    boxShadow: (() => {
-                      const colors: Record<string, string> = {
-                        artist: "#ff1464", song: "#ff6ba8", term_surface: "#ff8c42",
-                        term_sense: "#ffb347", rendering: "#c084fc", motif: "#38bdf8",
-                        symbol: "#34d399", entity_instance: "#f472b6",
-                        entity_type: "#fb7185", persona_style: "#a78bfa"
-                      };
-                      return `0 0 6px ${colors[type] ?? "#fff"}`;
-                    })()
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898] mb-2">Node types</p>
+            {NODE_TYPE_ORDER.map((type) => {
+              const color = NODE_COLORS[type] ?? "#fff";
+              const isActive = filterType === type;
+              return (
+                <button
+                  key={type}
+                  onClick={() => {
+                    const next = filterType === type ? null : type;
+                    setFilterType(next);
+                    fetchGraph(search || undefined, next ?? undefined);
                   }}
-                />
-                <span className={`text-[11px] font-medium ${filterType === type ? "text-white" : "text-[#8a7898]"}`}>
-                  {NODE_TYPE_LABELS[type] ?? type}
-                </span>
-              </button>
-            ))}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition"
+                  style={{
+                    background: isActive ? `${color}22` : `${color}08`,
+                    border: isActive ? `1px solid ${color}88` : `1px solid ${color}33`,
+                    boxShadow: isActive ? `0 0 12px ${color}55, inset 0 1px 0 ${color}25` : `0 0 6px ${color}22`
+                  }}
+                >
+                  <span
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                    style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
+                  />
+                  <span className="text-[11px] font-medium" style={{ color: isActive ? color : color + "99", textShadow: isActive ? `0 0 8px ${color}` : "none" }}>
+                    {NODE_TYPE_LABELS[type] ?? type}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1741,6 +1741,180 @@ function chooseGuardrailedEvaluatedLine(options: {
   };
 }
 
+type GeminiComparisonResultLine = Awaited<ReturnType<typeof requestGeminiDraftComparison>>["lines"][number];
+
+function isRecoverableGeminiComparisonError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /invalid comparison shape|changed the lyric line count|invalid comparison line|non-object comparison line|could not be parsed|empty response/i.test(
+    message
+  );
+}
+
+function getConfidenceScore(confidence: AiDraftLine["confidence"]) {
+  switch (confidence) {
+    case "high":
+      return 6;
+    case "medium":
+      return 3;
+    case "low":
+      return 0;
+    default:
+      return 0;
+  }
+}
+
+function buildLocalGeminiFallbackLine(options: {
+  sourceLine: SourceDraftLine;
+  generatorALine: AiDraftLine | undefined;
+  generatorBLine: AiDraftLine | undefined;
+  verseState: AiVerseState | null | undefined;
+  seenChoices: Map<string, Array<{ order: number; original: string }>>;
+  errorMessage: string;
+}): GeminiComparisonResultLine {
+  const candidates = [
+    options.generatorALine ? { key: "generator_a" as const, line: options.generatorALine } : null,
+    options.generatorBLine ? { key: "generator_b" as const, line: options.generatorBLine } : null
+  ].filter((entry): entry is { key: "generator_a" | "generator_b"; line: AiDraftLine } => Boolean(entry));
+
+  if (candidates.length === 0) {
+    throw new Error("Lafz could not build a local fallback because neither generator produced a line.");
+  }
+
+  const scored = candidates.map((candidate) => {
+    const duplicatePenalty = hasSuspiciousDuplicateChoice(
+      candidate.line.chosen,
+      options.sourceLine.original,
+      options.seenChoices
+    )
+      ? 12
+      : 0;
+    const adlibPenalty =
+      isMeaningfulSourceLine(options.sourceLine.original) && isAdlibLikeText(candidate.line.chosen) ? 16 : 0;
+    const anchorScore = scoreCandidateAgainstAnchor(candidate.line.chosen, candidate.line, options.verseState);
+
+    return {
+      ...candidate,
+      duplicatePenalty,
+      adlibPenalty,
+      anchorScore,
+      totalScore: anchorScore * 2 + getConfidenceScore(candidate.line.confidence) - duplicatePenalty - adlibPenalty
+    };
+  });
+
+  const best = [...scored].sort((left, right) => right.totalScore - left.totalScore)[0] ?? scored[0];
+  const reasonParts = ["Local fallback: Gemini judge returned an invalid comparison response"];
+
+  if (best.duplicatePenalty > 0) {
+    reasonParts.push("avoided a suspicious duplicate");
+  }
+
+  if (best.adlibPenalty > 0) {
+    reasonParts.push("avoided collapsing the lyric into an ad-lib");
+  }
+
+  return {
+    winner: best.key,
+    chosen: best.line.chosen,
+    confidence: best.line.confidence === "high" ? "medium" : best.line.confidence,
+    ambiguity: best.line.ambiguity,
+    note: best.line.note,
+    selectorReason: `${reasonParts.join("; ")}. (${options.errorMessage.slice(0, 140)})`,
+    suspiciousDuplicate: best.duplicatePenalty > 0,
+    adlibCollapseRisk: best.adlibPenalty > 0,
+    semanticDriftRisk: false,
+    scoreA: null,
+    scoreB: null
+  };
+}
+
+async function requestGeminiDraftComparisonWithRecovery(options: {
+  request: Parameters<typeof requestGeminiDraftComparison>[0];
+  sourceLines: SourceDraftLine[];
+  generatorALines: Array<AiDraftLine | undefined>;
+  generatorBLines: Array<AiDraftLine | undefined>;
+  verseStateLookup: Map<number, AiVerseState>;
+  seenChoices: Map<string, Array<{ order: number; original: string }>>;
+  usageSink?: { inputTokens: number; outputTokens: number };
+  retryAttempt?: number;
+}): Promise<{
+  model: string;
+  sourceLanguage: string;
+  lines: GeminiComparisonResultLine[];
+}> {
+  try {
+    return await requestGeminiDraftComparison(options.request, options.usageSink);
+  } catch (error) {
+    if (!isRecoverableGeminiComparisonError(error)) {
+      throw error;
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const retryAttempt = options.retryAttempt ?? 0;
+
+    if (retryAttempt < 1) {
+      console.warn("[lafz] Retrying Gemini comparison batch after invalid response shape.");
+      return requestGeminiDraftComparisonWithRecovery({
+        ...options,
+        retryAttempt: retryAttempt + 1
+      });
+    }
+
+    if (options.request.lines.length > 1) {
+      const midpoint = Math.ceil(options.request.lines.length / 2);
+      console.warn(
+        `[lafz] Gemini comparison batch still invalid after retry; splitting ${options.request.lines.length} lines into ${midpoint} and ${
+          options.request.lines.length - midpoint
+        }.`
+      );
+
+      const left = await requestGeminiDraftComparisonWithRecovery({
+        ...options,
+        request: {
+          ...options.request,
+          lines: options.request.lines.slice(0, midpoint)
+        },
+        sourceLines: options.sourceLines.slice(0, midpoint),
+        generatorALines: options.generatorALines.slice(0, midpoint),
+        generatorBLines: options.generatorBLines.slice(0, midpoint),
+        retryAttempt: 0
+      });
+      const right = await requestGeminiDraftComparisonWithRecovery({
+        ...options,
+        request: {
+          ...options.request,
+          lines: options.request.lines.slice(midpoint)
+        },
+        sourceLines: options.sourceLines.slice(midpoint),
+        generatorALines: options.generatorALines.slice(midpoint),
+        generatorBLines: options.generatorBLines.slice(midpoint),
+        retryAttempt: 0
+      });
+
+      return {
+        model: left.model || right.model,
+        sourceLanguage: left.sourceLanguage || right.sourceLanguage || options.request.sourceLanguage,
+        lines: [...left.lines, ...right.lines]
+      };
+    }
+
+    console.warn("[lafz] Gemini comparison fell back to a local selector for one line.");
+    return {
+      model: "local_fallback_after_gemini_error",
+      sourceLanguage: options.request.sourceLanguage,
+      lines: [
+        buildLocalGeminiFallbackLine({
+          sourceLine: options.sourceLines[0],
+          generatorALine: options.generatorALines[0],
+          generatorBLine: options.generatorBLines[0],
+          verseState: options.verseStateLookup.get(options.sourceLines[0]?.order ?? -1) ?? null,
+          seenChoices: options.seenChoices,
+          errorMessage
+        })
+      ]
+    };
+  }
+}
+
 async function applySurfacePolishToDraftLines(options: {
   title: string;
   artist: string;
@@ -1999,8 +2173,11 @@ async function evaluateDraftAlternativesInBatches(
       };
     });
 
-    const aiResponse = await requestGeminiDraftComparison(
-      {
+    const batchGeneratorALines = batch.map((line) => generatorALines[line.order]);
+    const batchGeneratorBLines = batch.map((line) => generatorBLines[line.order]);
+
+    const aiResponse = await requestGeminiDraftComparisonWithRecovery({
+      request: {
         title: options.title,
         artist: options.artist,
         album: options.album,
@@ -2012,8 +2189,13 @@ async function evaluateDraftAlternativesInBatches(
         artistMemory,
         lines: comparisonLines
       },
+      sourceLines: batch,
+      generatorALines: batchGeneratorALines,
+      generatorBLines: batchGeneratorBLines,
+      verseStateLookup,
+      seenChoices,
       usageSink
-    );
+    });
     model = aiResponse.model || model;
 
     evaluatedLines.push(
@@ -2749,8 +2931,8 @@ export async function regenerateDraftLines(
     selectionWinner: "generator_b"
   };
 
-  const comparisonResponse = await requestGeminiDraftComparison(
-    {
+  const comparisonResponse = await requestGeminiDraftComparisonWithRecovery({
+    request: {
       title: draft.title,
       artist: draft.artist,
       album: draft.album,
@@ -2801,8 +2983,13 @@ export async function regenerateDraftLines(
         }
       ]
     },
-    usageSinkG
-  );
+    sourceLines: [representativeSourceLine],
+    generatorALines: [generatorALine],
+    generatorBLines: [generatorBLine],
+    verseStateLookup,
+    seenChoices: new Map(),
+    usageSink: usageSinkG
+  });
 
   const evaluationLine = comparisonResponse.lines[0];
   const baseLine =
