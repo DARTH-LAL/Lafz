@@ -147,6 +147,8 @@ export function BrainClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightNodes = useRef(new Set<string>());
   const highlightEdges = useRef(new Set<string>());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fgRef = useRef<any>(null);
 
   useEffect(() => {
     function measure() {
@@ -269,7 +271,7 @@ export function BrainClient() {
   const activeNode = hoveredNode ?? selectedNode;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 min-h-0">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -351,7 +353,7 @@ export function BrainClient() {
       )}
 
       {/* Graph + detail */}
-      <div className="flex flex-1 gap-4 min-h-0" style={{ minHeight: 500 }}>
+      <div className="flex gap-4" style={{ height: 560 }}>
         {/* Graph canvas */}
         <div
           ref={containerRef}
@@ -382,6 +384,7 @@ export function BrainClient() {
 
           {!loading && !error && graphData && (
             <ForceGraph2D
+              ref={fgRef}
               width={dimensions.width}
               height={dimensions.height}
               graphData={{ nodes: graphData.nodes as never[], links: graphData.edges as never[] }}
@@ -405,9 +408,10 @@ export function BrainClient() {
                 return highlightEdges.current.has(`${sourceId}-${targetId}`) ? 2 : 0;
               }}
               linkDirectionalParticleColor={() => "#ff6ba8"}
-              cooldownTicks={80}
-              d3AlphaDecay={0.02}
-              d3VelocityDecay={0.3}
+              cooldownTicks={120}
+              d3AlphaDecay={0.03}
+              d3VelocityDecay={0.4}
+              onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
             />
           )}
 
