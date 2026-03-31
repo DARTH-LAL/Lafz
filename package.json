@@ -19,7 +19,9 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-force-graph": "^1.48.2",
-    "react-force-graph-2d": "^1.29.1"
+    "react-force-graph-2d": "^1.29.1",
+    "react-force-graph-3d": "^1.29.1",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",

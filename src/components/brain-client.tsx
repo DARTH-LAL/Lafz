@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
-const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">
@@ -149,6 +149,7 @@ export function BrainClient() {
   const highlightEdges = useRef(new Set<string>());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fgRef = useRef<any>(null);
+  const bloomAdded = useRef(false);
 
   useEffect(() => {
     function measure() {
@@ -208,65 +209,31 @@ export function BrainClient() {
     setHoveredNode(node);
   }, []);
 
-  const paintNode = useCallback(
-    (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const isHighlighted = highlightNodes.current.has(node.id);
-      const isSelected = selectedNode?.id === node.id;
-      const isHovered = hoveredNode?.id === node.id;
-      const label = node.label ?? "";
-      const baseRadius = node.type === "artist" ? 10 : node.type === "song" ? 7 : 5;
-      const radius = isSelected ? baseRadius * 1.5 : isHighlighted ? baseRadius * 1.2 : baseRadius;
+  const getNodeColor = useCallback((node: object) => {
+    const n = node as GraphNode;
+    const isHighlighted = highlightNodes.current.has(n.id);
+    const isSelected = selectedNode?.id === n.id;
+    return isSelected || isHighlighted ? n.color : n.color + "cc";
+  }, [selectedNode]);
 
-      // Glow
-      if (isSelected || isHighlighted || isHovered) {
-        ctx.save();
-        ctx.shadowColor = node.color;
-        ctx.shadowBlur = isSelected ? 24 : 14;
-        ctx.beginPath();
-        ctx.arc(node.x ?? 0, node.y ?? 0, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = node.color + "44";
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Node circle
-      ctx.save();
-      ctx.shadowColor = node.color;
-      ctx.shadowBlur = isSelected ? 16 : isHighlighted ? 8 : 4;
-      ctx.beginPath();
-      ctx.arc(node.x ?? 0, node.y ?? 0, radius, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected || isHighlighted ? node.color : node.color + "bb";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      ctx.restore();
-
-      // Label
-      if (globalScale > 1.2 || isSelected || isHighlighted || isHovered) {
-        const fontSize = isSelected ? 5 : 3.5;
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "rgba(255,240,246,0.90)";
-        ctx.fillText(label.length > 18 ? label.slice(0, 16) + "…" : label, node.x ?? 0, (node.y ?? 0) + radius + fontSize + 1);
-      }
-    },
-    [selectedNode, hoveredNode]
-  );
+  const getNodeVal = useCallback((node: object) => {
+    const n = node as GraphNode;
+    const base = n.type === "artist" ? 12 : n.type === "song" ? 7 : 4;
+    return highlightNodes.current.has(n.id) || selectedNode?.id === n.id ? base * 1.6 : base;
+  }, [selectedNode]);
 
   const getLinkColor = useCallback((edge: object) => {
     const e = edge as GraphEdge;
     const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
     const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
-    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? "#ff6ba8" : "rgba(255,20,100,0.18)";
+    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? "#ff6ba8" : "rgba(255,20,100,0.25)";
   }, []);
 
   const getLinkWidth = useCallback((edge: object) => {
     const e = edge as GraphEdge;
     const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
     const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
-    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? (e.weight ?? 0.5) * 2.5 : 0.8;
+    return highlightEdges.current.has(`${sourceId}-${targetId}`) ? (e.weight ?? 0.5) * 6 : 2;
   }, []);
 
   const activeNode = hoveredNode ?? selectedNode;
@@ -384,7 +351,7 @@ export function BrainClient() {
           )}
 
           {!loading && !error && graphData && (
-            <ForceGraph2D
+            <ForceGraph3D
               ref={fgRef}
               width={dimensions.width}
               height={dimensions.height}
@@ -392,24 +359,47 @@ export function BrainClient() {
               nodeId="id"
               linkSource="source"
               linkTarget="target"
-              nodeCanvasObject={paintNode as never}
+              nodeColor={getNodeColor as never}
+              nodeVal={getNodeVal as never}
+              nodeLabel="label"
+              nodeOpacity={0.92}
               linkColor={getLinkColor as never}
               linkWidth={getLinkWidth as never}
+              linkOpacity={0.6}
               onNodeClick={handleNodeClick as never}
               onNodeHover={handleNodeHover as never}
-              backgroundColor="transparent"
+              backgroundColor="#2a0d14"
               linkDirectionalParticles={(edge) => {
                 const e = edge as GraphEdge;
                 const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
                 const targetId = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
-                return highlightEdges.current.has(`${sourceId}-${targetId}`) ? 3 : 0;
+                return highlightEdges.current.has(`${sourceId}-${targetId}`) ? 4 : 0;
               }}
-              linkDirectionalParticleWidth={2}
+              linkDirectionalParticleWidth={3}
               linkDirectionalParticleColor={() => "#ff6ba8"}
               cooldownTicks={120}
               d3AlphaDecay={0.03}
               d3VelocityDecay={0.4}
-              onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
+              onEngineStop={() => {
+                fgRef.current?.zoomToFit(400, 80);
+                // Add bloom glow effect once
+                if (!bloomAdded.current) {
+                  try {
+                    // eslint-disable-next-line @typescript-eslint/no-require-imports
+                    const THREE = require("three");
+                    // eslint-disable-next-line @typescript-eslint/no-require-imports
+                    const { UnrealBloomPass } = require("three/examples/jsm/postprocessing/UnrealBloomPass.js");
+                    const bloomPass = new UnrealBloomPass(
+                      new THREE.Vector2(dimensions.width, dimensions.height),
+                      1.8,
+                      0.6,
+                      0.1
+                    );
+                    fgRef.current?.postProcessingComposer()?.addPass(bloomPass);
+                    bloomAdded.current = true;
+                  } catch {}
+                }
+              }}
             />
           )}
 
