@@ -2,6 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import {
+  type GraphNode,
+  type GraphEdge,
+  type GraphData,
+  type MemoryPackData,
+  type ClaimsData,
+  NODE_COLORS,
+  NODE_TYPE_LABELS,
+  NODE_TYPE_ORDER,
+  NodeDetail,
+  MemoryPackPanel,
+  ClaimsPanel,
+} from "@/components/brain-shared";
 
 const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
   ssr: false,
@@ -12,117 +25,22 @@ const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
   )
 });
 
-type GraphNode = {
-  id: string;
-  label: string;
-  type: string;
-  color: string;
-  confidence: string;
-  metadata: Record<string, unknown>;
-  x?: number;
-  y?: number;
-};
-
-type GraphEdge = {
-  source: string | GraphNode;
-  target: string | GraphNode;
-  type: string;
-  weight: number;
-  evidence: string | null;
-};
-
-type GraphData = {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  stats: {
-    nodeCount: number;
-    edgeCount: number;
-    nodeTypeCounts: Record<string, number>;
-  };
-};
-
-const NODE_COLORS: Record<string, string> = {
-  artist: "#ff1464",
-  song: "#ff6ba8",
-  term_surface: "#ff8c42",
-  term_sense: "#ffb347",
-  rendering: "#c084fc",
-  motif: "#38bdf8",
-  symbol: "#34d399",
-  entity_instance: "#f472b6",
-  entity_type: "#fb7185",
-  persona_style: "#a78bfa"
-};
-
-const NODE_TYPE_LABELS: Record<string, string> = {
-  artist: "Artist",
-  song: "Song",
-  term_surface: "Term",
-  term_sense: "Sense",
-  rendering: "Rendering",
-  motif: "Motif",
-  symbol: "Symbol",
-  entity_instance: "Entity",
-  entity_type: "Entity Type",
-  persona_style: "Persona"
-};
-
-const NODE_TYPE_ORDER = [
-  "artist", "song", "motif", "symbol", "term_surface",
-  "term_sense", "rendering", "entity_instance", "entity_type", "persona_style"
-];
-
-function NodeDetail({ node, onClose }: { node: GraphNode; onClose: () => void }) {
-  const meta = node.metadata ?? {};
-  return (
-    <div
-      className="flex flex-col gap-2 rounded-2xl p-4"
-      style={{
-        background: "rgba(6,2,5,0.94)",
-        border: "1px solid rgba(255,20,100,0.40)",
-        boxShadow: "0 0 32px rgba(255,20,100,0.25)"
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: node.color, boxShadow: `0 0 8px ${node.color}` }} />
-          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: node.color }}>
-            {NODE_TYPE_LABELS[node.type] ?? node.type}
-          </span>
-        </div>
-        <button onClick={onClose} className="text-[#8a7898] hover:text-white transition text-[16px] leading-none" aria-label="Close">×</button>
-      </div>
-      <p className="text-[15px] font-bold text-white leading-tight">{node.label}</p>
-      {typeof meta.personaSummary === "string" && meta.personaSummary && (
-        <p className="text-[12px] text-[#8a7898] leading-relaxed">{meta.personaSummary}</p>
-      )}
-      {typeof meta.meaning === "string" && meta.meaning && (
-        <p className="text-[12px] text-[#8a7898]"><span className="text-white/40">meaning </span>{meta.meaning}</p>
-      )}
-      {typeof meta.note === "string" && meta.note && (
-        <p className="text-[12px] text-[#8a7898]"><span className="text-white/40">note </span>{meta.note}</p>
-      )}
-      {typeof meta.role === "string" && meta.role && (
-        <p className="text-[12px] text-[#8a7898]"><span className="text-white/40">role </span>{meta.role}</p>
-      )}
-      <span
-        className="mt-1 self-start rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-        style={{
-          background: node.confidence === "human_verified" ? "rgba(52,211,153,0.15)" : "rgba(255,20,100,0.10)",
-          color: node.confidence === "human_verified" ? "#34d399" : "#ff6ba8",
-          border: `1px solid ${node.confidence === "human_verified" ? "rgba(52,211,153,0.30)" : "rgba(255,20,100,0.25)"}`
-        }}
-      >
-        {node.confidence?.replace(/_/g, " ") ?? "ai generated"}
-      </span>
-    </div>
-  );
-}
+const btnStyle = {
+  background: "rgba(255,20,100,0.18)",
+  border: "1px solid rgba(255,20,100,0.50)",
+  boxShadow: "0 0 12px rgba(255,20,100,0.25)"
+} as const;
 
 export function BrainFullscreen() {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memoryPack, setMemoryPack] = useState<MemoryPackData | null>(null);
+  const [memoryPackLoading, setMemoryPackLoading] = useState(false);
+  const [memoryPackError, setMemoryPackError] = useState<string | null>(null);
+  const [claimsData, setClaimsData] = useState<ClaimsData | null>(null);
+  const [claimsLoading, setClaimsLoading] = useState(false);
+  const [claimsError, setClaimsError] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
@@ -139,9 +57,7 @@ export function BrainFullscreen() {
   const initialFitDone = useRef(false);
 
   useEffect(() => {
-    function measure() {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
-    }
+    function measure() { setDimensions({ width: window.innerWidth, height: window.innerHeight }); }
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -174,6 +90,64 @@ export function BrainFullscreen() {
 
   useEffect(() => { fetchGraph(); }, [fetchGraph]);
 
+  // Fetch memory pack + claims when a song node is selected
+  useEffect(() => {
+    const spotifyTrackId =
+      selectedNode?.type === "song" && typeof selectedNode.metadata.spotifyTrackId === "string"
+        ? selectedNode.metadata.spotifyTrackId : null;
+    const artist =
+      selectedNode?.type === "song" && typeof selectedNode.metadata.artist === "string"
+        ? selectedNode.metadata.artist : null;
+
+    if (!spotifyTrackId || !artist) {
+      setMemoryPack(null);
+      setMemoryPackLoading(false);
+      setMemoryPackError(null);
+      setClaimsData(null);
+      setClaimsLoading(false);
+      setClaimsError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchMemoryPack() {
+      setMemoryPackLoading(true);
+      setMemoryPackError(null);
+      try {
+        const params = new URLSearchParams({ mode: "memory-pack", spotifyTrackId: spotifyTrackId!, artist: artist! });
+        const res = await fetch(`/api/brain?${params}`);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setMemoryPack(data);
+      } catch (e) {
+        if (!cancelled) { setMemoryPack(null); setMemoryPackError(e instanceof Error ? e.message : "Failed"); }
+      } finally {
+        if (!cancelled) setMemoryPackLoading(false);
+      }
+    }
+
+    async function fetchClaims() {
+      setClaimsLoading(true);
+      setClaimsError(null);
+      try {
+        const params = new URLSearchParams({ mode: "claims", spotifyTrackId: spotifyTrackId!, artist: artist! });
+        const res = await fetch(`/api/brain?${params}`);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setClaimsData(data);
+      } catch (e) {
+        if (!cancelled) { setClaimsData(null); setClaimsError(e instanceof Error ? e.message : "Failed"); }
+      } finally {
+        if (!cancelled) setClaimsLoading(false);
+      }
+    }
+
+    fetchMemoryPack();
+    fetchClaims();
+    return () => { cancelled = true; };
+  }, [selectedNode]);
+
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
     highlightNodes.current = new Set([node.id]);
@@ -200,7 +174,7 @@ export function BrainFullscreen() {
 
   const getNodeVal = useCallback((node: object) => {
     const n = node as GraphNode;
-    const base = n.type === "artist" ? 14 : n.type === "song" ? 8 : 4;
+    const base = n.type === "artist" ? 12 : n.type === "song" ? 7 : 4;
     return highlightNodes.current.has(n.id) || selectedNode?.id === n.id ? base * 1.6 : base;
   }, [selectedNode]);
 
@@ -219,14 +193,11 @@ export function BrainFullscreen() {
   }, []);
 
   const activeNode = hoveredNode ?? selectedNode;
-  const btnStyle = {
-    background: "rgba(255,20,100,0.18)",
-    border: "1px solid rgba(255,20,100,0.50)",
-    boxShadow: "0 0 12px rgba(255,20,100,0.25)"
-  };
+  const sidebarOpen = !!selectedNode;
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: "#000000" }}>
+
       {/* Full-viewport graph */}
       {!loading && !error && graphData && (() => {
         const nodeIds = new Set(graphData.nodes.map(n => n.id));
@@ -236,62 +207,54 @@ export function BrainFullscreen() {
           return nodeIds.has(s) && nodeIds.has(t);
         });
         return (
-        <ForceGraph3D
-          key={graphKey}
-          ref={fgRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          graphData={{ nodes: graphData.nodes as never[], links: safeEdges as never[] }}
-          nodeId="id"
-          linkSource="source"
-          linkTarget="target"
-          nodeColor={getNodeColor as never}
-          nodeVal={getNodeVal as never}
-          nodeLabel="label"
-          nodeOpacity={0.92}
-          linkColor={getLinkColor as never}
-          linkWidth={getLinkWidth as never}
-          linkOpacity={0.6}
-          onNodeClick={handleNodeClick as never}
-          onNodeHover={handleNodeHover as never}
-          backgroundColor="#000000"
-          linkDirectionalParticles={(edge) => {
-            const e = edge as GraphEdge;
-            const sid = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
-            const tid = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
-            return highlightEdges.current.has(`${sid}-${tid}`) ? 4 : 0;
-          }}
-          linkDirectionalParticleWidth={3}
-          linkDirectionalParticleColor={() => "#ff6ba8"}
-          cooldownTicks={150}
-          d3AlphaDecay={0.04}
-          d3VelocityDecay={0.6}
-          onEngineStop={() => {
-            if (!initialFitDone.current) {
-              fgRef.current?.zoomToFit(400, 80);
-              initialFitDone.current = true;
-            }
-            // Freeze all nodes in place so they don't flee on hover
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            graphData?.nodes.forEach((n: any) => { n.fx = n.x; n.fy = n.y; n.fz = n.z; });
-            // Boost zoom speed
-            try {
-              const controls = fgRef.current?.controls();
-              if (controls) controls.zoomSpeed = 3;
-            } catch {}
-            if (!bloomAdded.current) {
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const THREE = require("three");
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const { UnrealBloomPass } = require("three/examples/jsm/postprocessing/UnrealBloomPass.js");
-                const bloomPass = new UnrealBloomPass(new THREE.Vector2(dimensions.width, dimensions.height), 0.6, 0.4, 0.2);
-                fgRef.current?.postProcessingComposer()?.addPass(bloomPass);
-                bloomAdded.current = true;
-              } catch {}
-            }
-          }}
-        />
+          <ForceGraph3D
+            key={graphKey}
+            ref={fgRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            graphData={{ nodes: graphData.nodes as never[], links: safeEdges as never[] }}
+            nodeId="id"
+            linkSource="source"
+            linkTarget="target"
+            nodeColor={getNodeColor as never}
+            nodeVal={getNodeVal as never}
+            nodeLabel="label"
+            nodeOpacity={0.92}
+            linkColor={getLinkColor as never}
+            linkWidth={getLinkWidth as never}
+            linkOpacity={0.6}
+            onNodeClick={handleNodeClick as never}
+            onNodeHover={handleNodeHover as never}
+            backgroundColor="#000000"
+            linkDirectionalParticles={(edge) => {
+              const e = edge as GraphEdge;
+              const sid = typeof e.source === "object" ? (e.source as GraphNode).id : e.source as string;
+              const tid = typeof e.target === "object" ? (e.target as GraphNode).id : e.target as string;
+              return highlightEdges.current.has(`${sid}-${tid}`) ? 4 : 0;
+            }}
+            linkDirectionalParticleWidth={3}
+            linkDirectionalParticleColor={() => "#ff6ba8"}
+            cooldownTicks={150}
+            d3AlphaDecay={0.04}
+            d3VelocityDecay={0.6}
+            onEngineStop={() => {
+              if (!initialFitDone.current) { fgRef.current?.zoomToFit(400, 80); initialFitDone.current = true; }
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              graphData?.nodes.forEach((n: any) => { n.fx = n.x; n.fy = n.y; n.fz = n.z; });
+              try { const controls = fgRef.current?.controls(); if (controls) controls.zoomSpeed = 3; } catch {}
+              if (!bloomAdded.current) {
+                try {
+                  // eslint-disable-next-line @typescript-eslint/no-require-imports
+                  const THREE = require("three");
+                  // eslint-disable-next-line @typescript-eslint/no-require-imports
+                  const { UnrealBloomPass } = require("three/examples/jsm/postprocessing/UnrealBloomPass.js");
+                  const bloomPass = new UnrealBloomPass(new THREE.Vector2(dimensions.width, dimensions.height), 0.6, 0.4, 0.2);
+                  fgRef.current?.postProcessingComposer()?.addPass(bloomPass);
+                  bloomAdded.current = true;
+                } catch {}
+              }
+            }}
+          />
         );
       })()}
 
@@ -364,13 +327,17 @@ export function BrainFullscreen() {
             </button>
           )}
           <button
-            onClick={() => setLegendOpen((v) => !v)}
+            onClick={() => setLegendOpen(v => !v)}
             className="h-9 rounded-xl px-3 text-[12px] font-bold text-white transition hover:brightness-110"
             style={legendOpen ? { background: "rgba(255,20,100,0.28)", border: "1px solid rgba(255,20,100,0.70)", boxShadow: "0 0 14px rgba(255,20,100,0.40)" } : btnStyle}
           >
             Legend
           </button>
-          <button onClick={() => window.close()} className="h-9 rounded-xl px-4 text-[12px] font-bold text-white transition hover:brightness-110" style={btnStyle}>
+          <button
+            onClick={() => window.history.length > 1 ? window.history.back() : window.close()}
+            className="h-9 rounded-xl px-4 text-[12px] font-bold text-white transition hover:brightness-110"
+            style={btnStyle}
+          >
             ✕ Close
           </button>
         </div>
@@ -407,16 +374,59 @@ export function BrainFullscreen() {
         </div>
       )}
 
-      {/* ── Node detail panel (bottom-left) ── */}
-      {activeNode && (
-        <div className="absolute bottom-6 left-5 z-30 w-72">
-          <NodeDetail node={activeNode} onClose={() => { setSelectedNode(null); highlightNodes.current = new Set(); highlightEdges.current = new Set(); }} />
+      {/* ── Slide-in sidebar (left) ── */}
+      <div
+        className="absolute top-0 left-0 z-40 flex h-full flex-col"
+        style={{
+          width: 320,
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
+          background: "linear-gradient(to right, rgba(0,0,0,0.97) 85%, transparent 100%)",
+          borderRight: sidebarOpen ? "1px solid rgba(255,20,100,0.18)" : "none",
+          pointerEvents: sidebarOpen ? "auto" : "none",
+        }}
+      >
+        {/* Sidebar header */}
+        <div
+          className="flex flex-shrink-0 items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid rgba(255,20,100,0.14)" }}
+        >
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#ff1464]">
+            Node Detail
+          </span>
+          <button
+            onClick={() => {
+              setSelectedNode(null);
+              highlightNodes.current = new Set();
+              highlightEdges.current = new Set();
+            }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8a7898] transition hover:text-white"
+            style={{ background: "rgba(255,20,100,0.10)", border: "1px solid rgba(255,20,100,0.20)" }}
+            aria-label="Close panel"
+          >
+            ✕
+          </button>
         </div>
-      )}
 
-      {/* ── Type filter pills (bottom centre) ── */}
+        {/* Scrollable content */}
+        <div className="flex flex-col gap-3 overflow-y-auto px-4 py-4" style={{ flex: 1 }}>
+          <NodeDetail node={activeNode} />
+          <MemoryPackPanel memoryPack={memoryPack} loading={memoryPackLoading} error={memoryPackError} />
+          <ClaimsPanel claimsData={claimsData} loading={claimsLoading} error={claimsError} />
+        </div>
+      </div>
+
+      {/* ── Type filter pills (bottom centre, shifts right when sidebar open) ── */}
       {graphData && Object.keys(graphData.stats.nodeTypeCounts).length > 0 && (
-        <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-wrap justify-center gap-1.5" style={{ maxWidth: "70vw" }}>
+        <div
+          className="absolute bottom-6 z-30 flex flex-wrap justify-center gap-1.5"
+          style={{
+            left: sidebarOpen ? "calc(50% + 160px)" : "50%",
+            transform: "translateX(-50%)",
+            maxWidth: sidebarOpen ? "calc(60vw - 160px)" : "60vw",
+            transition: "left 0.3s cubic-bezier(0.4,0,0.2,1), max-width 0.3s cubic-bezier(0.4,0,0.2,1)",
+          }}
+        >
           {Object.entries(graphData.stats.nodeTypeCounts).map(([type, count]) => {
             const c = NODE_COLORS[type] ?? "#ff1464";
             const active = filterType === type;

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lafz Track Detail – Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #060410; color: #fff0f6; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255,20,100,0.10) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  }
+  .bg-glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .bg-glow::before { content: ''; position: absolute; top: -180px; right: -160px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(255,20,100,0.18) 0%, transparent 60%); }
+  .bg-glow::after { content: ''; position: absolute; bottom: -80px; left: -120px; width: 500px; height: 450px; border-radius: 50%; background: radial-gradient(ellipse, rgba(160,20,255,0.10) 0%, transparent 65%); }
+
+  nav { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 62px; background: rgba(6,4,16,0.88); backdrop-filter: blur(28px); border-bottom: 1px solid rgba(255,20,100,0.15); }
+  .nav-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-logo span { color: #ff1464; text-shadow: 0 0 20px rgba(255,20,100,0.8); }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  .nav-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 99px; background: rgba(255,20,100,0.12); border: 1px solid rgba(255,20,100,0.30); color: #ff6aaa; }
+  .nav-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff1464; box-shadow: 0 0 8px #ff1464; animation: pulse 2s infinite; }
+  .nav-icon-btn { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,20,100,0.07); border: 1px solid rgba(255,20,100,0.15); display: flex; align-items: center; justify-content: center; font-size: 15px; color: #ff6aaa; cursor: pointer; }
+
+  /* State toggle */
+  .state-toggle { display: flex; gap: 0; background: rgba(255,20,100,0.06); border: 1px solid rgba(255,20,100,0.18); border-radius: 99px; padding: 3px; margin-bottom: 36px; width: fit-content; }
+  .toggle-btn { padding: 7px 20px; border-radius: 99px; font-size: 12px; font-weight: 600; border: none; background: none; cursor: pointer; color: #7a6890; transition: all 0.2s; }
+  .toggle-btn.active { background: linear-gradient(135deg, #ff1464, #ff6aaa); color: white; box-shadow: 0 0 16px rgba(255,20,100,0.35); }
+
+  .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 52px 28px 80px; }
+
+  /* Header */
+  .track-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #ff1464; text-shadow: 0 0 16px rgba(255,20,100,0.6); margin-bottom: 14px; }
+  .track-eyebrow::before { content: ''; width: 28px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #ff1464, transparent); box-shadow: 0 0 8px #ff1464; }
+  .track-title { font-size: 56px; font-weight: 800; letter-spacing: -3px; line-height: 1.02; margin-bottom: 12px; }
+  .track-artist { font-size: 18px; color: #c8b8d8; margin-bottom: 4px; }
+  .track-album { font-size: 13px; color: #5a4870; }
+  .header-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 10px; }
+  .spotify-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 99px; background: rgba(255,20,100,0.10); border: 1px solid rgba(255,20,100,0.25); color: #ff6aaa; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+  .spotify-btn:hover { background: rgba(255,20,100,0.20); box-shadow: 0 0 20px rgba(255,20,100,0.25); color: #fff0f6; }
+
+  .divider { height: 1px; margin: 24px 0 36px; position: relative; background: linear-gradient(90deg, transparent, rgba(255,20,100,0.5) 30%, rgba(255,20,100,0.8) 50%, rgba(255,20,100,0.5) 70%, transparent); }
+  .divider::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 6px; height: 6px; border-radius: 50%; background: #ff1464; box-shadow: 0 0 12px #ff1464; }
+
+  .btn-view-file { display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 99px; background: rgba(255,20,100,0.08); border: 1px solid rgba(255,20,100,0.22); color: #ff6aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; margin-top: 16px; }
+  .btn-view-file:hover { background: rgba(255,20,100,0.16); box-shadow: 0 0 16px rgba(255,20,100,0.22); color: #fff0f6; }
+
+  /* Info card */
+  .info-card { border-radius: 24px; padding: 24px; border: 1px solid rgba(255,20,100,0.16); background: rgba(10,7,22,0.90); backdrop-filter: blur(24px); margin-bottom: 20px; }
+  .badge-needs-lyrics { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 12px; border-radius: 99px; background: rgba(255,20,100,0.14); border: 1px solid rgba(255,20,100,0.35); color: #ff6aaa; box-shadow: 0 0 14px rgba(255,20,100,0.20); animation: badge-pulse 2.5s ease-in-out infinite; margin-bottom: 16px; }
+  .badge-draft-ready { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 12px; border-radius: 99px; background: rgba(63,255,170,0.12); border: 1px solid rgba(63,255,170,0.35); color: #3fffaa; box-shadow: 0 0 14px rgba(63,255,170,0.20); animation: badge-pulse-green 2.5s ease-in-out infinite; margin-bottom: 16px; }
+  .badge-draft-ready::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #3fffaa; box-shadow: 0 0 8px #3fffaa; }
+  .status-reason { font-size: 13px; color: #7a6890; line-height: 1.65; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,20,100,0.08); }
+
+  .info-rows { display: flex; flex-direction: column; gap: 16px; }
+  .info-row-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,20,100,0.55); margin-bottom: 5px; }
+  .info-row-value { font-size: 15px; font-weight: 600; color: #fff0f6; }
+  .info-row-sub { font-size: 11px; color: #5a4870; margin-top: 2px; }
+
+  .playlist-pill { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 99px; background: rgba(255,20,100,0.06); border: 1px solid rgba(255,20,100,0.16); color: #ff6aaa; margin: 3px 3px 0 0; }
+
+  .section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.2px; text-transform: uppercase; color: rgba(255,20,100,0.65); margin-bottom: 16px; }
+
+  /* Full-width sections */
+  .full-card { border-radius: 24px; padding: 28px; border: 1px solid rgba(255,20,100,0.12); background: rgba(10,7,22,0.82); backdrop-filter: blur(20px); margin-bottom: 20px; }
+  .full-card h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .full-card p { font-size: 14px; color: #7a6890; line-height: 1.7; margin-bottom: 20px; }
+
+  .lyrics-input { width: 100%; padding: 14px 16px; border-radius: 14px; background: rgba(255,20,100,0.05); border: 1px solid rgba(255,20,100,0.16); font-size: 13px; color: #fff0f6; font-family: monospace; outline: none; resize: vertical; min-height: 120px; transition: border-color 0.2s; }
+  .lyrics-input::placeholder { color: #4a3860; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .btn-primary { padding: 10px 24px; border-radius: 99px; background: linear-gradient(135deg, #ff1464, #ff6aaa); border: none; color: white; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 0 20px rgba(255,20,100,0.35); transition: all 0.2s; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-secondary { padding: 10px 20px; border-radius: 99px; background: rgba(255,20,100,0.08); border: 1px solid rgba(255,20,100,0.22); color: #ff6aaa; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+
+  .lyrics-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-violet { border-radius: 16px; padding: 14px; border: 1px solid rgba(200,126,255,0.18); background: rgba(200,126,255,0.06); }
+  .stat-violet .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200,126,255,0.60); margin-bottom: 6px; }
+  .stat-violet .val { font-size: 18px; font-weight: 700; color: #c87eff; }
+  .stat-pink { border-radius: 16px; padding: 14px; border: 1px solid rgba(255,20,100,0.16); background: rgba(255,20,100,0.06); }
+  .stat-pink .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,20,100,0.55); margin-bottom: 6px; }
+  .stat-pink .val { font-size: 18px; font-weight: 700; color: #ff4d96; }
+  .stat-cyan { border-radius: 16px; padding: 14px; border: 1px solid rgba(64,232,255,0.18); background: rgba(64,232,255,0.06); }
+  .stat-cyan .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(64,232,255,0.60); margin-bottom: 6px; }
+  .stat-cyan .val { font-size: 18px; font-weight: 700; color: #40e8ff; }
+  .stat-green { border-radius: 16px; padding: 14px; border: 1px solid rgba(63,255,170,0.18); background: rgba(63,255,170,0.06); }
+  .stat-green .lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(63,255,170,0.60); margin-bottom: 6px; }
+  .stat-green .val { font-size: 15px; font-weight: 700; color: #3fffaa; }
+
+  /* AI section */
+  .ai-card { border-radius: 24px; padding: 28px; border: 1px solid rgba(160,60,255,0.18); background: linear-gradient(135deg, rgba(160,60,255,0.06) 0%, rgba(255,20,100,0.04) 100%); backdrop-filter: blur(20px); margin-bottom: 20px; }
+  .ai-card h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .ai-card p { font-size: 14px; color: #7a6890; line-height: 1.7; margin-bottom: 20px; }
+  .ai-model-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; background: rgba(160,60,255,0.12); border: 1px solid rgba(160,60,255,0.25); color: #c87eff; font-size: 12px; font-weight: 600; margin-bottom: 18px; }
+  .btn-ai { padding: 12px 28px; border-radius: 99px; background: linear-gradient(135deg, #a03cff, #ff1464); border: none; color: white; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 0 24px rgba(160,60,255,0.35); transition: all 0.2s; }
+  .btn-ai:hover { opacity: 0.88; box-shadow: 0 0 40px rgba(160,60,255,0.55); transform: translateY(-1px); }
+
+  /* Draft table */
+  .draft-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .draft-success-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; background: rgba(63,255,170,0.10); border: 1px solid rgba(63,255,170,0.28); color: #3fffaa; }
+  .draft-actions { display: flex; gap: 8px; }
+  .btn-regen { padding: 8px 18px; border-radius: 99px; background: rgba(160,60,255,0.10); border: 1px solid rgba(160,60,255,0.25); color: #c87eff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-regen:hover { background: rgba(160,60,255,0.20); }
+  .btn-export { padding: 8px 18px; border-radius: 99px; background: linear-gradient(135deg, #ff1464, #ff6aaa); border: none; color: white; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 0 14px rgba(255,20,100,0.30); transition: all 0.2s; }
+  .draft-table { width: 100%; border-collapse: collapse; }
+  .draft-table thead tr { border-bottom: 1px solid rgba(255,20,100,0.12); }
+  .draft-table thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: rgba(255,20,100,0.55); }
+  .draft-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+  .draft-table tbody tr:hover { background: rgba(255,20,100,0.04); }
+  .draft-table td { padding: 14px; font-size: 13px; line-height: 1.6; vertical-align: top; }
+  .line-num { color: #5a4870; font-size: 11px; font-weight: 600; width: 32px; }
+  .line-original { color: #c8b8d8; }
+  .line-translation { color: #fff0f6; font-weight: 500; }
+  .model-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+  .model-a { background: rgba(255,20,100,0.12); border: 1px solid rgba(255,20,100,0.25); color: #ff6aaa; }
+  .model-b { background: rgba(160,60,255,0.12); border: 1px solid rgba(160,60,255,0.28); color: #c87eff; }
+  .timestamp { font-size: 11px; color: #5a4870; font-family: monospace; }
+
+  /* show/hide */
+  .state-empty .draft-view { display: none; }
+  .state-draft .empty-view { display: none; }
+
+  @keyframes shimmer { to { background-position: -250% 0; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes badge-pulse { 0%,100% { box-shadow: 0 0 14px rgba(255,20,100,0.20); } 50% { box-shadow: 0 0 24px rgba(255,20,100,0.45); } }
+  @keyframes badge-pulse-green { 0%,100% { box-shadow: 0 0 14px rgba(63,255,170,0.20); } 50% { box-shadow: 0 0 24px rgba(63,255,170,0.45); } }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<nav>
+  <div class="nav-logo">la<span>F</span>z</div>
+  <div class="nav-right">
+    <div class="nav-badge"><span class="dot"></span> Spotify connected</div>
+    <div class="nav-icon-btn">⌂</div>
+    <div class="nav-icon-btn">≡</div>
+    <div class="nav-icon-btn">+</div>
+  </div>
+</nav>
+
+<div class="page" id="root">
+
+  <!-- State toggle -->
+  <div class="state-toggle">
+    <button class="toggle-btn active" onclick="setState('empty')">Before draft</button>
+    <button class="toggle-btn" onclick="setState('draft')">After draft</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header-row">
+    <div>
+      <div class="track-eyebrow">Track Detail</div>
+      <div class="track-title">0 To 100</div>
+      <div class="track-artist">Sidhu Moose Wala</div>
+      <div class="track-album">No Name · 1:48</div>
+    </div>
+    <a class="spotify-btn" href="#">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+      Open on Spotify
+    </a>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Info card -->
+  <div class="info-card">
+    <!-- Empty state badge -->
+    <div class="badge-needs-lyrics empty-view">Needs Lyrics</div>
+    <!-- Draft state badge -->
+    <div class="badge-draft-ready draft-view">Draft Ready</div>
+
+    <div class="status-reason empty-view">Import synced or plain original lyrics before Lafz can draft a translation.</div>
+    <div class="status-reason draft-view">AI draft generated from 24 synced lines. Review and export when ready.</div>
+
+    <div class="info-rows">
+      <div>
+        <div class="info-row-label">Language</div>
+        <div class="info-row-value empty-view">Unknown</div>
+        <div class="info-row-value draft-view">Punjabi</div>
+      </div>
+      <div>
+        <div class="info-row-label">Duration</div>
+        <div class="info-row-value">1:48</div>
+      </div>
+      <div>
+        <div class="info-row-label">Translation File</div>
+        <div class="info-row-value empty-view" style="color:#3fffaa;text-shadow:0 0 16px rgba(30,255,140,0.4)">Present</div>
+        <div class="info-row-value draft-view" style="color:#3fffaa;text-shadow:0 0 16px rgba(30,255,140,0.4)">Present — 24 lines</div>
+      </div>
+      <div>
+        <div class="info-row-label">Source Playlists</div>
+        <div style="margin-top:6px">
+          <span class="playlist-pill">Gurgaon Complex</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-view-file" onclick="openTranslationPreview()">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      View translation file
+    </button>
+  </div>
+
+  <!-- Lyrics input -->
+  <div class="full-card">
+    <div class="section-eyebrow">Original Lyrics</div>
+    <h2>Add lyrics to get started.</h2>
+    <p>Lyrics are fetched automatically on import. If the auto-fetch missed this track, paste them manually here.</p>
+    <textarea class="lyrics-input" placeholder="Paste LRC, JSON, or plain lyrics here…"></textarea>
+    <div class="btn-row">
+      <button class="btn-primary">Save Lyrics</button>
+      <button class="btn-secondary">Fetch Automatically</button>
+    </div>
+  </div>
+
+  <!-- Lyrics cache -->
+  <div class="full-card">
+    <div class="section-eyebrow">Cached Lyrics</div>
+
+    <div class="empty-view">
+      <h2>No lyrics cached yet.</h2>
+      <p>Once lyrics are imported, Lafz keeps them locally so they're always available for translation.</p>
+    </div>
+
+    <div class="lyrics-stats">
+      <div class="stat-violet">
+        <div class="lbl">Source</div>
+        <div class="val empty-view">—</div>
+        <div class="val draft-view">lrclib</div>
+      </div>
+      <div class="stat-pink">
+        <div class="lbl">Kind</div>
+        <div class="val empty-view">—</div>
+        <div class="val draft-view">Synced</div>
+      </div>
+      <div class="stat-cyan">
+        <div class="lbl">Lines</div>
+        <div class="val empty-view">0</div>
+        <div class="val draft-view">24</div>
+      </div>
+      <div class="stat-green">
+        <div class="lbl">Last Updated</div>
+        <div class="val empty-view" style="font-size:13px">Never</div>
+        <div class="val draft-view" style="font-size:13px">28 Mar 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI section -->
+  <div class="ai-card">
+    <div class="section-eyebrow">AI Translation</div>
+    <div class="ai-model-pill">✦ gpt-5.1 + claude-sonnet-4.6 → gemini-2.5-pro</div>
+
+    <!-- Empty state -->
+    <div class="empty-view">
+      <h2>Generate a translation draft.</h2>
+      <p>Lafz runs two models in parallel and uses a third to evaluate and pick the best translation line by line.</p>
+      <button class="btn-ai">Generate Draft</button>
+    </div>
+
+    <!-- Draft ready state -->
+    <div class="draft-view">
+      <div class="draft-header">
+        <div class="draft-success-badge">
+          <span style="width:6px;height:6px;border-radius:50%;background:#3fffaa;box-shadow:0 0 8px #3fffaa;display:inline-block"></span>
+          24 lines translated
+        </div>
+        <div class="draft-actions">
+          <button class="btn-regen">Regenerate</button>
+          <button class="btn-export">Export</button>
+        </div>
+      </div>
+
+      <table class="draft-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Original</th>
+            <th>Translation</th>
+            <th>Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="line-num">1</td>
+            <td class="timestamp">0:04</td>
+            <td class="line-original">ਸੌ ਵਿੱਚੋਂ ਸੌ ਮੇਰੇ ਯਾਰ</td>
+            <td class="line-translation">A hundred out of a hundred, my friend</td>
+            <td><span class="model-badge model-b">B</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">2</td>
+            <td class="timestamp">0:08</td>
+            <td class="line-original">ਜਿਹੜਾ ਮੇਰੇ ਕੋਲ ਆਇਆ, ਉਹ ਖੁਸ਼ਕਿਸਮਤ ਦਾਰ</td>
+            <td class="line-translation">Whoever came to me, they were the fortunate ones</td>
+            <td><span class="model-badge model-a">A</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">3</td>
+            <td class="timestamp">0:14</td>
+            <td class="line-original">ਗੱਲਾਂ ਕਰਦੇ ਨੇ ਪਿੱਠ ਪਿੱਛੇ, ਨਾਲ ਖੜ੍ਹਦੇ ਨਹੀਂ</td>
+            <td class="line-translation">They talk behind my back, they won't stand beside me</td>
+            <td><span class="model-badge model-b">B</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">4</td>
+            <td class="timestamp">0:20</td>
+            <td class="line-original">ਜ਼ਫ਼ਰ ਦੀ ਕਵਿਤਾ ਵਾਂਗੂ ਮੈਂ ਰੋਜ਼ ਲਿਖਦਾ</td>
+            <td class="line-translation">Like Zafar's poetry, I write every single day</td>
+            <td><span class="model-badge model-b">B</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">5</td>
+            <td class="timestamp">0:26</td>
+            <td class="line-original">0 ਤੋਂ 100 — ਓਹ ਰੀਅਲ ਕੁਇੱਕ</td>
+            <td class="line-translation">0 to 100 — oh real quick</td>
+            <td><span class="model-badge model-a">A</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">6</td>
+            <td class="timestamp">0:32</td>
+            <td class="line-original">ਦੁਸ਼ਮਣ ਵੀ ਮੰਨਦੇ ਨੇ ਮੇਰੀ ਤਾਕਤ</td>
+            <td class="line-translation">Even my enemies acknowledge my strength</td>
+            <td><span class="model-badge model-b">B</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">7</td>
+            <td class="timestamp">0:38</td>
+            <td class="line-original">ਸੱਚ ਬੋਲਦਾਂ, ਝੂਠ ਨਾਲ ਮੇਰੀ ਦੋਸਤੀ ਨਹੀਂ</td>
+            <td class="line-translation">I speak the truth — falsehood has no place with me</td>
+            <td><span class="model-badge model-b">B</span></td>
+          </tr>
+          <tr>
+            <td class="line-num">8</td>
+            <td class="timestamp">0:44</td>
+            <td class="line-original">ਮੋਸੇ ਵਾਲੇ ਦਾ ਨਾਮ ਜ਼ਿੰਦਾ ਰਹੇਗਾ</td>
+            <td class="line-translation">The name of Moose Wala will live on forever</td>
+            <td><span class="model-badge model-a">A</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function setState(state) {
+  const root = document.getElementById('root');
+  root.className = 'page state-' + state;
+  document.querySelectorAll('.toggle-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && state === 'empty') || (i === 1 && state === 'draft'));
+  });
+}
+
+function openTranslationPreview() {
+  const json = JSON.stringify({
+    spotifyTrackId: "0hV3pt4JgfozQNBgC7pFYF",
+    language: "Punjabi",
+    lines: [
+      { time: 4000, original: "ਸੌ ਵਿੱਚੋਂ ਸੌ ਮੇਰੇ ਯਾਰ", translation: "A hundred out of a hundred, my friend" },
+      { time: 8000, original: "ਜਿਹੜਾ ਮੇਰੇ ਕੋਲ ਆਇਆ, ਉਹ ਖੁਸ਼ਕਿਸਮਤ ਦਾਰ", translation: "Whoever came to me, they were the fortunate ones" },
+      { time: 14000, original: "ਗੱਲਾਂ ਕਰਦੇ ਨੇ ਪਿੱਠ ਪਿੱਛੇ, ਨਾਲ ਖੜ੍ਹਦੇ ਨਹੀਂ", translation: "They talk behind my back, they won't stand beside me" }
+    ]
+  }, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  window.open(URL.createObjectURL(blob), "_blank");
+}
+
+// Start in empty state
+setState('empty');
+</script>
+</body>
+</html>

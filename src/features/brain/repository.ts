@@ -1,11 +1,25 @@
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import type {
+  LafzAgentJobRecord,
+  LafzAgentJobStatus,
+  LafzAgentJobType,
+  LafzAgentRunRecord,
+  LafzAgentRunStatus,
+  LafzAgentScopeType,
+  LafzBrainClaimRecord,
+  LafzBrainClaimScopeType,
+  LafzBrainClaimStatus,
+  LafzBrainClaimType,
   LafzBrainEdgeRecord,
   LafzBrainEdgeType,
+  LafzBrainEvidenceRecord,
+  LafzBrainEvidenceSourceType,
   LafzBrainMemoryPack,
   LafzBrainMemoryPackCacheRecord,
   LafzBrainNodeRecord,
-  LafzBrainNodeType
+  LafzBrainNodeType,
+  LafzBrainPromotionDecision,
+  LafzBrainPromotionRecord
 } from "@/features/brain/types";
 
 type UnknownRecord = Record<string, unknown>;
@@ -55,6 +69,63 @@ type UpsertSongWorldModelInput = {
   lineModelsJson: unknown;
   modelId: string | null;
   generatedAt: string;
+};
+
+type UpsertBrainClaimInput = {
+  claimKey: string;
+  claimType: LafzBrainClaimType;
+  scopeType: LafzBrainClaimScopeType;
+  scopeKey: string;
+  normalizedKey: string;
+  confidenceScore?: number;
+  payload?: Record<string, unknown>;
+  status?: LafzBrainClaimStatus;
+  agentSessionId?: string | null;
+};
+
+type InsertBrainEvidenceInput = {
+  claimId: string;
+  sourceType: LafzBrainEvidenceSourceType;
+  spotifyTrackId?: string | null;
+  artistKey?: string | null;
+  lineOrder?: number | null;
+  weight?: number;
+  payload?: Record<string, unknown>;
+  agentSessionId?: string | null;
+};
+
+type InsertBrainPromotionInput = {
+  claimId: string;
+  decision: LafzBrainPromotionDecision;
+  promotedNodeId?: string | null;
+  promotedEdgeId?: string | null;
+  reason?: string | null;
+  decidedBy?: string | null;
+  payload?: Record<string, unknown>;
+};
+
+type EnqueueAgentJobInput = {
+  jobKey: string;
+  jobType: LafzAgentJobType;
+  scopeType: LafzAgentScopeType;
+  scopeKey: string;
+  spotifyTrackId?: string | null;
+  priority?: number;
+  availableAt?: string | null;
+  payload?: Record<string, unknown>;
+  status?: LafzAgentJobStatus;
+};
+
+type InsertAgentRunInput = {
+  jobId: string;
+  agentRole: string;
+  workerId?: string | null;
+  status?: LafzAgentRunStatus;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  errorText?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
 };
 
 export type BrainSongWorldModelRecord = {
@@ -235,8 +306,181 @@ function parseSongWorldModelRow(row: unknown): BrainSongWorldModelRecord | null 
   };
 }
 
+function parseBrainClaimRow(row: unknown): LafzBrainClaimRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const claimKey = asString(row.claim_key);
+  const claimType = asString(row.claim_type) as LafzBrainClaimType | null;
+  const scopeType = asString(row.scope_type) as LafzBrainClaimScopeType | null;
+  const scopeKey = asString(row.scope_key);
+  const normalizedKey = asString(row.normalized_key);
+
+  if (!id || !claimKey || !claimType || !scopeType || !scopeKey || !normalizedKey) {
+    return null;
+  }
+
+  return {
+    id,
+    claimKey,
+    claimType,
+    scopeType,
+    scopeKey,
+    normalizedKey,
+    status: (asString(row.status) as LafzBrainClaimStatus | null) ?? "proposed",
+    confidenceScore: asNumber(row.confidence_score, 0.5),
+    sourceCount: asNumber(row.source_count, 1),
+    evidenceCount: asNumber(row.evidence_count, 0),
+    payload: isRecord(row.payload_json) ? row.payload_json : {},
+    agentSessionId: asString(row.agent_session_id),
+    firstSeenAt: asString(row.first_seen_at),
+    lastSeenAt: asString(row.last_seen_at),
+    createdAt: asString(row.created_at),
+    updatedAt: asString(row.updated_at)
+  };
+}
+
+function parseBrainEvidenceRow(row: unknown): LafzBrainEvidenceRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const claimId = asString(row.claim_id);
+  const sourceType = asString(row.source_type) as LafzBrainEvidenceSourceType | null;
+
+  if (!id || !claimId || !sourceType) {
+    return null;
+  }
+
+  return {
+    id,
+    claimId,
+    sourceType,
+    spotifyTrackId: asString(row.spotify_track_id),
+    artistKey: asString(row.artist_key),
+    lineOrder: typeof row.line_order === "number" && Number.isFinite(row.line_order) ? row.line_order : null,
+    weight: asNumber(row.weight, 0.5),
+    payload: isRecord(row.payload_json) ? row.payload_json : {},
+    agentSessionId: asString(row.agent_session_id),
+    createdAt: asString(row.created_at)
+  };
+}
+
+function parseBrainPromotionRow(row: unknown): LafzBrainPromotionRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const claimId = asString(row.claim_id);
+  const decision = asString(row.decision) as LafzBrainPromotionDecision | null;
+
+  if (!id || !claimId || !decision) {
+    return null;
+  }
+
+  return {
+    id,
+    claimId,
+    decision,
+    promotedNodeId: asString(row.promoted_node_id),
+    promotedEdgeId: asString(row.promoted_edge_id),
+    reason: asString(row.reason),
+    decidedBy: asString(row.decided_by),
+    payload: isRecord(row.payload_json) ? row.payload_json : {},
+    createdAt: asString(row.created_at)
+  };
+}
+
+function parseAgentJobRow(row: unknown): LafzAgentJobRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const jobKey = asString(row.job_key);
+  const jobType = asString(row.job_type) as LafzAgentJobType | null;
+  const status = asString(row.status) as LafzAgentJobStatus | null;
+  const scopeType = asString(row.scope_type) as LafzAgentScopeType | null;
+  const scopeKey = asString(row.scope_key);
+
+  if (!id || !jobKey || !jobType || !status || !scopeType || !scopeKey) {
+    return null;
+  }
+
+  return {
+    id,
+    jobKey,
+    jobType,
+    status,
+    scopeType,
+    scopeKey,
+    spotifyTrackId: asString(row.spotify_track_id),
+    priority: asNumber(row.priority, 100),
+    availableAt: asString(row.available_at),
+    claimedAt: asString(row.claimed_at),
+    claimedBy: asString(row.claimed_by),
+    lastHeartbeatAt: asString(row.last_heartbeat_at),
+    attemptCount: asNumber(row.attempt_count, 0),
+    lastError: asString(row.last_error),
+    payload: isRecord(row.payload_json) ? row.payload_json : {},
+    createdAt: asString(row.created_at),
+    updatedAt: asString(row.updated_at)
+  };
+}
+
+function parseAgentRunRow(row: unknown): LafzAgentRunRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const jobId = asString(row.job_id);
+  const agentRole = asString(row.agent_role);
+  const status = asString(row.status) as LafzAgentRunStatus | null;
+
+  if (!id || !jobId || !agentRole || !status) {
+    return null;
+  }
+
+  return {
+    id,
+    jobId,
+    agentRole,
+    status,
+    workerId: asString(row.worker_id),
+    startedAt: asString(row.started_at),
+    finishedAt: asString(row.finished_at),
+    input: isRecord(row.input_json) ? row.input_json : {},
+    output: isRecord(row.output_json) ? row.output_json : {},
+    errorText: asString(row.error_text),
+    createdAt: asString(row.created_at),
+    updatedAt: asString(row.updated_at)
+  };
+}
+
 export function isBrainConfigured() {
   return Boolean(getSupabaseServerClient());
+}
+
+export async function readAgentJobByKey(jobKey: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.from("agent_jobs").select("*").eq("job_key", jobKey).maybeSingle();
+
+  if (error) {
+    logBrainError(`read agent job ${jobKey}`, error);
+    return null;
+  }
+
+  return parseAgentJobRow(data);
 }
 
 export async function readBrainNodeByTypeAndKey(nodeType: LafzBrainNodeType, canonicalKey: string) {
@@ -299,6 +543,252 @@ export async function readBrainNodesByIds(nodeIds: string[]) {
   return (data ?? []).map(parseBrainNodeRow).filter((row): row is LafzBrainNodeRecord => Boolean(row));
 }
 
+export async function enqueueAgentJob(input: EnqueueAgentJobInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("agent_jobs")
+    .upsert(
+      {
+        job_key: input.jobKey,
+        job_type: input.jobType,
+        status: input.status ?? "pending",
+        scope_type: input.scopeType,
+        scope_key: input.scopeKey,
+        spotify_track_id: input.spotifyTrackId ?? null,
+        priority: input.priority ?? 100,
+        available_at: input.availableAt ?? now,
+        payload_json: input.payload ?? {},
+        updated_at: now
+      },
+      {
+        onConflict: "job_key"
+      }
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`enqueue agent job ${input.jobKey}`, error);
+    return null;
+  }
+
+  return parseAgentJobRow(data);
+}
+
+export async function claimNextAgentJob(workerId: string, jobType?: LafzAgentJobType | null) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc("claim_next_agent_job", {
+    p_worker_id: workerId,
+    p_job_type: jobType ?? null
+  });
+
+  if (error) {
+    logBrainError(`claim next agent job ${jobType ?? "any"}`, error);
+    return null;
+  }
+
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  return parseAgentJobRow(rows[0] ?? null);
+}
+
+export async function updateAgentJobStatus(
+  jobId: string,
+  status: LafzAgentJobStatus,
+  options?: {
+    workerId?: string | null;
+    heartbeat?: boolean;
+    lastError?: string | null;
+    availableAt?: string | null;
+  }
+) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || !jobId) {
+    return null;
+  }
+
+  const patch: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString()
+  };
+
+  if (options?.workerId !== undefined) {
+    patch.claimed_by = options.workerId;
+  }
+
+  if (options?.heartbeat) {
+    patch.last_heartbeat_at = new Date().toISOString();
+  }
+
+  if (options?.lastError !== undefined) {
+    patch.last_error = options.lastError ?? null;
+  }
+
+  if (options?.availableAt !== undefined) {
+    patch.available_at = options.availableAt ?? new Date().toISOString();
+  }
+
+  if (status === "running" && !("claimed_at" in patch)) {
+    patch.claimed_at = new Date().toISOString();
+  }
+
+  if (status === "completed" || status === "failed" || status === "cancelled" || status === "dead_lettered") {
+    patch.last_heartbeat_at = new Date().toISOString();
+  }
+
+  const { data, error } = await supabase.from("agent_jobs").update(patch).eq("id", jobId).select("*").single();
+
+  if (error) {
+    logBrainError(`update agent job ${jobId} -> ${status}`, error);
+    return null;
+  }
+
+  return parseAgentJobRow(data);
+}
+
+export async function heartbeatAgentJob(jobId: string, workerId: string) {
+  return updateAgentJobStatus(jobId, "running", {
+    workerId,
+    heartbeat: true
+  });
+}
+
+export async function insertAgentRun(input: InsertAgentRunInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("agent_runs")
+    .insert({
+      job_id: input.jobId,
+      agent_role: input.agentRole,
+      status: input.status ?? "running",
+      worker_id: input.workerId ?? null,
+      started_at: input.startedAt ?? new Date().toISOString(),
+      finished_at: input.finishedAt ?? null,
+      input_json: input.input ?? {},
+      output_json: input.output ?? {},
+      error_text: input.errorText ?? null,
+      updated_at: new Date().toISOString()
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`insert agent run for job ${input.jobId}`, error);
+    return null;
+  }
+
+  return parseAgentRunRow(data);
+}
+
+export async function updateAgentRun(
+  runId: string,
+  patch: {
+    status?: LafzAgentRunStatus;
+    output?: Record<string, unknown>;
+    errorText?: string | null;
+    finishedAt?: string | null;
+  }
+) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || !runId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("agent_runs")
+    .update({
+      status: patch.status,
+      output_json: patch.output,
+      error_text: patch.errorText,
+      finished_at: patch.finishedAt ?? (patch.status && patch.status !== "running" ? new Date().toISOString() : null),
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", runId)
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`update agent run ${runId}`, error);
+    return null;
+  }
+
+  return parseAgentRunRow(data);
+}
+
+export async function readBrainClaimByKey(claimKey: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.from("kg_claims").select("*").eq("claim_key", claimKey).maybeSingle();
+
+  if (error) {
+    logBrainError(`read claim ${claimKey}`, error);
+    return null;
+  }
+
+  return parseBrainClaimRow(data);
+}
+
+export async function readBrainClaimsByIds(claimIds: string[]) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || claimIds.length === 0) {
+    return [] as LafzBrainClaimRecord[];
+  }
+
+  const { data, error } = await supabase.from("kg_claims").select("*").in("id", claimIds);
+
+  if (error) {
+    logBrainError("read claims by ids", error);
+    return [];
+  }
+
+  return (data ?? []).map(parseBrainClaimRow).filter((row): row is LafzBrainClaimRecord => Boolean(row));
+}
+
+export async function listBrainClaimsByScope(scopeType: LafzBrainClaimScopeType, scopeKeys: string[], limit = 100) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || scopeKeys.length === 0) {
+    return [] as LafzBrainClaimRecord[];
+  }
+
+  const { data, error } = await supabase
+    .from("kg_claims")
+    .select("*")
+    .eq("scope_type", scopeType)
+    .in("scope_key", scopeKeys)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logBrainError(`list claims ${scopeType}`, error);
+    return [];
+  }
+
+  return (data ?? []).map(parseBrainClaimRow).filter((row): row is LafzBrainClaimRecord => Boolean(row));
+}
+
 export async function listBrainEdgesBySourceNodeIds(sourceNodeIds: string[], edgeTypes?: LafzBrainEdgeType[]) {
   const supabase = getSupabaseServerClient();
 
@@ -358,6 +848,202 @@ export async function upsertBrainNode(input: UpsertBrainNodeInput) {
   }
 
   return parseBrainNodeRow(data);
+}
+
+export async function upsertBrainClaim(input: UpsertBrainClaimInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const existing = await readBrainClaimByKey(input.claimKey);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    const nextConfidenceScore = Math.max(existing.confidenceScore, input.confidenceScore ?? existing.confidenceScore);
+    const { data, error } = await supabase
+      .from("kg_claims")
+      .update({
+        confidence_score: nextConfidenceScore,
+        payload_json: input.payload ?? existing.payload,
+        status: input.status ?? existing.status,
+        source_count: existing.sourceCount + 1,
+        last_seen_at: now,
+        updated_at: now,
+        agent_session_id: input.agentSessionId ?? existing.agentSessionId
+      })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      logBrainError(`update claim ${input.claimKey}`, error);
+      return null;
+    }
+
+    return parseBrainClaimRow(data);
+  }
+
+  const { data, error } = await supabase
+    .from("kg_claims")
+    .insert({
+      claim_key: input.claimKey,
+      claim_type: input.claimType,
+      scope_type: input.scopeType,
+      scope_key: input.scopeKey,
+      normalized_key: input.normalizedKey,
+      status: input.status ?? "proposed",
+      confidence_score: input.confidenceScore ?? 0.5,
+      source_count: 1,
+      evidence_count: 0,
+      payload_json: input.payload ?? {},
+      agent_session_id: input.agentSessionId ?? null,
+      first_seen_at: now,
+      last_seen_at: now,
+      updated_at: now
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`insert claim ${input.claimKey}`, error);
+    return null;
+  }
+
+  return parseBrainClaimRow(data);
+}
+
+export async function insertBrainEvidence(input: InsertBrainEvidenceInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("kg_evidence")
+    .insert({
+      claim_id: input.claimId,
+      source_type: input.sourceType,
+      spotify_track_id: input.spotifyTrackId ?? null,
+      artist_key: input.artistKey ?? null,
+      line_order: input.lineOrder ?? null,
+      weight: input.weight ?? 0.5,
+      payload_json: input.payload ?? {},
+      agent_session_id: input.agentSessionId ?? null
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`insert evidence for claim ${input.claimId}`, error);
+    return null;
+  }
+
+  const existingClaim = await supabase.from("kg_claims").select("evidence_count").eq("id", input.claimId).maybeSingle();
+  if (!existingClaim.error && existingClaim.data) {
+    const currentEvidenceCount = asNumber((existingClaim.data as { evidence_count?: unknown }).evidence_count, 0);
+    const { error: claimUpdateError } = await supabase
+      .from("kg_claims")
+      .update({
+        evidence_count: currentEvidenceCount + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.claimId);
+
+    if (claimUpdateError) {
+      logBrainError(`increment evidence count for claim ${input.claimId}`, claimUpdateError);
+    }
+  }
+
+  return parseBrainEvidenceRow(data);
+}
+
+export async function listBrainEvidenceByClaimIds(claimIds: string[]) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || claimIds.length === 0) {
+    return [] as LafzBrainEvidenceRecord[];
+  }
+
+  const { data, error } = await supabase
+    .from("kg_evidence")
+    .select("*")
+    .in("claim_id", claimIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    logBrainError("list evidence by claim ids", error);
+    return [];
+  }
+
+  return (data ?? []).map(parseBrainEvidenceRow).filter((row): row is LafzBrainEvidenceRecord => Boolean(row));
+}
+
+export async function insertBrainPromotion(input: InsertBrainPromotionInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("kg_promotions")
+    .insert({
+      claim_id: input.claimId,
+      decision: input.decision,
+      promoted_node_id: input.promotedNodeId ?? null,
+      promoted_edge_id: input.promotedEdgeId ?? null,
+      reason: input.reason ?? null,
+      decided_by: input.decidedBy ?? "phase2a",
+      payload_json: input.payload ?? {}
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`insert promotion for claim ${input.claimId}`, error);
+    return null;
+  }
+
+  const nextStatus: LafzBrainClaimStatus =
+    input.decision === "accepted" ? "accepted" : input.decision === "rejected" ? "rejected" : "proposed";
+
+  const { error: claimUpdateError } = await supabase
+    .from("kg_claims")
+    .update({
+      status: nextStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", input.claimId);
+
+  if (claimUpdateError) {
+    logBrainError(`update promoted claim ${input.claimId}`, claimUpdateError);
+  }
+
+  return parseBrainPromotionRow(data);
+}
+
+export async function listBrainPromotionsByClaimIds(claimIds: string[]) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || claimIds.length === 0) {
+    return [] as LafzBrainPromotionRecord[];
+  }
+
+  const { data, error } = await supabase
+    .from("kg_promotions")
+    .select("*")
+    .in("claim_id", claimIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    logBrainError("list promotions by claim ids", error);
+    return [];
+  }
+
+  return (data ?? []).map(parseBrainPromotionRow).filter((row): row is LafzBrainPromotionRecord => Boolean(row));
 }
 
 export async function updateBrainNodeEmbedding(nodeId: string, embedding: number[]) {

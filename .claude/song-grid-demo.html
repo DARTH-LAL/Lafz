@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lafz — Song Grid View</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060410;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 10% 10%, rgba(255,20,100,0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 90% 80%, rgba(120,60,255,0.10) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Nav ── */
+    .topbar {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(6,4,16,0.85);
+      backdrop-filter: blur(12px);
+    }
+    .logo { font-size: 20px; font-weight: 800; color: #ff1464; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-link { font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; }
+    .nav-link.active { color: #fff; }
+
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1280px; margin: 0 auto;
+      padding: 40px 32px 80px;
+    }
+
+    /* ── Header ── */
+    .header-row {
+      display: flex; align-items: flex-end;
+      justify-content: space-between; flex-wrap: wrap;
+      gap: 16px; margin-bottom: 32px;
+    }
+    .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
+      color: #ff1464; text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .eyebrow::after {
+      content: ''; height: 1px; width: 120px;
+      background: linear-gradient(90deg, rgba(255,20,100,0.5), transparent);
+    }
+    .page-title {
+      font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 40%, rgba(255,20,100,0.7));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Stat pills ── */
+    .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 99px;
+      border: 1px solid; font-size: 12px; font-weight: 600;
+    }
+    .stat-pill.violet { border-color: rgba(162,89,255,0.3); background: rgba(162,89,255,0.08); color: #a259ff; }
+    .stat-pill.pink   { border-color: rgba(255,20,100,0.3); background: rgba(255,20,100,0.08); color: #ff4d96; }
+    .stat-pill.cyan   { border-color: rgba(64,232,255,0.3); background: rgba(64,232,255,0.08); color: #40e8ff; }
+    .stat-pill.green  { border-color: rgba(63,255,170,0.3); background: rgba(63,255,170,0.08); color: #3fffaa; }
+    .stat-pill-num { font-size: 18px; font-weight: 800; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .search-wrap {
+      flex: 1; min-width: 200px; max-width: 320px;
+      position: relative;
+    }
+    .search-wrap svg {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: rgba(255,20,100,0.5); width: 14px; height: 14px;
+    }
+    .search-input {
+      width: 100%; padding: 9px 12px 9px 34px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,20,100,0.15);
+      border-radius: 10px; color: #fff; font-size: 13px;
+      outline: none;
+    }
+    .search-input::placeholder { color: rgba(255,255,255,0.25); }
+    .search-input:focus { border-color: rgba(255,20,100,0.4); }
+
+    .filter-pills { display: flex; gap: 6px; }
+    .fpill {
+      padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.08); background: transparent;
+      color: rgba(255,255,255,0.4); cursor: pointer; transition: all 0.15s;
+    }
+    .fpill:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); }
+    .fpill.active {
+      background: rgba(255,20,100,0.15); border-color: rgba(255,20,100,0.35);
+      color: #ff4d96;
+    }
+
+    .view-toggle {
+      display: flex; gap: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; padding: 4px;
+    }
+    .vbtn {
+      padding: 6px 10px; border-radius: 6px; border: none;
+      background: transparent; color: rgba(255,255,255,0.35);
+      cursor: pointer; transition: all 0.15s; display: flex; align-items: center;
+    }
+    .vbtn.active {
+      background: rgba(255,20,100,0.2); color: #ff4d96;
+      box-shadow: 0 0 8px rgba(255,20,100,0.2);
+    }
+
+    /* ── Song Grid ── */
+    .song-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .song-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+    .song-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,20,100,0.3);
+      box-shadow: 0 8px 32px rgba(255,20,100,0.12);
+    }
+
+    /* artwork */
+    .song-art {
+      width: 100%; aspect-ratio: 1;
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, #1a0820, #0d0620);
+    }
+    .song-art-inner {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      background-size: cover; background-position: center;
+    }
+    /* status ribbon */
+    .status-ribbon {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 6px;
+    }
+    .status-ribbon.translated  { background: rgba(63,255,170,0.18); color: #3fffaa; border: 1px solid rgba(63,255,170,0.3); }
+    .status-ribbon.needs-lyrics { background: rgba(255,80,80,0.18); color: #ff8080; border: 1px solid rgba(255,80,80,0.3); }
+    .status-ribbon.needs-review { background: rgba(255,159,64,0.18); color: #ff9f40; border: 1px solid rgba(255,159,64,0.3); }
+    .status-ribbon.draft        { background: rgba(162,89,255,0.18); color: #a259ff; border: 1px solid rgba(162,89,255,0.3); }
+
+    /* delete hover btn */
+    .delete-btn {
+      position: absolute; top: 10px; left: 10px;
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(255,50,80,0.15); border: 1px solid rgba(255,50,80,0.25);
+      color: rgba(255,100,100,0.6);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s;
+      cursor: pointer;
+    }
+    .song-card:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { background: rgba(255,50,80,0.35); color: #ff6464; }
+
+    /* card body */
+    .song-body { padding: 14px; }
+    .song-title {
+      font-size: 14px; font-weight: 700; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .song-artist {
+      font-size: 11px; color: rgba(255,255,255,0.4);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 10px;
+    }
+
+    /* progress bar */
+    .prog-label {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(255,255,255,0.3);
+      margin-bottom: 5px;
+    }
+    .prog-label span { color: rgba(255,255,255,0.6); font-weight: 600; }
+    .prog-bg {
+      width: 100%; height: 4px; background: rgba(255,255,255,0.07);
+      border-radius: 99px; overflow: hidden;
+    }
+    .prog-fill { height: 100%; border-radius: 99px; }
+    .prog-fill.green  { background: linear-gradient(90deg, #00c896, #3fffaa); }
+    .prog-fill.violet { background: linear-gradient(90deg, #7b2fff, #a259ff); }
+    .prog-fill.orange { background: linear-gradient(90deg, #e06000, #ff9f40); }
+    .prog-fill.empty  { background: rgba(255,80,80,0.4); width: 3px !important; }
+
+    /* footer */
+    .song-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px 12px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .song-meta { font-size: 10px; color: rgba(255,255,255,0.25); }
+    .open-btn {
+      font-size: 11px; font-weight: 600;
+      padding: 5px 12px; border-radius: 99px;
+      background: rgba(255,20,100,0.1);
+      border: 1px solid rgba(255,20,100,0.2);
+      color: #ff4d96; cursor: pointer; transition: all 0.15s;
+      text-decoration: none;
+    }
+    .open-btn:hover { background: rgba(255,20,100,0.22); color: #fff0f6; }
+
+    /* playlist chip */
+    .playlist-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+      padding: 2px 7px; border-radius: 99px;
+      background: rgba(255,20,100,0.07);
+      border: 1px solid rgba(255,20,100,0.15);
+      color: rgba(255,100,150,0.7);
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .song-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── Song Table (hidden by default) ── */
+    .song-table-wrap { display: none; }
+    .song-table-wrap.visible { display: block; }
+    .song-grid.hidden { display: none; }
+
+    .song-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .song-table th {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: rgba(255,20,100,0.65);
+      text-align: left; padding: 10px 16px;
+      border-bottom: 1px solid rgba(255,20,100,0.12);
+      background: rgba(255,20,100,0.05);
+    }
+    .song-table td {
+      padding: 14px 16px; font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.7);
+    }
+    .song-table tr:hover td { background: rgba(255,20,100,0.04); }
+    .t-title { color: #fff; font-weight: 600; }
+    .t-artist { color: rgba(255,255,255,0.4); font-size: 11px; }
+
+    /* ── Section wrap ── */
+    .section-wrap {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px; overflow: hidden;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Lafz</div>
+  <div class="nav-links">
+    <a class="nav-link active" href="#">Library</a>
+    <a class="nav-link" href="#">Now Playing</a>
+    <a class="nav-link" href="#">Analytics</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header-row">
+    <div>
+      <div class="eyebrow">Library</div>
+      <h1 class="page-title">Your Songs</h1>
+    </div>
+    <div class="stat-pills">
+      <div class="stat-pill violet"><span class="stat-pill-num">47</span> Total</div>
+      <div class="stat-pill green"><span class="stat-pill-num">12</span> Translated</div>
+      <div class="stat-pill pink"><span class="stat-pill-num">28</span> Need Lyrics</div>
+      <div class="stat-pill cyan"><span class="stat-pill-num">7</span> In Progress</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg>
+      <input class="search-input" placeholder="Search songs, artists…" />
+    </div>
+
+    <div class="filter-pills">
+      <button class="fpill active" onclick="setFilter(this,'all')">All</button>
+      <button class="fpill" onclick="setFilter(this,'translated')">Translated</button>
+      <button class="fpill" onclick="setFilter(this,'needs-lyrics')">Needs Lyrics</button>
+      <button class="fpill" onclick="setFilter(this,'draft')">Draft</button>
+      <button class="fpill" onclick="setFilter(this,'needs-review')">Needs Review</button>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div class="view-toggle">
+      <button class="vbtn active" id="gridBtn" onclick="setView('grid')" title="Grid view">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
+        </svg>
+      </button>
+      <button class="vbtn" id="listBtn" onclick="setView('list')" title="List view">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/>
+          <rect x="1" y="12" width="14" height="2" rx="1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="song-grid" id="songGrid">
+
+    <!-- Card 1 — Translated -->
+    <div class="song-card" data-status="translated">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#2d0a1a,#1a0030,#0a1a30)">🎵</div>
+        <div class="delete-btn">
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="status-ribbon translated">Translated</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">Winning Speech</div>
+        <div class="song-artist">Karan Aujla, Seshnolan</div>
+        <div class="prog-label"><span>Translation</span><span>100%</span></div>
+        <div class="prog-bg"><div class="prog-fill green" style="width:100%"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">89 lines · 4:12</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <!-- Card 2 — Draft -->
+    <div class="song-card" data-status="draft">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#1a0a2a,#200030,#0d1020)">🎶</div>
+        <div class="delete-btn">
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="status-ribbon draft">Draft</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">Superstar</div>
+        <div class="song-artist">dox, JASKARAN, Rita Kim</div>
+        <div class="prog-label"><span>Translation</span><span>68%</span></div>
+        <div class="prog-bg"><div class="prog-fill violet" style="width:68%"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">51 lines · 3:01</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <!-- Card 3 — Needs Review -->
+    <div class="song-card" data-status="needs-review">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#200a00,#1a1000,#0a0820)">🎤</div>
+        <div class="delete-btn">
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="status-ribbon needs-review">Review</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">For A Reason</div>
+        <div class="song-artist">Karan Aujla, Ikky</div>
+        <div class="prog-label"><span>Translation</span><span>45%</span></div>
+        <div class="prog-bg"><div class="prog-fill orange" style="width:45%"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">54 lines · 3:28</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <!-- Cards 4–12 — Needs Lyrics -->
+    <div class="song-card" data-status="needs-lyrics">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#0a0818,#160820,#080810)">🎼</div>
+        <div class="delete-btn"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg></div>
+        <div class="status-ribbon needs-lyrics">No Lyrics</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">0 To 100</div>
+        <div class="song-artist">Sidhu Moose Wala</div>
+        <div class="prog-label"><span>Translation</span><span>0%</span></div>
+        <div class="prog-bg"><div class="prog-fill empty" style="width:3px"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">— · 1:48</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <div class="song-card" data-status="needs-lyrics">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#0d0620,#180a28,#060412)">🎸</div>
+        <div class="delete-btn"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg></div>
+        <div class="status-ribbon needs-lyrics">No Lyrics</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">5-7</div>
+        <div class="song-artist">Karan Aujla, Mxrci</div>
+        <div class="prog-label"><span>Translation</span><span>0%</span></div>
+        <div class="prog-bg"><div class="prog-fill empty" style="width:3px"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">— · 2:34</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <div class="song-card" data-status="needs-lyrics">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#100818,#1c0a24,#0a0614)">🥁</div>
+        <div class="delete-btn"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg></div>
+        <div class="status-ribbon needs-lyrics">No Lyrics</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">51 GARH</div>
+        <div class="song-artist">FEROZI, MC SQUARE</div>
+        <div class="prog-label"><span>Translation</span><span>0%</span></div>
+        <div class="prog-bg"><div class="prog-fill empty" style="width:3px"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">— · 2:41</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <div class="song-card" data-status="needs-lyrics">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#0a1020,#0d1428,#060810)">🎹</div>
+        <div class="delete-btn"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg></div>
+        <div class="status-ribbon needs-lyrics">No Lyrics</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">52 Bars</div>
+        <div class="song-artist">Karan Aujla, Ikky</div>
+        <div class="prog-label"><span>Translation</span><span>0%</span></div>
+        <div class="prog-bg"><div class="prog-fill empty" style="width:3px"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">— · 2:58</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+    <div class="song-card" data-status="needs-lyrics">
+      <div class="song-art">
+        <div class="song-art-inner" style="background: linear-gradient(135deg,#150820,#1a0a28,#090614)">🎺</div>
+        <div class="delete-btn"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.5 1.75A.75.75 0 0 1 9.25 1h1.5a.75.75 0 0 1 .75.75V3h3.25a.75.75 0 0 1 0 1.5H5.25a.75.75 0 0 1 0-1.5H8.5V1.75ZM6.05 6.5a.75.75 0 0 1 .75.695l.6 8.055H12.6l.6-8.055a.75.75 0 1 1 1.497.112l-.6 8.055A1.75 1.75 0 0 1 12.35 17H7.65a1.75 1.75 0 0 1-1.747-1.638l-.6-8.055A.75.75 0 0 1 6.05 6.5Z" clip-rule="evenodd"/></svg></div>
+        <div class="status-ribbon needs-lyrics">No Lyrics</div>
+      </div>
+      <div class="song-body">
+        <div class="playlist-chip">Gurgaon Complex</div>
+        <div class="song-title">Chitta Kurta</div>
+        <div class="song-artist">Karan Aujla</div>
+        <div class="prog-label"><span>Translation</span><span>0%</span></div>
+        <div class="prog-bg"><div class="prog-fill empty" style="width:3px"></div></div>
+      </div>
+      <div class="song-footer">
+        <span class="song-meta">— · 3:14</span>
+        <a class="open-btn" href="#">Open</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Table (hidden by default) -->
+  <div class="song-table-wrap" id="songTable">
+    <div class="section-wrap">
+      <table class="song-table">
+        <thead>
+          <tr>
+            <th>Track</th><th>Status</th><th>Progress</th><th>Playlist</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><div class="t-title">Winning Speech</div><div class="t-artist">Karan Aujla</div></td><td><span style="color:#3fffaa;font-size:11px;font-weight:700">Translated</span></td><td><div class="prog-bg" style="width:120px"><div class="prog-fill green" style="width:100%"></div></div></td><td style="font-size:11px;color:rgba(255,100,150,0.7)">Gurgaon Complex</td><td><a class="open-btn" href="#">Open</a></td></tr>
+          <tr><td><div class="t-title">Superstar</div><div class="t-artist">dox, JASKARAN</div></td><td><span style="color:#a259ff;font-size:11px;font-weight:700">Draft</span></td><td><div class="prog-bg" style="width:120px"><div class="prog-fill violet" style="width:68%"></div></div></td><td style="font-size:11px;color:rgba(255,100,150,0.7)">Gurgaon Complex</td><td><a class="open-btn" href="#">Open</a></td></tr>
+          <tr><td><div class="t-title">For A Reason</div><div class="t-artist">Karan Aujla</div></td><td><span style="color:#ff9f40;font-size:11px;font-weight:700">Needs Review</span></td><td><div class="prog-bg" style="width:120px"><div class="prog-fill orange" style="width:45%"></div></div></td><td style="font-size:11px;color:rgba(255,100,150,0.7)">Gurgaon Complex</td><td><a class="open-btn" href="#">Open</a></td></tr>
+          <tr><td><div class="t-title">0 To 100</div><div class="t-artist">Sidhu Moose Wala</div></td><td><span style="color:#ff8080;font-size:11px;font-weight:700">No Lyrics</span></td><td><div class="prog-bg" style="width:120px"></div></td><td style="font-size:11px;color:rgba(255,100,150,0.7)">Gurgaon Complex</td><td><a class="open-btn" href="#">Open</a></td></tr>
+          <tr><td><div class="t-title">5-7</div><div class="t-artist">Karan Aujla</div></td><td><span style="color:#ff8080;font-size:11px;font-weight:700">No Lyrics</span></td><td><div class="prog-bg" style="width:120px"></div></td><td style="font-size:11px;color:rgba(255,100,150,0.7)">Gurgaon Complex</td><td><a class="open-btn" href="#">Open</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function setFilter(btn, status) {
+    document.querySelectorAll('.fpill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.song-card').forEach(card => {
+      if (status === 'all' || card.dataset.status === status) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function setView(view) {
+    document.getElementById('gridBtn').classList.toggle('active', view === 'grid');
+    document.getElementById('listBtn').classList.toggle('active', view === 'list');
+    document.getElementById('songGrid').classList.toggle('hidden', view === 'list');
+    document.getElementById('songTable').classList.toggle('visible', view === 'list');
+  }
+
+  // Search
+  document.querySelector('.search-input').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.song-card').forEach(card => {
+      const text = card.querySelector('.song-title').textContent.toLowerCase()
+        + card.querySelector('.song-artist').textContent.toLowerCase();
+      card.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+</script>
+</body>
+</html>

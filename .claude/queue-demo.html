@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lafz Library Queue – Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #060410;
+    color: #fff0f6;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Dot grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255,20,100,0.12) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  }
+
+  /* Background glows */
+  .bg-glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .bg-glow::before {
+    content: ''; position: absolute;
+    top: -200px; right: -180px;
+    width: 750px; height: 750px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,20,100,0.20) 0%, transparent 60%);
+    animation: breathe 6s ease-in-out infinite;
+  }
+  .bg-glow::after {
+    content: ''; position: absolute;
+    bottom: -80px; left: -120px;
+    width: 600px; height: 500px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(255,0,100,0.12) 0%, transparent 65%);
+    animation: breathe 8s ease-in-out infinite reverse;
+  }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 62px;
+    background: rgba(6,4,16,0.88);
+    backdrop-filter: blur(28px);
+    border-bottom: 1px solid rgba(255,20,100,0.15);
+    box-shadow: 0 4px 30px rgba(255,20,100,0.06);
+  }
+  .nav-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-logo span { color: #ff1464; text-shadow: 0 0 20px rgba(255,20,100,0.8), 0 0 40px rgba(255,20,100,0.3); }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  .nav-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 6px 14px;
+    border-radius: 99px;
+    background: rgba(255,20,100,0.12);
+    border: 1px solid rgba(255,20,100,0.30);
+    color: #ff6aaa;
+  }
+  .nav-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #ff1464;
+    box-shadow: 0 0 8px #ff1464, 0 0 16px rgba(255,20,100,0.5);
+    animation: pulse 2s infinite;
+  }
+  .nav-icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,20,100,0.07);
+    border: 1px solid rgba(255,20,100,0.15);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; color: #ff6aaa;
+    transition: all 0.2s;
+  }
+  .nav-icon-btn:hover { background: rgba(255,20,100,0.16); box-shadow: 0 0 12px rgba(255,20,100,0.25); }
+
+  /* Page */
+  .page { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 52px 28px 80px; }
+
+  /* Header */
+  .page-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 2.5px;
+    text-transform: uppercase; color: #ff1464;
+    text-shadow: 0 0 16px rgba(255,20,100,0.6);
+    margin-bottom: 18px;
+  }
+  .page-eyebrow::before {
+    content: ''; width: 28px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, #ff1464, transparent);
+    box-shadow: 0 0 8px #ff1464;
+  }
+  .page-title {
+    font-size: 52px; font-weight: 800; letter-spacing: -2.4px; line-height: 1.04;
+    margin-bottom: 18px;
+  }
+  .page-title .shimmer {
+    background: linear-gradient(110deg, #ff1464 0%, #ff6aaa 25%, #ffffff 48%, #ff6aaa 68%, #ff1464 100%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3.5s linear infinite;
+  }
+  .page-desc { font-size: 15px; color: #7a6890; line-height: 1.7; max-width: 540px; margin-bottom: 20px; }
+
+  /* Glowing divider */
+  .divider {
+    height: 1px; width: 100%; margin-bottom: 40px;
+    background: linear-gradient(90deg, transparent, rgba(255,20,100,0.5) 30%, rgba(255,20,100,0.8) 50%, rgba(255,20,100,0.5) 70%, transparent);
+    box-shadow: 0 0 12px rgba(255,20,100,0.3);
+    position: relative;
+  }
+  .divider::after {
+    content: ''; position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #ff1464;
+    box-shadow: 0 0 12px #ff1464, 0 0 24px rgba(255,20,100,0.6);
+  }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+
+  .stat-card {
+    border-radius: 22px; padding: 26px 26px;
+    position: relative; overflow: hidden;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    transition: transform 0.25s, box-shadow 0.25s;
+    cursor: default;
+  }
+  /* Animated rotating border glow */
+  .stat-card::before {
+    content: ''; position: absolute;
+    inset: -2px; border-radius: 24px; z-index: -1;
+    background: conic-gradient(from var(--angle, 0deg), transparent 70%, rgba(255,20,100,0.6) 85%, transparent 100%);
+    animation: rotate-border 4s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .stat-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(255,20,100,0.12); }
+  .stat-card:hover::before { opacity: 1; }
+
+  /* Card 1 — neon violet */
+  .stat-card.violet {
+    background: linear-gradient(135deg, rgba(160,60,255,0.13) 0%, rgba(160,60,255,0.04) 100%);
+    border-color: rgba(160,60,255,0.28);
+    box-shadow: 0 0 40px rgba(160,60,255,0.08) inset;
+  }
+  .stat-card.violet::before { background: conic-gradient(from var(--angle,0deg), transparent 70%, rgba(160,60,255,0.7) 85%, transparent 100%); }
+  .stat-card.violet:hover { box-shadow: 0 20px 60px rgba(160,60,255,0.14); }
+
+  /* Card 2 — neon pink */
+  .stat-card.pink {
+    background: linear-gradient(135deg, rgba(255,20,100,0.13) 0%, rgba(255,20,100,0.04) 100%);
+    border-color: rgba(255,20,100,0.28);
+    box-shadow: 0 0 40px rgba(255,20,100,0.08) inset;
+  }
+
+  /* Card 3 — neon cyan */
+  .stat-card.cyan {
+    background: linear-gradient(135deg, rgba(0,220,255,0.10) 0%, rgba(0,220,255,0.03) 100%);
+    border-color: rgba(0,220,255,0.22);
+    box-shadow: 0 0 40px rgba(0,220,255,0.06) inset;
+  }
+  .stat-card.cyan::before { background: conic-gradient(from var(--angle,0deg), transparent 70%, rgba(0,220,255,0.6) 85%, transparent 100%); }
+  .stat-card.cyan:hover { box-shadow: 0 20px 60px rgba(0,220,255,0.10); }
+
+  /* Card 4 — neon green */
+  .stat-card.green {
+    background: linear-gradient(135deg, rgba(30,255,140,0.10) 0%, rgba(30,255,140,0.03) 100%);
+    border-color: rgba(30,255,140,0.20);
+    box-shadow: 0 0 40px rgba(30,255,140,0.06) inset;
+  }
+  .stat-card.green::before { background: conic-gradient(from var(--angle,0deg), transparent 70%, rgba(30,255,140,0.6) 85%, transparent 100%); }
+  .stat-card.green:hover { box-shadow: 0 20px 60px rgba(30,255,140,0.10); }
+
+  .stat-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+  .stat-card.violet .stat-label { color: rgba(180,100,255,0.65); }
+  .stat-card.pink   .stat-label { color: rgba(255,80,140,0.65); }
+  .stat-card.cyan   .stat-label { color: rgba(0,200,240,0.65); }
+  .stat-card.green  .stat-label { color: rgba(30,220,120,0.65); }
+
+  .stat-value { font-size: 44px; font-weight: 800; letter-spacing: -2px; }
+  .stat-card.violet .stat-value { color: #c87eff; text-shadow: 0 0 30px rgba(160,60,255,0.55); }
+  .stat-card.pink   .stat-value { color: #ff4d96; text-shadow: 0 0 30px rgba(255,20,100,0.55); }
+  .stat-card.cyan   .stat-value { color: #40e8ff; text-shadow: 0 0 30px rgba(0,220,255,0.50); }
+  .stat-card.green  .stat-value { color: #3fffaa; text-shadow: 0 0 30px rgba(30,255,140,0.50); }
+
+  /* Filter bar */
+  .filter-bar {
+    border-radius: 24px;
+    border: 1px solid rgba(255,20,100,0.14);
+    background: rgba(10,7,22,0.92);
+    backdrop-filter: blur(28px);
+    padding: 22px 26px; margin-bottom: 20px;
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px;
+    box-shadow: 0 0 60px rgba(255,20,100,0.05);
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 7px; }
+  .filter-label { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: rgba(255,20,100,0.65); }
+  .filter-input, .filter-select {
+    background: rgba(255,20,100,0.05); border: 1px solid rgba(255,20,100,0.14);
+    border-radius: 12px; padding: 9px 14px;
+    font-size: 13px; color: #fff0f6; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .filter-input { width: 260px; }
+  .filter-input::placeholder { color: #5a4870; }
+  .filter-input:focus, .filter-select:focus {
+    border-color: rgba(255,20,100,0.50);
+    box-shadow: 0 0 0 3px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.08);
+  }
+  .filter-select { appearance: none; cursor: pointer; min-width: 140px; }
+  .filter-apply {
+    padding: 9px 24px; border-radius: 99px;
+    background: linear-gradient(135deg, #ff1464, #ff6aaa);
+    border: none; color: white; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 0 24px rgba(255,20,100,0.40);
+  }
+  .filter-apply:hover { opacity: 0.88; box-shadow: 0 0 36px rgba(255,20,100,0.60), 0 4px 20px rgba(255,20,100,0.3); transform: translateY(-1px); }
+  .filter-meta { width: 100%; font-size: 12px; color: #5a4870; padding-top: 4px; }
+
+  /* Track table */
+  .track-table {
+    border-radius: 24px; overflow: hidden;
+    border: 1px solid rgba(255,20,100,0.12);
+    box-shadow: 0 0 80px rgba(255,20,100,0.05);
+  }
+  .table-header {
+    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr 90px;
+    gap: 16px; padding: 14px 24px;
+    background: rgba(255,20,100,0.05);
+    border-bottom: 1px solid rgba(255,20,100,0.12);
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,20,100,0.65);
+  }
+
+  .track-row {
+    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr 90px;
+    gap: 16px; padding: 18px 24px; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: rgba(6,4,16,0.65);
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  .track-row.visible { opacity: 1; transform: translateY(0); }
+  .track-row:last-child { border-bottom: none; }
+  .track-row:hover {
+    background: rgba(255,20,100,0.06);
+    border-left-color: #ff1464;
+    box-shadow: inset 0 0 40px rgba(255,20,100,0.04), 4px 0 20px rgba(255,20,100,0.08);
+  }
+  .track-row:hover .track-title { color: #ffb0d0; }
+
+  .track-title { font-size: 14px; font-weight: 600; color: #fff0f6; margin-bottom: 3px; transition: color 0.2s; }
+  .track-artist { font-size: 12px; color: #9a85b2; }
+  .track-album { font-size: 11px; color: #5a4870; margin-top: 2px; }
+  .lang-text { font-size: 13px; color: #c8b8d8; }
+  .lang-sub { font-size: 11px; color: #5a4870; margin-top: 2px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; padding: 5px 11px; border-radius: 99px;
+  }
+  .badge-needs-lyrics {
+    background: rgba(255,20,100,0.14);
+    border: 1px solid rgba(255,20,100,0.35);
+    color: #ff6aaa;
+    box-shadow: 0 0 14px rgba(255,20,100,0.20);
+    animation: badge-pulse 2.5s ease-in-out infinite;
+  }
+  .badge-needs-review {
+    background: rgba(255,120,30,0.12); border: 1px solid rgba(255,120,30,0.28); color: #ffaa60;
+  }
+  .badge-synced {
+    background: rgba(30,210,100,0.10); border: 1px solid rgba(30,210,100,0.24); color: #5fffaa;
+    box-shadow: 0 0 10px rgba(30,210,100,0.15);
+  }
+  .badge-draft {
+    background: rgba(160,80,255,0.12); border: 1px solid rgba(160,80,255,0.28); color: #c090ff;
+  }
+
+  .playlist-pill {
+    display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 99px;
+    background: rgba(255,20,100,0.06); border: 1px solid rgba(255,20,100,0.16); color: #ff6aaa;
+  }
+  .open-btn {
+    padding: 7px 18px; border-radius: 99px;
+    background: rgba(255,20,100,0.10); border: 1px solid rgba(255,20,100,0.25);
+    color: #ff6aaa; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .open-btn:hover {
+    background: rgba(255,20,100,0.22);
+    box-shadow: 0 0 20px rgba(255,20,100,0.35);
+    color: #fff0f6; transform: scale(1.04);
+  }
+
+  /* Animations */
+  @keyframes shimmer { to { background-position: -250% 0; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes breathe { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.7; } }
+  @keyframes badge-pulse { 0%,100% { box-shadow: 0 0 14px rgba(255,20,100,0.20); } 50% { box-shadow: 0 0 24px rgba(255,20,100,0.45); } }
+  @keyframes rotate-border { to { --angle: 360deg; } }
+  @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">la<span>F</span>z</div>
+  <div class="nav-right">
+    <div class="nav-badge"><span class="dot"></span> Spotify connected</div>
+    <div class="nav-icon-btn">⌂</div>
+    <div class="nav-icon-btn">≡</div>
+    <div class="nav-icon-btn">+</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <p class="page-eyebrow">Lafz Library Queue</p>
+  <h1 class="page-title">Translation work across<br><span class="shimmer">all imported playlists.</span></h1>
+  <p class="page-desc">Your full translation queue in one place — filter by status, language, or playlist and pick up exactly where you left off.</p>
+
+  <div class="divider"></div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card violet">
+      <div class="stat-label">Total Unique Tracks</div>
+      <div class="stat-value" data-target="120">0</div>
+    </div>
+    <div class="stat-card pink">
+      <div class="stat-label">Needs Review</div>
+      <div class="stat-value" data-target="8">0</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-label">Needs Lyrics</div>
+      <div class="stat-value" data-target="111">0</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Synced</div>
+      <div class="stat-value" data-target="0">0</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <div class="filter-label">Search</div>
+      <input class="filter-input" type="text" placeholder="Title, artist, album, playlist…" />
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Status</div>
+      <select class="filter-select"><option>All statuses</option><option>Needs lyrics</option><option>Needs review</option><option>Synced</option></select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Language</div>
+      <select class="filter-select"><option>All languages</option><option>Punjabi</option><option>Hindi</option><option>Urdu</option></select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Playlist</div>
+      <select class="filter-select"><option>All playlists</option><option>Gurgaon Complex</option></select>
+    </div>
+    <button class="filter-apply">Apply</button>
+    <div class="filter-meta">Showing 120 tracks from 120 unique imported songs.</div>
+  </div>
+
+  <!-- Table -->
+  <div class="track-table">
+    <div class="table-header">
+      <div>Track</div><div>Language</div><div>Status</div><div>Playlist</div><div>Action</div>
+    </div>
+    <div class="track-row">
+      <div><div class="track-title">0 To 100</div><div class="track-artist">Sidhu Moose Wala</div><div class="track-album">No Name · 1:48</div></div>
+      <div><div class="lang-text">Unknown</div><div class="lang-sub">Auto-detect</div></div>
+      <div><span class="badge badge-needs-lyrics">Needs Lyrics</span></div>
+      <div><span class="playlist-pill">Gurgaon Complex</span></div>
+      <div><button class="open-btn">Open</button></div>
+    </div>
+    <div class="track-row">
+      <div><div class="track-title">Kaley Sheshe</div><div class="track-artist">Addy Nagar, Aniket Jain</div><div class="track-album">Single · 3:32</div></div>
+      <div><div class="lang-text">Hinglish</div><div class="lang-sub">Romanized Hindi</div></div>
+      <div><span class="badge badge-needs-review">Needs Review</span></div>
+      <div><span class="playlist-pill">Gurgaon Complex</span></div>
+      <div><button class="open-btn">Open</button></div>
+    </div>
+    <div class="track-row">
+      <div><div class="track-title">Jogi</div><div class="track-artist">thiarajxtt, Bir</div><div class="track-album">Single · 2:54</div></div>
+      <div><div class="lang-text">Punjabi</div></div>
+      <div><span class="badge badge-draft">Draft Ready</span></div>
+      <div><span class="playlist-pill">Gurgaon Complex</span></div>
+      <div><button class="open-btn">Open</button></div>
+    </div>
+    <div class="track-row">
+      <div><div class="track-title">Winning Speech</div><div class="track-artist">AP Dhillon</div><div class="track-album">Hidden Gems · 4:10</div></div>
+      <div><div class="lang-text">Punjabi</div></div>
+      <div><span class="badge badge-synced">Synced</span></div>
+      <div><span class="playlist-pill">Gurgaon Complex</span></div>
+      <div><button class="open-btn">Open</button></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Animated stat counters
+  function animateCounter(el) {
+    const target = parseInt(el.dataset.target, 10);
+    if (target === 0) return;
+    const duration = 1200;
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(eased * target);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
+  }
+  document.querySelectorAll('.stat-value[data-target]').forEach((el, i) => {
+    setTimeout(() => animateCounter(el), 200 + i * 100);
+  });
+
+  // Staggered row entrance
+  document.querySelectorAll('.track-row').forEach((row, i) => {
+    setTimeout(() => {
+      row.style.transition = 'opacity 0.4s ease, transform 0.4s ease, background 0.2s, border-left-color 0.2s, box-shadow 0.2s';
+      row.classList.add('visible');
+    }, 500 + i * 100);
+  });
+</script>
+</body>
+</html>

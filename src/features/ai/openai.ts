@@ -158,6 +158,24 @@ type RequestAiArtistProfileOptions = {
   }>;
 };
 
+type RequestAiVocabularyCandidatesOptions = BasePromptOptions & {
+  sourceLanguage: string | null;
+  targetLanguage: string;
+  songContext: AiSongContext | null;
+  worldModel: AiWorldModel | null;
+  existingTerms?: string[];
+  lines: Array<{
+    order: number;
+    original: string;
+    normalizedOriginal?: string | null;
+    meaning: string;
+    impliedMeaning?: string | null;
+    chosen: string;
+    note?: string | null;
+    confidence: "low" | "medium" | "high";
+  }>;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -688,6 +706,48 @@ export function buildArtistProfileSchema() {
   };
 }
 
+export function buildVocabularyCandidatesSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      detectedSourceLanguage: { type: "string" },
+      candidates: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            term: { type: "string" },
+            aliases: {
+              type: "array",
+              items: { type: "string" }
+            },
+            meaning: { type: "string" },
+            note: {
+              anyOf: [{ type: "string" }, { type: "null" }]
+            },
+            category: {
+              type: "string",
+              enum: ["slang", "idiom", "address", "image", "reference", "phrase"]
+            },
+            confidence: {
+              type: "string",
+              enum: ["low", "medium", "high"]
+            },
+            lineOrders: {
+              type: "array",
+              items: { type: "number" }
+            }
+          },
+          required: ["term", "aliases", "meaning", "note", "category", "confidence", "lineOrders"]
+        }
+      }
+    },
+    required: ["detectedSourceLanguage", "candidates"]
+  };
+}
+
 function buildSharedContextHints(options: BasePromptOptions, sourceLanguage: string | null) {
   const hints: string[] = [];
 
@@ -849,6 +909,25 @@ export function buildArtistProfileSystemPrompt(options: RequestAiArtistProfileOp
   ].join(" ");
 }
 
+export function buildVocabularyCandidatesSystemPrompt(options: RequestAiVocabularyCandidatesOptions) {
+  return [
+    "You are the Lafz Vocabulary Agent discovery pass.",
+    options.sourceLanguage
+      ? `The source lyrics are in ${options.sourceLanguage}, and the final display language is ${options.targetLanguage}.`
+      : `Infer the source language from the lyrics, then identify reusable vocabulary for future ${options.targetLanguage} translation.`,
+    "Your job is to extract only source-language words or short phrases that are worth remembering across future songs.",
+    "Focus on slang, idioms, short recurring phrases, address terms, cultural references, and compact source-language image words.",
+    "Do not extract full lines, obvious plain-English words, generic names, or terms whose meaning is already obvious from English alone.",
+    "Use the line meaning, impliedMeaning, chosen translation, song context, world model, and artist memory to infer a concise reusable meaning.",
+    "Prefer candidates that are culturally loaded, artist-specific, repeated, or non-obvious to an English reader.",
+    "If a candidate is already covered by existingTerms, only return it if this song gives meaningfully stronger evidence or a sharper meaning.",
+    "Keep meanings short and reusable, not whole-line paraphrases.",
+    "Return lineOrders using the exact order numbers from the input lines.",
+    buildSharedContextHints(options, options.sourceLanguage),
+    "Respond only with JSON matching the schema."
+  ].join(" ");
+}
+
 export function buildWorldModelUserPrompt(options: RequestAiWorldModelOptions) {
   return JSON.stringify(
     {
@@ -878,6 +957,35 @@ export function buildArtistProfileUserPrompt(options: RequestAiArtistProfileOpti
       },
       glossary: options.glossaryEntries,
       evidence: options.evidence
+    },
+    null,
+    2
+  );
+}
+
+export function buildVocabularyCandidatesUserPrompt(options: RequestAiVocabularyCandidatesOptions) {
+  return JSON.stringify(
+    {
+      track: {
+        title: options.title,
+        artist: options.artist,
+        album: options.album
+      },
+      sourceLanguage: options.sourceLanguage ?? "auto-detect from lyrics",
+      targetLanguage: options.targetLanguage,
+      existingTerms: options.existingTerms ?? [],
+      songContext: options.songContext,
+      worldModel: options.worldModel
+        ? {
+            summary: options.worldModel.summary,
+            speakerPersona: options.worldModel.speakerPersona,
+            addressee: options.worldModel.addressee,
+            coreMotifs: options.worldModel.coreMotifs,
+            recurringSymbols: options.worldModel.recurringSymbols
+          }
+        : null,
+      artistMemory: serializeArtistMemoryForPrompt(options.artistMemory),
+      lines: options.lines
     },
     null,
     2
@@ -1636,6 +1744,70 @@ export function parseSurfacePolishAuditResponse(
   };
 }
 
+export function parseVocabularyCandidatesResponse(
+  parsed: unknown,
+  providerLabel: string
+): {
+  sourceLanguage: string;
+  candidates: Array<{
+    term: string;
+    aliases: string[];
+    meaning: string;
+    note: string | null;
+    category: "slang" | "idiom" | "address" | "image" | "reference" | "phrase";
+    confidence: "low" | "medium" | "high";
+    lineOrders: number[];
+  }>;
+} {
+  const detectedSourceLanguage = isRecord(parsed) ? asString(parsed.detectedSourceLanguage) : null;
+
+  if (!isRecord(parsed) || !detectedSourceLanguage || !Array.isArray(parsed.candidates)) {
+    throw new Error(`${providerLabel} returned an invalid vocabulary-candidate shape.`);
+  }
+
+  return {
+    sourceLanguage: detectedSourceLanguage,
+    candidates: parsed.candidates.map((candidate, index) => {
+      if (!isRecord(candidate)) {
+        throw new Error(`${providerLabel} returned a non-object vocabulary candidate at index ${index}.`);
+      }
+
+      const term = asString(candidate.term);
+      const meaning = asString(candidate.meaning);
+      const category =
+        candidate.category === "slang" ||
+        candidate.category === "idiom" ||
+        candidate.category === "address" ||
+        candidate.category === "image" ||
+        candidate.category === "reference" ||
+        candidate.category === "phrase"
+          ? candidate.category
+          : null;
+      const confidence =
+        candidate.confidence === "low" || candidate.confidence === "medium" || candidate.confidence === "high"
+          ? candidate.confidence
+          : null;
+      const lineOrders = Array.isArray(candidate.lineOrders)
+        ? candidate.lineOrders.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+        : [];
+
+      if (!term || !meaning || !category || !confidence || lineOrders.length === 0) {
+        throw new Error(`${providerLabel} returned an invalid vocabulary candidate at index ${index}.`);
+      }
+
+      return {
+        term,
+        aliases: parseStringArray(candidate.aliases),
+        meaning,
+        note: normalizeNullableString(candidate.note),
+        category,
+        confidence,
+        lineOrders
+      };
+    })
+  };
+}
+
 export async function requestOpenAiSongContext(
   options: RequestAiSongContextOptions
 ): Promise<{ model: string; sourceLanguage: string; songContext: AiSongContext }> {
@@ -1810,6 +1982,51 @@ export async function requestOpenAiArtistProfile(options: RequestAiArtistProfile
       perspectiveNotes: parseStringArray(parsed.perspectiveNotes),
       notes: parseStringArray(parsed.notes)
     }
+  };
+}
+
+export async function requestOpenAiVocabularyCandidates(
+  options: RequestAiVocabularyCandidatesOptions,
+  usageSink?: { inputTokens: number; outputTokens: number }
+): Promise<{
+  model: string;
+  sourceLanguage: string;
+  candidates: Array<{
+    term: string;
+    aliases: string[];
+    meaning: string;
+    note: string | null;
+    category: "slang" | "idiom" | "address" | "image" | "reference" | "phrase";
+    confidence: "low" | "medium" | "high";
+    lineOrders: number[];
+  }>;
+}> {
+  if (options.lines.length === 0) {
+    throw new Error("No lyric lines were provided to the Lafz Vocabulary Agent.");
+  }
+
+  const localSink = { inputTokens: 0, outputTokens: 0 };
+  const model = await resolveOpenAiModel();
+  const parsed = await callOpenAiJson<unknown>({
+    model,
+    schemaName: "lafz_vocabulary_candidates",
+    schema: buildVocabularyCandidatesSchema(),
+    systemPrompt: buildVocabularyCandidatesSystemPrompt(options),
+    userPrompt: buildVocabularyCandidatesUserPrompt(options),
+    errorLabel: "OpenAI vocabulary-candidate request",
+    usageSink: localSink
+  });
+  const normalized = parseVocabularyCandidatesResponse(parsed, "OpenAI");
+
+  if (usageSink) {
+    usageSink.inputTokens += localSink.inputTokens;
+    usageSink.outputTokens += localSink.outputTokens;
+  }
+
+  return {
+    model,
+    sourceLanguage: normalized.sourceLanguage,
+    candidates: normalized.candidates
   };
 }
 

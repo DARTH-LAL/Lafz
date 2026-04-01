@@ -2,25 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 import { buildSongTranslationMemoryPack } from "@/features/brain/memory-pack";
-import { readMemoryPackCache } from "@/features/brain/repository";
+import {
+  listBrainClaimsByScope,
+  listBrainEvidenceByClaimIds,
+  listBrainPromotionsByClaimIds,
+  readMemoryPackCache
+} from "@/features/brain/repository";
 import { buildMemoryPackCacheKey, splitArtistCredits } from "@/features/brain/normalize";
 import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
+import { NODE_COLORS } from "@/features/brain/colors";
+import { getVocabularyAgentProcessStatus } from "@/features/brain/vocabulary-agent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const NODE_COLORS: Record<string, string> = {
-  artist: "#ff1464",
-  song: "#ff6ba8",
-  term_surface: "#ff8c42",
-  term_sense: "#ffb347",
-  rendering: "#c084fc",
-  motif: "#38bdf8",
-  symbol: "#34d399",
-  entity_instance: "#f472b6",
-  entity_type: "#fb7185",
-  persona_style: "#a78bfa"
-};
 
 // How many nodes to fetch per type when showing the full graph
 const TYPE_LIMITS: Record<string, number> = {
@@ -73,6 +67,135 @@ export async function GET(request: NextRequest) {
         cachedAt: cached?.updatedAt ?? null,
         cacheVersion: cached?.version ?? null,
         pack
+      });
+    }
+
+    if (mode === "claims") {
+      if (!spotifyTrackId || !artist) {
+        return NextResponse.json({ error: "spotifyTrackId and artist are required" }, { status: 400 });
+      }
+
+      const artistKeys = splitArtistCredits(artist).map((entry) => entry.key);
+      const [songClaims, artistClaims] = await Promise.all([
+        listBrainClaimsByScope("song", [spotifyTrackId], 80),
+        listBrainClaimsByScope("artist", artistKeys, 80)
+      ]);
+
+      const claims = [...songClaims, ...artistClaims].sort((left, right) => {
+        const leftTime = left.updatedAt ? new Date(left.updatedAt).getTime() : 0;
+        const rightTime = right.updatedAt ? new Date(right.updatedAt).getTime() : 0;
+        return rightTime - leftTime;
+      });
+      const claimIds = claims.map((claim) => claim.id);
+      const [evidenceRows, promotionRows] = await Promise.all([
+        listBrainEvidenceByClaimIds(claimIds),
+        listBrainPromotionsByClaimIds(claimIds)
+      ]);
+
+      const evidenceByClaimId = new Map<string, typeof evidenceRows>();
+      for (const evidence of evidenceRows) {
+        const existing = evidenceByClaimId.get(evidence.claimId) ?? [];
+        existing.push(evidence);
+        evidenceByClaimId.set(evidence.claimId, existing);
+      }
+
+      const latestPromotionByClaimId = new Map<string, (typeof promotionRows)[number]>();
+      for (const promotion of promotionRows) {
+        if (!latestPromotionByClaimId.has(promotion.claimId)) {
+          latestPromotionByClaimId.set(promotion.claimId, promotion);
+        }
+      }
+
+      return NextResponse.json({
+        spotifyTrackId,
+        artist,
+        claimCount: claims.length,
+        claims: claims.map((claim) => ({
+          id: claim.id,
+          claimKey: claim.claimKey,
+          claimType: claim.claimType,
+          scopeType: claim.scopeType,
+          scopeKey: claim.scopeKey,
+          status: claim.status,
+          confidenceScore: claim.confidenceScore,
+          sourceCount: claim.sourceCount,
+          evidenceCount: claim.evidenceCount,
+          updatedAt: claim.updatedAt,
+          payload: claim.payload,
+          evidence: (evidenceByClaimId.get(claim.id) ?? []).slice(0, 6).map((row) => ({
+            id: row.id,
+            sourceType: row.sourceType,
+            spotifyTrackId: row.spotifyTrackId,
+            artistKey: row.artistKey,
+            lineOrder: row.lineOrder,
+            weight: row.weight,
+            payload: row.payload,
+            createdAt: row.createdAt
+          })),
+          latestPromotion: latestPromotionByClaimId.get(claim.id)
+            ? {
+                id: latestPromotionByClaimId.get(claim.id)?.id,
+                decision: latestPromotionByClaimId.get(claim.id)?.decision,
+                reason: latestPromotionByClaimId.get(claim.id)?.reason,
+                decidedBy: latestPromotionByClaimId.get(claim.id)?.decidedBy,
+                createdAt: latestPromotionByClaimId.get(claim.id)?.createdAt
+              }
+            : null
+        }))
+      });
+    }
+
+    if (mode === "worker-status") {
+      const queueStatuses = ["pending", "claimed", "running", "completed", "failed", "dead_lettered"] as const;
+      const counts = await Promise.all(
+        queueStatuses.map(async (status) => {
+          const { count } = await supabase
+            .from("agent_jobs")
+            .select("*", { count: "exact", head: true })
+            .eq("job_type", "vocabulary_agent")
+            .eq("status", status);
+
+          return [status, count ?? 0] as const;
+        })
+      );
+
+      const [{ data: recentRuns }, { data: recentJobs }] = await Promise.all([
+        supabase
+          .from("agent_runs")
+          .select("id, job_id, agent_role, status, worker_id, started_at, finished_at, output_json, error_text, created_at")
+          .eq("agent_role", "vocabulary_agent")
+          .order("created_at", { ascending: false })
+          .limit(12),
+        supabase
+          .from("agent_jobs")
+          .select("id, job_key, status, spotify_track_id, claimed_by, claimed_at, updated_at, last_error")
+          .eq("job_type", "vocabulary_agent")
+          .order("updated_at", { ascending: false })
+          .limit(12)
+      ]);
+
+      const recentContributionTotals = (recentRuns ?? []).reduce(
+        (totals, run) => {
+          const output = typeof run.output_json === "object" && run.output_json ? run.output_json as Record<string, unknown> : {};
+
+          totals.claimsUpserted += typeof output.claimsUpserted === "number" ? output.claimsUpserted : 0;
+          totals.evidencesInserted += typeof output.evidencesInserted === "number" ? output.evidencesInserted : 0;
+          totals.promotionsRecorded += typeof output.promotionsRecorded === "number" ? output.promotionsRecorded : 0;
+          return totals;
+        },
+        {
+          claimsUpserted: 0,
+          evidencesInserted: 0,
+          promotionsRecorded: 0
+        }
+      );
+
+      return NextResponse.json({
+        worker: getVocabularyAgentProcessStatus(),
+        queueCounts: Object.fromEntries(counts),
+        recentContributionTotals,
+        recentRuns: recentRuns ?? [],
+        recentJobs: recentJobs ?? []
       });
     }
 
@@ -174,7 +297,7 @@ export async function GET(request: NextRequest) {
       .eq("is_active", true);
 
     const nodeTypeCounts: Record<string, number> = {};
-    for (const node of seedNodes) {
+    for (const node of allNodes) {
       nodeTypeCounts[node.node_type] = (nodeTypeCounts[node.node_type] ?? 0) + 1;
     }
 

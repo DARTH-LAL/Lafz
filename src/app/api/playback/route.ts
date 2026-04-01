@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { ensureVocabularyAgentWorkerStarted } from "@/features/brain/vocabulary-agent";
 import {
   buildTrackTranslationFromAiDraft,
   findAiTranslationDraftByMetadata,
@@ -19,6 +20,8 @@ import { findTranslationByMetadata, getTranslationByTrackId, getTranslationFileH
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  ensureVocabularyAgentWorkerStarted();
+
   const existingSession = readSpotifySessionFromRequest(request);
 
   if (!existingSession) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { startAiGenerationJob } from "@/features/ai/job-store";
 import { generateAiTranslationDraft } from "@/features/ai/translation-draft";
+import { ensureVocabularyAgentWorkerStarted } from "@/features/brain/vocabulary-agent";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,8 @@ function redirectWithStatus(request: NextRequest, redirectTo: string, status: st
 }
 
 export async function POST(request: NextRequest) {
+  ensureVocabularyAgentWorkerStarted();
+
   const session = readSpotifySessionFromRequest(request);
 
   if (!session) {

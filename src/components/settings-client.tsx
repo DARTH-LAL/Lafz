@@ -446,21 +446,6 @@ export function SettingsClient({
         </Card>
       </section>
 
-      {/* ── Danger Zone ── */}
-      <section className="mb-24">
-        <SectionTitle>Danger Zone</SectionTitle>
-        <Card danger>
-          {dangerMsg && (
-            <div className="mb-4 rounded-[10px] border border-[rgba(63,255,170,0.25)] bg-[rgba(63,255,170,0.08)] px-4 py-2.5 text-[12px] font-semibold text-[#3fffaa]">
-              {dangerMsg}
-            </div>
-          )}
-          <DangerRow title="Clear lyrics cache" desc="Deletes all cached lyrics files. They can be re-fetched." label="Clear Cache" action="clear-lyrics-cache" onAction={dangerAction} />
-          <DangerRow title="Delete all AI drafts" desc="Removes every AI-generated draft. Finalized translations are unaffected." label="Delete Drafts" action="delete-drafts" onAction={dangerAction} />
-          <DangerRow title="Reset usage analytics" desc="Wipes usage-runs.json. Analytics will start from zero." label="Reset Analytics" action="reset-analytics" onAction={dangerAction} />
-          <DangerRow title="Wipe entire library" desc="Deletes all playlists, translations, drafts and lyrics. Cannot be undone." label="Wipe All Data" action="wipe-all" onAction={dangerAction} last />
-        </Card>
-      </section>
 
       {/* ── Sticky Save Bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-end gap-3 bg-[linear-gradient(to_top,rgba(6,4,16,0.98)_60%,transparent)] px-8 py-5">

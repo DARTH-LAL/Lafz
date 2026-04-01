@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lafz — AI Analytics Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060410;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% 20%, rgba(255,20,100,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 85% 75%, rgba(120,60,255,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(64,232,255,0.04) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Nav ── */
+    .topbar {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(6,4,16,0.8);
+      backdrop-filter: blur(12px);
+    }
+    .logo { font-size: 20px; font-weight: 800; color: #ff1464; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-link { font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; }
+    .nav-link.active { color: #fff; }
+
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1280px; margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    /* ── Header row ── */
+    .header-row {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 36px; flex-wrap: wrap; gap: 20px;
+    }
+    .header-left {}
+    .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
+      color: #ff1464; text-transform: uppercase;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .eyebrow::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, rgba(255,20,100,0.5), transparent);
+      max-width: 160px;
+    }
+    .page-title {
+      font-size: 34px; font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 40%, rgba(255,20,100,0.7));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 4px;
+    }
+    .page-subtitle { font-size: 13px; color: rgba(255,255,255,0.35); }
+
+    /* ── Time Filter Pills ── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 4px;
+    }
+    .filter-btn {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+      padding: 7px 16px; border-radius: 8px;
+      border: none; cursor: pointer;
+      color: rgba(255,255,255,0.4);
+      background: transparent;
+      transition: all 0.18s;
+    }
+    .filter-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); }
+    .filter-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(255,20,100,0.35), rgba(162,89,255,0.25));
+      border: 1px solid rgba(255,20,100,0.3);
+      box-shadow: 0 0 12px rgba(255,20,100,0.2);
+    }
+
+    /* ── Grid helpers ── */
+    .model-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-bottom: 20px; }
+    .two-col    { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .three-col  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* ── Model cards ── */
+    .model-card {
+      background: rgba(255,255,255,0.03); border-radius: 18px; padding: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .model-card:hover { transform: translateY(-2px); }
+    .model-card.pink   { border-color: rgba(255,20,100,0.25); }
+    .model-card.violet { border-color: rgba(162,89,255,0.25); }
+    .model-card.cyan   { border-color: rgba(64,232,255,0.25); }
+    .model-card.pink::before   { content:''; position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle,rgba(255,20,100,0.18),transparent 70%); pointer-events:none; }
+    .model-card.violet::before { content:''; position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle,rgba(162,89,255,0.18),transparent 70%); pointer-events:none; }
+    .model-card.cyan::before   { content:''; position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle,rgba(64,232,255,0.18),transparent 70%); pointer-events:none; }
+
+    .model-role { font-size:10px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:6px; }
+    .model-card.pink   .model-role { color:#ff4d96; }
+    .model-card.violet .model-role { color:#a259ff; }
+    .model-card.cyan   .model-role { color:#40e8ff; }
+    .model-name { font-size:18px; font-weight:700; color:#fff; margin-bottom:2px; }
+    .model-provider { font-size:12px; color:rgba(255,255,255,0.35); margin-bottom:20px; }
+
+    .model-win-label { font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.1em; }
+    .model-win-value { font-size:38px; font-weight:800; line-height:1; transition: all 0.4s; }
+    .model-card.pink   .model-win-value { color:#ff4d96; }
+    .model-card.violet .model-win-value { color:#a259ff; }
+    .model-card.cyan   .model-win-value { color:#40e8ff; }
+
+    .win-bar-bg { width:100%; height:5px; background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; margin:14px 0; }
+    .win-bar-fill { height:100%; border-radius:99px; transition: width 0.5s ease; }
+    .model-card.pink   .win-bar-fill { background:linear-gradient(90deg,#ff1464,#ff4d96); }
+    .model-card.violet .win-bar-fill { background:linear-gradient(90deg,#7b2fff,#a259ff); }
+    .model-card.cyan   .win-bar-fill { background:linear-gradient(90deg,#00c8e0,#40e8ff); }
+
+    .model-meta { display:flex; gap:16px; }
+    .model-meta-item { font-size:12px; color:rgba(255,255,255,0.35); }
+    .model-meta-item span { color:rgba(255,255,255,0.7); font-weight:600; }
+
+    /* ── Glass card ── */
+    .glass-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px; padding: 22px;
+    }
+
+    /* ── Section headers ── */
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .section-title { font-size:13px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.5); }
+    .section-badge { font-size:11px; padding:3px 10px; border-radius:99px; background:rgba(255,20,100,0.12); color:#ff4d96; border:1px solid rgba(255,20,100,0.2); }
+
+    /* ── Winner dist bar ── */
+    .winner-bar { display:flex; height:32px; border-radius:10px; overflow:hidden; margin-bottom:12px; }
+    .winner-seg { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; transition: flex 0.5s ease; }
+    .winner-seg.a     { background:rgba(255,20,100,0.7); }
+    .winner-seg.b     { background:rgba(162,89,255,0.7); }
+    .winner-seg.blend { background:rgba(64,232,255,0.5); }
+    .winner-labels { display:flex; gap:16px; margin-top:8px; }
+    .wl { font-size:12px; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:6px; }
+    .wl-dot { width:8px; height:8px; border-radius:2px; }
+    .wl-dot.a     { background:#ff4d96; }
+    .wl-dot.b     { background:#a259ff; }
+    .wl-dot.blend { background:#40e8ff; }
+
+    /* ── Donut ── */
+    .donut-wrap { display:flex; align-items:center; gap:24px; }
+    .donut {
+      width:100px; height:100px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0; position:relative;
+      transition: background 0.5s;
+    }
+    .donut::after {
+      content:''; position:absolute;
+      width:64px; height:64px; background:#0a0716; border-radius:50%;
+    }
+    .donut-legend { display:flex; flex-direction:column; gap:8px; }
+    .legend-row { display:flex; align-items:center; gap:8px; font-size:13px; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .legend-label { color:rgba(255,255,255,0.5); }
+    .legend-val { color:#fff; font-weight:600; margin-left:auto; padding-left:12px; transition: all 0.4s; }
+
+    /* ── Speed bars ── */
+    .speed-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .speed-row:last-child { border-bottom:none; }
+    .speed-label { font-size:13px; color:rgba(255,255,255,0.5); flex:1; }
+    .speed-bar-bg { flex:2; height:6px; background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; }
+    .speed-bar-fill { height:100%; border-radius:99px; transition: width 0.5s ease; }
+    .speed-val { font-size:13px; font-weight:600; color:#fff; width:48px; text-align:right; transition: all 0.4s; }
+
+    /* ── Cost ── */
+    .cost-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .cost-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; text-align:center; }
+    .cost-label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:6px; }
+    .cost-val { font-size:22px; font-weight:800; transition: all 0.4s; }
+    .cost-sub { font-size:11px; color:rgba(255,255,255,0.3); margin-top:3px; transition: all 0.4s; }
+    .cost-total { margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center; }
+    .cost-total-label { font-size:12px; color:rgba(255,255,255,0.35); }
+    .cost-total-val { font-size:22px; font-weight:800; color:#3fffaa; transition: all 0.4s; }
+
+    /* ── Language bars ── */
+    .lang-rows { display:flex; flex-direction:column; gap:10px; }
+    .lang-row { display:flex; align-items:center; gap:12px; }
+    .lang-name { font-size:12px; color:rgba(255,255,255,0.5); width:80px; flex-shrink:0; }
+    .lang-bar-bg { flex:1; height:7px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; }
+    .lang-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#ff1464,#a259ff); transition: width 0.5s ease; }
+    .lang-pct { font-size:12px; color:rgba(255,255,255,0.4); width:36px; text-align:right; transition: all 0.4s; }
+
+    /* ── Track table ── */
+    .track-table { width:100%; border-collapse:collapse; }
+    .track-table th { font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,255,255,0.3); text-align:left; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .track-table td { font-size:13px; color:rgba(255,255,255,0.7); padding:12px 12px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .track-table tr:hover td { background:rgba(255,20,100,0.04); color:#fff; }
+    .track-table tr:last-child td { border-bottom:none; }
+    .track-name  { color:#fff; font-weight:600; }
+    .track-artist { color:rgba(255,255,255,0.35); font-size:11px; }
+
+    /* ── Badges ── */
+    .badge { display:inline-flex; align-items:center; font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border-radius:6px; }
+    .badge.a      { background:rgba(255,20,100,0.15); color:#ff4d96; }
+    .badge.b      { background:rgba(162,89,255,0.15); color:#a259ff; }
+    .badge.blend  { background:rgba(64,232,255,0.15); color:#40e8ff; }
+    .badge.green  { background:rgba(63,255,170,0.12); color:#3fffaa; }
+    .badge.orange { background:rgba(255,159,64,0.15); color:#ff9f40; }
+    .badge.red    { background:rgba(255,77,150,0.15); color:#ff4d96; }
+
+    /* ── Reasoning feed ── */
+    .reasoning-feed { display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto; }
+    .reasoning-feed::-webkit-scrollbar { width:4px; }
+    .reasoning-feed::-webkit-scrollbar-thumb { background:rgba(255,20,100,0.3); border-radius:4px; }
+    .reason-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:12px 14px; }
+    .reason-item.winner-a     { border-left:2px solid #ff4d96; }
+    .reason-item.winner-b     { border-left:2px solid #a259ff; }
+    .reason-item.winner-blend { border-left:2px solid #40e8ff; }
+    .reason-meta   { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .reason-track  { font-size:10px; color:rgba(255,255,255,0.25); }
+    .reason-original { font-size:12px; color:rgba(255,255,255,0.35); margin-bottom:4px; }
+    .reason-chosen   { font-size:14px; font-weight:600; color:#fff; margin-bottom:6px; }
+    .reason-text     { font-size:12px; color:rgba(255,255,255,0.45); line-height:1.5; }
+
+    /* ── No data state ── */
+    .no-data { text-align:center; padding:40px 20px; color:rgba(255,255,255,0.2); font-size:13px; }
+    .no-data-icon { font-size:32px; margin-bottom:10px; }
+
+    @media (max-width:900px) {
+      .model-grid,.two-col,.three-col { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Lafz</div>
+  <div class="nav-links">
+    <a class="nav-link" href="#">Library</a>
+    <a class="nav-link" href="#">Now Playing</a>
+    <a class="nav-link active" href="#">Analytics</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Header + Filter -->
+  <div class="header-row">
+    <div class="header-left">
+      <div class="eyebrow">AI Analytics</div>
+      <h1 class="page-title">Model Performance</h1>
+      <p class="page-subtitle" id="subtitle">3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini Flash · last 30 days</p>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn" data-range="24h" onclick="setRange('24h')">24H</button>
+      <button class="filter-btn" data-range="7d"  onclick="setRange('7d')">7D</button>
+      <button class="filter-btn active" data-range="30d" onclick="setRange('30d')">30D</button>
+      <button class="filter-btn" data-range="all" onclick="setRange('all')">All Time</button>
+    </div>
+  </div>
+
+  <!-- Model Cards -->
+  <div class="model-grid">
+    <div class="model-card pink">
+      <div class="model-role">Generator A</div>
+      <div class="model-name">GPT-5.1</div>
+      <div class="model-provider">OpenAI</div>
+      <div class="model-win-label">Win Rate</div>
+      <div class="model-win-value" id="winA">44%</div>
+      <div class="win-bar-bg"><div class="win-bar-fill" id="barA" style="width:44%"></div></div>
+      <div class="model-meta">
+        <div class="model-meta-item">Avg confidence <span id="confA">78%</span></div>
+        <div class="model-meta-item">Tracks <span id="tracksA">38</span></div>
+      </div>
+    </div>
+    <div class="model-card violet">
+      <div class="model-role">Generator B</div>
+      <div class="model-name">Claude Sonnet</div>
+      <div class="model-provider">Anthropic</div>
+      <div class="model-win-label">Win Rate</div>
+      <div class="model-win-value" id="winB">31%</div>
+      <div class="win-bar-bg"><div class="win-bar-fill" id="barB" style="width:31%"></div></div>
+      <div class="model-meta">
+        <div class="model-meta-item">Avg confidence <span id="confB">81%</span></div>
+        <div class="model-meta-item">Tracks <span id="tracksB">38</span></div>
+      </div>
+    </div>
+    <div class="model-card cyan">
+      <div class="model-role">Judge</div>
+      <div class="model-name">Gemini Flash</div>
+      <div class="model-provider">Google</div>
+      <div class="model-win-label">Blended Lines</div>
+      <div class="model-win-value" id="winBlend">25%</div>
+      <div class="win-bar-bg"><div class="win-bar-fill" id="barBlend" style="width:25%"></div></div>
+      <div class="model-meta">
+        <div class="model-meta-item">Avg latency <span id="latency">18s</span></div>
+        <div class="model-meta-item">Evals <span id="evals">38</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winner dist + Confidence donut -->
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="section-header">
+        <div class="section-title">Winner Distribution</div>
+        <div class="section-badge" id="totalLines">1,847 lines</div>
+      </div>
+      <div class="winner-bar">
+        <div class="winner-seg a" id="segA" style="flex:0.44">44%</div>
+        <div class="winner-seg b" id="segB" style="flex:0.31">31%</div>
+        <div class="winner-seg blend" id="segBlendBar" style="flex:0.25">25%</div>
+      </div>
+      <div class="winner-labels">
+        <div class="wl"><div class="wl-dot a"></div>Generator A (GPT-5.1)</div>
+        <div class="wl"><div class="wl-dot b"></div>Generator B (Claude)</div>
+        <div class="wl"><div class="wl-dot blend"></div>Blended</div>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-header"><div class="section-title">Confidence Breakdown</div></div>
+      <div class="donut-wrap">
+        <div class="donut" id="donut"></div>
+        <div class="donut-legend">
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#3fffaa"></div>
+            <span class="legend-label">High confidence</span>
+            <span class="legend-val" id="confHigh">52%</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#ff9f40"></div>
+            <span class="legend-label">Medium</span>
+            <span class="legend-val" id="confMed">26%</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#ff4d96"></div>
+            <span class="legend-label">Low / flagged</span>
+            <span class="legend-val" id="confLow">22%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speed + Cost + Language -->
+  <div class="three-col">
+    <div class="glass-card">
+      <div class="section-header"><div class="section-title">Avg Pipeline Speed</div></div>
+      <div class="speed-row">
+        <div class="speed-label">Generator A (GPT)</div>
+        <div class="speed-bar-bg"><div class="speed-bar-fill" id="speedBarA" style="width:55%;background:linear-gradient(90deg,#ff1464,#ff4d96)"></div></div>
+        <div class="speed-val" id="speedA">55s</div>
+      </div>
+      <div class="speed-row">
+        <div class="speed-label">Generator B (Claude)</div>
+        <div class="speed-bar-bg"><div class="speed-bar-fill" id="speedBarB" style="width:72%;background:linear-gradient(90deg,#7b2fff,#a259ff)"></div></div>
+        <div class="speed-val" id="speedB">72s</div>
+      </div>
+      <div class="speed-row">
+        <div class="speed-label">Judge (Gemini)</div>
+        <div class="speed-bar-bg"><div class="speed-bar-fill" id="speedBarG" style="width:18%;background:linear-gradient(90deg,#00c8e0,#40e8ff)"></div></div>
+        <div class="speed-val" id="speedG">18s</div>
+      </div>
+      <div class="speed-row">
+        <div class="speed-label">Total avg</div>
+        <div class="speed-bar-bg"><div class="speed-bar-fill" style="width:100%;background:linear-gradient(90deg,#ff1464,#a259ff,#40e8ff)"></div></div>
+        <div class="speed-val" id="speedTotal">145s</div>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-header">
+        <div class="section-title">Estimated Cost</div>
+        <div class="section-badge" id="costPeriod">30 days</div>
+      </div>
+      <div class="cost-grid">
+        <div class="cost-item">
+          <div class="cost-label">GPT-5.1</div>
+          <div class="cost-val" id="costA" style="color:#ff4d96">$1.24</div>
+          <div class="cost-sub" id="tokensA">284k tokens</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-label">Claude</div>
+          <div class="cost-val" id="costB" style="color:#a259ff">$0.87</div>
+          <div class="cost-sub" id="tokensB">198k tokens</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-label">Gemini</div>
+          <div class="cost-val" id="costG" style="color:#40e8ff">$0.11</div>
+          <div class="cost-sub" id="tokensG">312k tokens</div>
+        </div>
+      </div>
+      <div class="cost-total">
+        <span class="cost-total-label">Total spend</span>
+        <span class="cost-total-val" id="costTotal">$2.22</span>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-header"><div class="section-title">Low-Conf by Language</div></div>
+      <div class="lang-rows">
+        <div class="lang-row"><div class="lang-name">Arabic</div><div class="lang-bar-bg"><div class="lang-bar-fill" id="langAr" style="width:68%"></div></div><div class="lang-pct" id="langArPct">68%</div></div>
+        <div class="lang-row"><div class="lang-name">Hindi</div><div class="lang-bar-bg"><div class="lang-bar-fill" id="langHi" style="width:54%"></div></div><div class="lang-pct" id="langHiPct">54%</div></div>
+        <div class="lang-row"><div class="lang-name">Spanish</div><div class="lang-bar-bg"><div class="lang-bar-fill" id="langEs" style="width:28%"></div></div><div class="lang-pct" id="langEsPct">28%</div></div>
+        <div class="lang-row"><div class="lang-name">French</div><div class="lang-bar-bg"><div class="lang-bar-fill" id="langFr" style="width:19%"></div></div><div class="lang-pct" id="langFrPct">19%</div></div>
+        <div class="lang-row"><div class="lang-name">Korean</div><div class="lang-bar-bg"><div class="lang-bar-fill" id="langKo" style="width:41%"></div></div><div class="lang-pct" id="langKoPct">41%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Tracks + Reasoning Feed -->
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="section-header">
+        <div class="section-title">Recent Translations</div>
+        <div class="section-badge" id="recentLabel">Last 5</div>
+      </div>
+      <table class="track-table">
+        <thead><tr><th>Track</th><th>Lines</th><th>Winner</th><th>Confidence</th></tr></thead>
+        <tbody id="trackTableBody">
+          <tr><td><div class="track-name">Habibi</div><div class="track-artist">Amr Diab</div></td><td>62</td><td><span class="badge a">Gen A</span></td><td><span class="badge orange">Medium</span></td></tr>
+          <tr><td><div class="track-name">Tum Hi Ho</div><div class="track-artist">Arijit Singh</div></td><td>48</td><td><span class="badge blend">Blended</span></td><td><span class="badge green">High</span></td></tr>
+          <tr><td><div class="track-name">Malamente</div><div class="track-artist">Rosalía</div></td><td>34</td><td><span class="badge b">Gen B</span></td><td><span class="badge green">High</span></td></tr>
+          <tr><td><div class="track-name">Savage</div><div class="track-artist">Stromae</div></td><td>51</td><td><span class="badge a">Gen A</span></td><td><span class="badge red">Low</span></td></tr>
+          <tr><td><div class="track-name">BTS — Butter</div><div class="track-artist">BTS</div></td><td>58</td><td><span class="badge blend">Blended</span></td><td><span class="badge green">High</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-header">
+        <div class="section-title">Judge Reasoning Feed</div>
+        <div class="section-badge">Last 6 decisions</div>
+      </div>
+      <div class="reasoning-feed">
+        <div class="reason-item winner-a">
+          <div class="reason-meta"><span class="badge a">Gen A won</span><span class="reason-track">Habibi · line 14</span></div>
+          <div class="reason-original">يا حبيبي يا حبيبي</div>
+          <div class="reason-chosen">"My love, oh my love"</div>
+          <div class="reason-text">Gen A captured the repetitive emotional emphasis; Gen B flattened it to "my darling" which loses the wistful tone.</div>
+        </div>
+        <div class="reason-item winner-blend">
+          <div class="reason-meta"><span class="badge blend">Blended</span><span class="reason-track">Tum Hi Ho · line 8</span></div>
+          <div class="reason-original">तू ही मेरी शाम है</div>
+          <div class="reason-chosen">"You are my evening calm"</div>
+          <div class="reason-text">Gen A too sparse; Gen B over-poeticised. Blended keeps the stillness without ornamentation.</div>
+        </div>
+        <div class="reason-item winner-b">
+          <div class="reason-meta"><span class="badge b">Gen B won</span><span class="reason-track">Malamente · line 3</span></div>
+          <div class="reason-original">Malamente, fue marcado desde el principio</div>
+          <div class="reason-chosen">"Badly marked from the very start"</div>
+          <div class="reason-text">Gen B retained "malamente" as a loaded flamenco term. Gen A lost the cultural weight.</div>
+        </div>
+        <div class="reason-item winner-a">
+          <div class="reason-meta"><span class="badge a">Gen A won</span><span class="reason-track">BTS Butter · line 22</span></div>
+          <div class="reason-original">부드럽게 녹아드는</div>
+          <div class="reason-chosen">"Melting in smoothly"</div>
+          <div class="reason-text">Gen A's phrasing flows better with the upbeat cadence of the surrounding lines.</div>
+        </div>
+        <div class="reason-item winner-blend">
+          <div class="reason-meta"><span class="badge blend">Blended</span><span class="reason-track">Savage · line 17</span></div>
+          <div class="reason-original">Je dors sur mes deux oreilles</div>
+          <div class="reason-chosen">"I sleep without a care"</div>
+          <div class="reason-text">Neither generator captured the French idiom "dormir sur ses deux oreilles"; blended used a natural English equivalent.</div>
+        </div>
+        <div class="reason-item winner-b">
+          <div class="reason-meta"><span class="badge b">Gen B won</span><span class="reason-track">Habibi · line 31</span></div>
+          <div class="reason-original">قلبي معاك</div>
+          <div class="reason-chosen">"My heart is with you"</div>
+          <div class="reason-text">Gen A added "stays" — permanence not in the original. Gen B's literal rendering is more accurate.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Dataset per time range ──
+  const DATA = {
+    '24h': {
+      subtitle: '3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini Flash · last 24 hours',
+      costPeriod: '24 hours',
+      winA: '51%', winB: '28%', winBlend: '21%',
+      confA: '82%', confB: '84%', tracksA: '3', tracksB: '3', latency: '16s', evals: '3',
+      totalLines: '142 lines',
+      segA: 0.51, segB: 0.28, segBlendVal: 0.21,
+      confHigh: '61%', confMed: '24%', confLow: '15%',
+      donutHigh: 61, donutMed: 24, donutLow: 15,
+      speedA: '52s', speedB: '68s', speedG: '14s', speedTotal: '134s',
+      speedPctA: 52, speedPctB: 68, speedPctG: 14,
+      costA: '$0.09', tokensA: '21k tokens',
+      costB: '$0.06', tokensB: '14k tokens',
+      costG: '$0.01', tokensG: '22k tokens',
+      costTotal: '$0.16',
+      langAr: 72, langHi: 58, langEs: 30, langFr: 0, langKo: 44,
+      recentLabel: 'Last 3',
+      trackRows: [
+        ['Habibi', 'Amr Diab', '62', 'a', 'Gen A', 'orange', 'Medium'],
+        ['Tum Hi Ho', 'Arijit Singh', '48', 'blend', 'Blended', 'green', 'High'],
+        ['BTS — Butter', 'BTS', '58', 'blend', 'Blended', 'green', 'High'],
+      ]
+    },
+    '7d': {
+      subtitle: '3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini Flash · last 7 days',
+      costPeriod: '7 days',
+      winA: '47%', winB: '30%', winBlend: '23%',
+      confA: '79%', confB: '82%', tracksA: '12', tracksB: '12', latency: '17s', evals: '12',
+      totalLines: '586 lines',
+      segA: 0.47, segB: 0.30, segBlendVal: 0.23,
+      confHigh: '55%', confMed: '25%', confLow: '20%',
+      donutHigh: 55, donutMed: 25, donutLow: 20,
+      speedA: '54s', speedB: '70s', speedG: '17s', speedTotal: '141s',
+      speedPctA: 54, speedPctB: 70, speedPctG: 17,
+      costA: '$0.38', tokensA: '87k tokens',
+      costB: '$0.27', tokensB: '61k tokens',
+      costG: '$0.03', tokensG: '96k tokens',
+      costTotal: '$0.68',
+      langAr: 70, langHi: 55, langEs: 26, langFr: 20, langKo: 42,
+      recentLabel: 'Last 5',
+      trackRows: [
+        ['Habibi', 'Amr Diab', '62', 'a', 'Gen A', 'orange', 'Medium'],
+        ['Tum Hi Ho', 'Arijit Singh', '48', 'blend', 'Blended', 'green', 'High'],
+        ['Malamente', 'Rosalía', '34', 'b', 'Gen B', 'green', 'High'],
+        ['Savage', 'Stromae', '51', 'a', 'Gen A', 'red', 'Low'],
+        ['BTS — Butter', 'BTS', '58', 'blend', 'Blended', 'green', 'High'],
+      ]
+    },
+    '30d': {
+      subtitle: '3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini Flash · last 30 days',
+      costPeriod: '30 days',
+      winA: '44%', winB: '31%', winBlend: '25%',
+      confA: '78%', confB: '81%', tracksA: '38', tracksB: '38', latency: '18s', evals: '38',
+      totalLines: '1,847 lines',
+      segA: 0.44, segB: 0.31, segBlendVal: 0.25,
+      confHigh: '52%', confMed: '26%', confLow: '22%',
+      donutHigh: 52, donutMed: 26, donutLow: 22,
+      speedA: '55s', speedB: '72s', speedG: '18s', speedTotal: '145s',
+      speedPctA: 55, speedPctB: 72, speedPctG: 18,
+      costA: '$1.24', tokensA: '284k tokens',
+      costB: '$0.87', tokensB: '198k tokens',
+      costG: '$0.11', tokensG: '312k tokens',
+      costTotal: '$2.22',
+      langAr: 68, langHi: 54, langEs: 28, langFr: 19, langKo: 41,
+      recentLabel: 'Last 5',
+      trackRows: [
+        ['Habibi', 'Amr Diab', '62', 'a', 'Gen A', 'orange', 'Medium'],
+        ['Tum Hi Ho', 'Arijit Singh', '48', 'blend', 'Blended', 'green', 'High'],
+        ['Malamente', 'Rosalía', '34', 'b', 'Gen B', 'green', 'High'],
+        ['Savage', 'Stromae', '51', 'a', 'Gen A', 'red', 'Low'],
+        ['BTS — Butter', 'BTS', '58', 'blend', 'Blended', 'green', 'High'],
+      ]
+    },
+    'all': {
+      subtitle: '3-model pipeline · GPT-5.1 × Claude Sonnet × Gemini Flash · all time',
+      costPeriod: 'All time',
+      winA: '43%', winB: '33%', winBlend: '24%',
+      confA: '77%', confB: '80%', tracksA: '94', tracksB: '94', latency: '19s', evals: '94',
+      totalLines: '4,612 lines',
+      segA: 0.43, segB: 0.33, segBlendVal: 0.24,
+      confHigh: '49%', confMed: '28%', confLow: '23%',
+      donutHigh: 49, donutMed: 28, donutLow: 23,
+      speedA: '57s', speedB: '75s', speedG: '19s', speedTotal: '151s',
+      speedPctA: 57, speedPctB: 75, speedPctG: 19,
+      costA: '$3.12', tokensA: '714k tokens',
+      costB: '$2.18', tokensB: '497k tokens',
+      costG: '$0.28', tokensG: '781k tokens',
+      costTotal: '$5.58',
+      langAr: 71, langHi: 57, langEs: 32, langFr: 22, langKo: 45,
+      recentLabel: 'Last 5',
+      trackRows: [
+        ['Habibi', 'Amr Diab', '62', 'a', 'Gen A', 'orange', 'Medium'],
+        ['Tum Hi Ho', 'Arijit Singh', '48', 'blend', 'Blended', 'green', 'High'],
+        ['Malamente', 'Rosalía', '34', 'b', 'Gen B', 'green', 'High'],
+        ['Savage', 'Stromae', '51', 'a', 'Gen A', 'red', 'Low'],
+        ['BTS — Butter', 'BTS', '58', 'blend', 'Blended', 'green', 'High'],
+      ]
+    }
+  };
+
+  function setRange(range) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-range="${range}"]`).classList.add('active');
+
+    const d = DATA[range];
+
+    // Header
+    document.getElementById('subtitle').textContent = d.subtitle;
+
+    // Model cards
+    document.getElementById('winA').textContent = d.winA;
+    document.getElementById('barA').style.width = d.winA;
+    document.getElementById('confA').textContent = d.confA;
+    document.getElementById('tracksA').textContent = d.tracksA;
+
+    document.getElementById('winB').textContent = d.winB;
+    document.getElementById('barB').style.width = d.winB;
+    document.getElementById('confB').textContent = d.confB;
+    document.getElementById('tracksB').textContent = d.tracksB;
+
+    document.getElementById('winBlend').textContent = d.winBlend;
+    document.getElementById('barBlend').style.width = d.winBlend;
+    document.getElementById('latency').textContent = d.latency;
+    document.getElementById('evals').textContent = d.evals;
+
+    // Winner dist
+    document.getElementById('totalLines').textContent = d.totalLines;
+    const segA = document.getElementById('segA');
+    const segB = document.getElementById('segB');
+    const segBl = document.getElementById('segBlendBar');
+    segA.style.flex = d.segA; segA.textContent = d.winA;
+    segB.style.flex = d.segB; segB.textContent = d.winB;
+    segBl.style.flex = d.segBlendVal; segBl.textContent = d.winBlend;
+
+    // Confidence donut
+    document.getElementById('confHigh').textContent = d.confHigh;
+    document.getElementById('confMed').textContent = d.confMed;
+    document.getElementById('confLow').textContent = d.confLow;
+    const h = d.donutHigh, m = d.donutMed, lo = d.donutLow;
+    document.getElementById('donut').style.background =
+      `conic-gradient(#3fffaa 0% ${h}%, #ff9f40 ${h}% ${h+m}%, #ff4d96 ${h+m}% 100%)`;
+
+    // Speed
+    document.getElementById('speedA').textContent = d.speedA;
+    document.getElementById('speedBarA').style.width = d.speedPctA + '%';
+    document.getElementById('speedB').textContent = d.speedB;
+    document.getElementById('speedBarB').style.width = d.speedPctB + '%';
+    document.getElementById('speedG').textContent = d.speedG;
+    document.getElementById('speedBarG').style.width = d.speedPctG + '%';
+    document.getElementById('speedTotal').textContent = d.speedTotal;
+
+    // Cost
+    document.getElementById('costPeriod').textContent = d.costPeriod;
+    document.getElementById('costA').textContent = d.costA;
+    document.getElementById('tokensA').textContent = d.tokensA;
+    document.getElementById('costB').textContent = d.costB;
+    document.getElementById('tokensB').textContent = d.tokensB;
+    document.getElementById('costG').textContent = d.costG;
+    document.getElementById('tokensG').textContent = d.tokensG;
+    document.getElementById('costTotal').textContent = d.costTotal;
+
+    // Language
+    const langs = [
+      ['langAr','langArPct',d.langAr],
+      ['langHi','langHiPct',d.langHi],
+      ['langEs','langEsPct',d.langEs],
+      ['langFr','langFrPct',d.langFr],
+      ['langKo','langKoPct',d.langKo],
+    ];
+    langs.forEach(([barId, pctId, val]) => {
+      document.getElementById(barId).style.width = val + '%';
+      document.getElementById(pctId).textContent = val + '%';
+    });
+
+    // Track table
+    document.getElementById('recentLabel').textContent = d.recentLabel;
+    const tbody = document.getElementById('trackTableBody');
+    tbody.innerHTML = d.trackRows.map(([name, artist, lines, winCls, winLabel, confCls, confLabel]) => `
+      <tr>
+        <td><div class="track-name">${name}</div><div class="track-artist">${artist}</div></td>
+        <td>${lines}</td>
+        <td><span class="badge ${winCls}">${winLabel}</span></td>
+        <td><span class="badge ${confCls}">${confLabel}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  // Init donut on load
+  setRange('30d');
+</script>
+</body>
+</html>

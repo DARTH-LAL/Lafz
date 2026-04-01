@@ -2,6 +2,8 @@ import type { AiArtistMemory, AiCanonicalRendering, AiTranslationDraftFile } fro
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { getAiArtistMemory } from "@/features/ai/artist-memory";
 import { normalizeLookupText } from "@/features/ai/romanized-normalization";
+import { enqueueVocabularyAgentJob } from "@/features/brain/agent-jobs";
+import { recordDraftClaimsIntoLafzBrain } from "@/features/brain/claims";
 import { buildSongTranslationMemoryPack } from "@/features/brain/memory-pack";
 import {
   linkArtistProfileNode,
@@ -629,10 +631,27 @@ export async function syncDraftIntoLafzBrain(draftFile: AiTranslationDraftFile) 
     generatedAt: draftFile.generatedAt
   });
 
+  void recordDraftClaimsIntoLafzBrain({
+    draftFile,
+    songNodeId: songNode.id,
+    artists: hydratedArtists.map((artist) => ({
+      artistKey: artist.artistKey,
+      displayName: artist.name,
+      memory: artist.memory
+    }))
+  });
+
   await buildSongTranslationMemoryPack({
     spotifyTrackId: draftFile.spotifyTrackId,
     artist: draftFile.artist,
     candidateTexts: draftFile.lines.slice(0, 24).map((line) => line.original),
     forceRefresh: true
+  });
+
+  void enqueueVocabularyAgentJob({
+    draftFile,
+    songNodeId: songNode.id
+  }).catch(() => {
+    // Non-fatal queue side effect.
   });
 }

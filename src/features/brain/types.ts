@@ -34,6 +34,35 @@ export type LafzBrainConfidence = "low" | "medium" | "high";
 
 export type LafzBrainKnowledgeScope = "canonical" | "artist_local" | "song_local";
 
+export type LafzBrainClaimType =
+  | "song_motif_observation"
+  | "song_symbol_observation"
+  | "song_relationship_observation"
+  | "song_vocabulary_observation"
+  | "artist_term_usage_observation";
+
+export type LafzBrainClaimScopeType = "global" | "artist" | "song";
+
+export type LafzBrainClaimStatus = "proposed" | "accepted" | "rejected" | "deprecated";
+
+export type LafzBrainEvidenceSourceType =
+  | "world_model"
+  | "song_context"
+  | "artist_memory"
+  | "draft_line"
+  | "correction_memory"
+  | "vocabulary_extractor";
+
+export type LafzBrainPromotionDecision = "accepted" | "rejected" | "deferred";
+
+export type LafzAgentJobType = "vocabulary_agent";
+
+export type LafzAgentJobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "cancelled" | "dead_lettered";
+
+export type LafzAgentScopeType = "song" | "artist" | "global";
+
+export type LafzAgentRunStatus = "running" | "completed" | "failed" | "cancelled";
+
 export type LafzBrainNodeRecord = {
   id: string;
   nodeType: LafzBrainNodeType;
@@ -130,4 +159,83 @@ export type LafzBrainMemoryPackCacheRecord = {
   payload: LafzBrainMemoryPack;
   updatedAt: string;
   version: number;
+};
+
+export type LafzBrainClaimRecord = {
+  id: string;
+  claimKey: string;
+  claimType: LafzBrainClaimType;
+  scopeType: LafzBrainClaimScopeType;
+  scopeKey: string;
+  normalizedKey: string;
+  status: LafzBrainClaimStatus;
+  confidenceScore: number;
+  sourceCount: number;
+  evidenceCount: number;
+  payload: Record<string, unknown>;
+  agentSessionId: string | null;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type LafzBrainEvidenceRecord = {
+  id: string;
+  claimId: string;
+  sourceType: LafzBrainEvidenceSourceType;
+  spotifyTrackId: string | null;
+  artistKey: string | null;
+  lineOrder: number | null;
+  weight: number;
+  payload: Record<string, unknown>;
+  agentSessionId: string | null;
+  createdAt: string | null;
+};
+
+export type LafzBrainPromotionRecord = {
+  id: string;
+  claimId: string;
+  decision: LafzBrainPromotionDecision;
+  promotedNodeId: string | null;
+  promotedEdgeId: string | null;
+  reason: string | null;
+  decidedBy: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string | null;
+};
+
+export type LafzAgentJobRecord = {
+  id: string;
+  jobKey: string;
+  jobType: LafzAgentJobType;
+  status: LafzAgentJobStatus;
+  scopeType: LafzAgentScopeType;
+  scopeKey: string;
+  spotifyTrackId: string | null;
+  priority: number;
+  availableAt: string | null;
+  claimedAt: string | null;
+  claimedBy: string | null;
+  lastHeartbeatAt: string | null;
+  attemptCount: number;
+  lastError: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type LafzAgentRunRecord = {
+  id: string;
+  jobId: string;
+  agentRole: string;
+  status: LafzAgentRunStatus;
+  workerId: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  errorText: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
