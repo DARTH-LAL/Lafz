@@ -282,14 +282,16 @@ export function NowPlayingClient() {
                         <p className="mt-4 text-[13px] leading-[1.65] text-white">
                           {payload.aiDraft
                             ? "An AI draft exists — open the track page to review it and enable real-time sync."
-                            : "This song hasn't been translated yet. Head to the track page to get started."}
+                            : "This song hasn't been translated yet."}
                         </p>
-                        <Link
-                          href={resolvedTrackDetailHref}
-                          className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_0_20px_rgba(255,20,100,0.30)] transition hover:opacity-90"
-                        >
-                          Open track page
-                        </Link>
+                        {payload.aiDraft && (
+                          <Link
+                            href={resolvedTrackDetailHref}
+                            className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff1464,#ff6aaa)] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_0_20px_rgba(255,20,100,0.30)] transition hover:opacity-90"
+                          >
+                            Open track page
+                          </Link>
+                        )}
                       </div>
                     </div>
                   )}

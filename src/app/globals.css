@@ -18,6 +18,15 @@
   box-sizing: border-box;
 }
 
+@keyframes lafz-stagger {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 12px #ff1464); }
+  50%       { opacity: 0.15; filter: none; }
+}
+.lafz-l1 { color: #fff0f6; animation: lafz-stagger 1.4s ease-in-out infinite; animation-delay: 0s; }
+.lafz-l2 { color: #fff0f6; animation: lafz-stagger 1.4s ease-in-out infinite; animation-delay: 0.18s; }
+.lafz-l3 { color: #ff1464; animation: lafz-stagger 1.4s ease-in-out infinite; animation-delay: 0.36s; }
+.lafz-l4 { color: #fff0f6; animation: lafz-stagger 1.4s ease-in-out infinite; animation-delay: 0.54s; }
+
 html {
   min-height: 100%;
 }
