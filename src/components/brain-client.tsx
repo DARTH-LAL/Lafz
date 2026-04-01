@@ -41,6 +41,49 @@ type GraphData = {
   };
 };
 
+type MemoryPackTextHint = {
+  value: string;
+  score: number;
+  confidence: string;
+  reasons: string[];
+};
+
+type MemoryPackSymbolHint = {
+  symbol: string;
+  score: number;
+  confidence: string;
+  frequency: number;
+  reasons: string[];
+};
+
+type MemoryPackRenderingHint = {
+  term: string;
+  meaning: string;
+  score: number;
+  confidence: string;
+  reasons: string[];
+};
+
+type MemoryPackData = {
+  spotifyTrackId: string;
+  artist: string;
+  cachedAt: string | null;
+  pack: {
+    sourceSongIds: string[];
+    styleHintDetails: MemoryPackTextHint[];
+    motifHintDetails: MemoryPackTextHint[];
+    relationshipPriorDetails: MemoryPackTextHint[];
+    symbolHints: MemoryPackSymbolHint[];
+    renderingHints: MemoryPackRenderingHint[];
+    audit: {
+      sourceSongIdsCount: number;
+      candidateTextCount: number;
+      filteredCounts: Record<string, number>;
+      appliedRules: string[];
+    };
+  };
+};
+
 const NODE_COLORS: Record<string, string> = {
   artist: "#ff1464",
   song: "#ff6ba8",
@@ -149,10 +192,138 @@ function NodeDetail({ node }: { node: GraphNode | null }) {
   );
 }
 
+function RetrievalSection({ title, items }: { title: string; items: Array<{ label: string; score: number; subtitle?: string }> }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">{title}</p>
+      <div className="flex flex-col gap-1.5">
+        {items.map((item) => (
+          <div
+            key={`${title}-${item.label}`}
+            className="rounded-xl px-3 py-2"
+            style={{
+              background: "rgba(15,8,12,0.9)",
+              border: "1px solid rgba(255,20,100,0.16)"
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-[12px] font-semibold text-white leading-snug">{item.label}</span>
+              <span className="text-[10px] font-bold text-[#ff6ba8]">{item.score.toFixed(2)}</span>
+            </div>
+            {item.subtitle && <p className="mt-1 text-[11px] text-[#8a7898] leading-snug">{item.subtitle}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MemoryPackPanel({
+  memoryPack,
+  loading
+}: {
+  memoryPack: MemoryPackData | null;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          background: "rgba(6,2,5,0.92)",
+          border: "1px solid rgba(255,20,100,0.20)",
+          boxShadow: "0 0 12px rgba(255,20,100,0.10)"
+        }}
+      >
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">Retrieval</p>
+        <p className="mt-2 text-[12px] text-[#ff6ba8]">Loading memory pack…</p>
+      </div>
+    );
+  }
+
+  if (!memoryPack) {
+    return null;
+  }
+
+  const topStyle = memoryPack.pack.styleHintDetails.slice(0, 3).map((item) => ({
+    label: item.value,
+    score: item.score,
+    subtitle: item.reasons[0]
+  }));
+  const topMotifs = memoryPack.pack.motifHintDetails.slice(0, 3).map((item) => ({
+    label: item.value,
+    score: item.score,
+    subtitle: item.reasons[0]
+  }));
+  const topRelationships = memoryPack.pack.relationshipPriorDetails.slice(0, 3).map((item) => ({
+    label: item.value,
+    score: item.score,
+    subtitle: item.reasons[0]
+  }));
+  const topSymbols = memoryPack.pack.symbolHints.slice(0, 3).map((item) => ({
+    label: item.symbol,
+    score: item.score,
+    subtitle: `${item.frequency} prior song${item.frequency === 1 ? "" : "s"}`
+  }));
+  const topRenderings = memoryPack.pack.renderingHints.slice(0, 4).map((item) => ({
+    label: `${item.term} -> ${item.meaning}`,
+    score: item.score,
+    subtitle: item.reasons[0]
+  }));
+
+  return (
+    <div
+      className="rounded-2xl p-4 flex flex-col gap-3"
+      style={{
+        background: "rgba(6,2,5,0.92)",
+        border: "1px solid rgba(255,20,100,0.20)",
+        boxShadow: "0 0 12px rgba(255,20,100,0.10)"
+      }}
+    >
+      <div className="flex flex-col gap-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">Retrieval</p>
+        <p className="text-[12px] text-white font-semibold">{memoryPack.artist}</p>
+        <p className="text-[11px] text-[#8a7898]">
+          {memoryPack.pack.audit.sourceSongIdsCount} source song{memoryPack.pack.audit.sourceSongIdsCount === 1 ? "" : "s"}
+          {memoryPack.cachedAt ? ` • cached ${new Date(memoryPack.cachedAt).toLocaleString()}` : ""}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {memoryPack.pack.audit.appliedRules.map((rule) => (
+          <span
+            key={rule}
+            className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+            style={{
+              background: "rgba(255,20,100,0.10)",
+              color: "#ff6ba8",
+              border: "1px solid rgba(255,20,100,0.20)"
+            }}
+          >
+            {rule}
+          </span>
+        ))}
+      </div>
+
+      <RetrievalSection title="Style" items={topStyle} />
+      <RetrievalSection title="Motifs" items={topMotifs} />
+      <RetrievalSection title="Relationships" items={topRelationships} />
+      <RetrievalSection title="Symbols" items={topSymbols} />
+      <RetrievalSection title="Renderings" items={topRenderings} />
+    </div>
+  );
+}
+
 export function BrainClient() {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memoryPack, setMemoryPack] = useState<MemoryPackData | null>(null);
+  const [memoryPackLoading, setMemoryPackLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
@@ -212,6 +383,64 @@ export function BrainClient() {
   useEffect(() => {
     fetchGraph();
   }, [fetchGraph]);
+
+  useEffect(() => {
+    const spotifyTrackId =
+      selectedNode?.type === "song" && typeof selectedNode.metadata.spotifyTrackId === "string"
+        ? selectedNode.metadata.spotifyTrackId
+        : null;
+    const artist =
+      selectedNode?.type === "song" && typeof selectedNode.metadata.artist === "string"
+        ? selectedNode.metadata.artist
+        : null;
+
+    if (!spotifyTrackId || !artist) {
+      setMemoryPack(null);
+      setMemoryPackLoading(false);
+      return;
+    }
+
+    const resolvedSpotifyTrackId = spotifyTrackId;
+    const resolvedArtist = artist;
+
+    let cancelled = false;
+
+    async function fetchMemoryPack() {
+      setMemoryPackLoading(true);
+
+      try {
+        const params = new URLSearchParams();
+        params.set("mode", "memory-pack");
+        params.set("spotifyTrackId", resolvedSpotifyTrackId);
+        params.set("artist", resolvedArtist);
+        const res = await fetch(`/api/brain?${params}`);
+
+        if (!res.ok) {
+          throw new Error("Failed to load memory pack");
+        }
+
+        const data = await res.json();
+
+        if (!cancelled) {
+          setMemoryPack(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setMemoryPack(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setMemoryPackLoading(false);
+        }
+      }
+    }
+
+    fetchMemoryPack();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedNode]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -494,6 +723,7 @@ export function BrainClient() {
         {/* Node detail panel */}
         <div className="flex w-64 flex-shrink-0 flex-col gap-3">
           <NodeDetail node={activeNode} />
+          <MemoryPackPanel memoryPack={memoryPack} loading={memoryPackLoading} />
 
 
           {/* Legend */}

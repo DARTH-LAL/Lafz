@@ -14,6 +14,7 @@ import type {
 
 const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_OPENAI_GENERATOR_A_MODEL = "gpt-5.4-mini";
+const DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
 const OPENAI_REQUEST_TIMEOUT_MS = 180_000;
 
 type BasePromptOptions = {
@@ -1238,6 +1239,48 @@ async function callOpenAiJson<T>(options: {
   } catch {
     throw new Error(`OpenAI returned JSON that could not be parsed for ${options.errorLabel.toLowerCase()}.`);
   }
+}
+
+export async function requestOpenAiEmbeddings(input: string[]) {
+  const normalizedInput = input.map((value) => value.trim()).filter(Boolean);
+
+  if (normalizedInput.length === 0) {
+    return [] as number[][];
+  }
+
+  const response = await fetch(`${getOpenAiBaseUrl()}/embeddings`, {
+    method: "POST",
+    headers: getOpenAiAuthHeaders(),
+    signal: AbortSignal.timeout(OPENAI_REQUEST_TIMEOUT_MS),
+    body: JSON.stringify({
+      model: process.env.OPENAI_EMBEDDING_MODEL?.trim() || DEFAULT_OPENAI_EMBEDDING_MODEL,
+      input: normalizedInput
+    })
+  });
+
+  const payload = (await response.json().catch(() => null)) as unknown;
+
+  if (!response.ok) {
+    throw new Error(extractOpenAiErrorMessage(payload, `OpenAI embeddings failed with status ${response.status}.`));
+  }
+
+  if (!isRecord(payload) || !Array.isArray(payload.data)) {
+    throw new Error("OpenAI embeddings returned an invalid response shape.");
+  }
+
+  return payload.data.map((entry, index) => {
+    if (!isRecord(entry) || !Array.isArray(entry.embedding)) {
+      throw new Error(`OpenAI embeddings returned an invalid vector at index ${index}.`);
+    }
+
+    const vector = entry.embedding.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+    if (vector.length === 0) {
+      throw new Error(`OpenAI embeddings returned an empty vector at index ${index}.`);
+    }
+
+    return vector;
+  });
 }
 
 export function parseGeneratedLines(

@@ -425,6 +425,57 @@ function chunkArray<T>(items: T[], chunkSize: number) {
   return chunks;
 }
 
+function getAiPipelineErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isTimeoutLikeAiError(error: unknown) {
+  return /timeout|timed out|aborted/i.test(getAiPipelineErrorMessage(error));
+}
+
+function isRetryableAiProviderError(error: unknown) {
+  return /timeout|timed out|aborted|fetch failed|connect|connection|socket|econnrefused|etimedout|network/i.test(
+    getAiPipelineErrorMessage(error)
+  );
+}
+
+function annotateProviderStageError(provider: string, stage: string, error: unknown) {
+  const originalMessage = getAiPipelineErrorMessage(error);
+
+  if (originalMessage.toLowerCase().includes(provider.toLowerCase()) && originalMessage.toLowerCase().includes(stage.toLowerCase())) {
+    return error instanceof Error ? error : new Error(originalMessage);
+  }
+
+  const prefix = isTimeoutLikeAiError(error)
+    ? `${provider} ${stage} timed out while Lafz was waiting for the provider response.`
+    : `${provider} ${stage} failed.`;
+
+  return new Error(`${prefix} ${originalMessage}`);
+}
+
+async function withProviderStageRetry<T>(options: {
+  provider: string;
+  stage: string;
+  action: () => Promise<T>;
+  retries?: number;
+}) {
+  const retries = options.retries ?? 1;
+  let attempt = 0;
+
+  while (true) {
+    try {
+      return await options.action();
+    } catch (error) {
+      if (!isRetryableAiProviderError(error) || attempt >= retries) {
+        throw annotateProviderStageError(options.provider, options.stage, error);
+      }
+
+      attempt += 1;
+      console.warn(`[lafz] Retrying ${options.provider} ${options.stage} after recoverable provider error (attempt ${attempt + 1}).`);
+    }
+  }
+}
+
 function buildSourceLinesFromDraft(draft: AiTranslationDraftFile) {
   return [...draft.lines]
     .sort((left, right) => left.order - right.order)
@@ -968,6 +1019,114 @@ async function loadRelevantGlossaryEntries(options: {
   );
 }
 
+async function requestMeaningBatchWithRecovery(options: {
+  provider: string;
+  stage: string;
+  batch: SourceDraftLine[];
+  requestBatch: (batch: SourceDraftLine[]) => Promise<{ model: string; sourceLanguage: string; lines: MeaningAnalysisLine[] }>;
+  retryAttempt?: number;
+}): Promise<{ model: string; sourceLanguage: string; lines: MeaningAnalysisLine[] }> {
+  try {
+    return await options.requestBatch(options.batch);
+  } catch (error) {
+    if (!isRetryableAiProviderError(error)) {
+      throw annotateProviderStageError(options.provider, options.stage, error);
+    }
+
+    const retryAttempt = options.retryAttempt ?? 0;
+
+    if (retryAttempt < 1) {
+      console.warn(`[lafz] Retrying ${options.provider} ${options.stage} batch after recoverable provider error.`);
+      return requestMeaningBatchWithRecovery({
+        ...options,
+        retryAttempt: retryAttempt + 1
+      });
+    }
+
+    if (options.batch.length > 1) {
+      const midpoint = Math.ceil(options.batch.length / 2);
+      console.warn(
+        `[lafz] ${options.provider} ${options.stage} still slow after retry; splitting ${options.batch.length} lines into ${midpoint} and ${
+          options.batch.length - midpoint
+        }.`
+      );
+
+      const left = await requestMeaningBatchWithRecovery({
+        ...options,
+        batch: options.batch.slice(0, midpoint),
+        retryAttempt: 0
+      });
+      const right = await requestMeaningBatchWithRecovery({
+        ...options,
+        batch: options.batch.slice(midpoint),
+        retryAttempt: 0
+      });
+
+      return {
+        model: left.model || right.model,
+        sourceLanguage: left.sourceLanguage || right.sourceLanguage,
+        lines: [...left.lines, ...right.lines]
+      };
+    }
+
+    throw annotateProviderStageError(options.provider, options.stage, error);
+  }
+}
+
+async function requestDraftBatchWithRecovery(options: {
+  provider: string;
+  stage: string;
+  batch: SourceDraftLine[];
+  requestBatch: (batch: SourceDraftLine[]) => Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }>;
+  retryAttempt?: number;
+}): Promise<{ model: string; sourceLanguage: string; lines: GeneratedTranslationLineDraft[] }> {
+  try {
+    return await options.requestBatch(options.batch);
+  } catch (error) {
+    if (!isRetryableAiProviderError(error)) {
+      throw annotateProviderStageError(options.provider, options.stage, error);
+    }
+
+    const retryAttempt = options.retryAttempt ?? 0;
+
+    if (retryAttempt < 1) {
+      console.warn(`[lafz] Retrying ${options.provider} ${options.stage} batch after recoverable provider error.`);
+      return requestDraftBatchWithRecovery({
+        ...options,
+        retryAttempt: retryAttempt + 1
+      });
+    }
+
+    if (options.batch.length > 1) {
+      const midpoint = Math.ceil(options.batch.length / 2);
+      console.warn(
+        `[lafz] ${options.provider} ${options.stage} still slow after retry; splitting ${options.batch.length} lines into ${midpoint} and ${
+          options.batch.length - midpoint
+        }.`
+      );
+
+      const left = await requestDraftBatchWithRecovery({
+        ...options,
+        batch: options.batch.slice(0, midpoint),
+        retryAttempt: 0
+      });
+      const right = await requestDraftBatchWithRecovery({
+        ...options,
+        batch: options.batch.slice(midpoint),
+        retryAttempt: 0
+      });
+
+      return {
+        model: left.model || right.model,
+        sourceLanguage: left.sourceLanguage || right.sourceLanguage,
+        lines: [...left.lines, ...right.lines]
+      };
+    }
+
+    throw annotateProviderStageError(options.provider, options.stage, error);
+  }
+}
+
 function buildCorrectionExamplesFromDraftLines(
   draftLines: AiDraftLine[],
   orders: Set<number>,
@@ -1061,17 +1220,23 @@ async function generateSongContext(
     preferredRenderings
   });
 
-  const response = await requestOpenAiSongContext({
-    title: options.title,
-    artist: options.artist,
-    album: options.album,
-    sourceLanguage: requestedSourceLanguage,
-    glossaryEntries,
-    artistMemory,
-    lines: sampledLines.map((line) => ({
-      index: line.order + 1,
-      original: line.original
-    }))
+  const response = await withProviderStageRetry({
+    provider: "OpenAI",
+    stage: "song context",
+    retries: 1,
+    action: () =>
+      requestOpenAiSongContext({
+        title: options.title,
+        artist: options.artist,
+        album: options.album,
+        sourceLanguage: requestedSourceLanguage,
+        glossaryEntries,
+        artistMemory,
+        lines: sampledLines.map((line) => ({
+          index: line.order + 1,
+          original: line.original
+        }))
+      })
   }).catch(() => null);
 
   return {
@@ -1121,30 +1286,35 @@ async function generateMeaningLinesInBatches(
   });
 
   for (const batch of batches) {
+    const aiResponse = await requestMeaningBatchWithRecovery({
+      provider: "OpenAI",
+      stage: "meaning analysis",
+      batch,
+      requestBatch: (currentBatch) =>
+        requestOpenAiMeaningAnalysis({
+          title: options.title,
+          artist: options.artist,
+          album: options.album,
+          sourceLanguage: inferredSourceLanguage,
+          glossaryEntries,
+          songContext,
+          artistMemory,
+          lines: currentBatch.map((line) => {
+            const group = groupLookup.get(line.order);
+            const normalizedLine = normalizedSourceLookup.get(line.order);
 
-    const aiResponse = await requestOpenAiMeaningAnalysis({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage: inferredSourceLanguage,
-      glossaryEntries,
-      songContext,
-      artistMemory,
-      lines: batch.map((line) => {
-        const group = groupLookup.get(line.order);
-        const normalizedLine = normalizedSourceLookup.get(line.order);
-
-        return {
-          index: line.order + 1,
-          original: line.original,
-          normalizedOriginal: normalizedLine?.canonical ?? null,
-          normalizationNotes: normalizedLine?.notes ?? [],
-          contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-          contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-          groupIndex: group?.index,
-          groupText: includeGroupText ? group?.text : undefined
-        };
-      })
+            return {
+              index: line.order + 1,
+              original: line.original,
+              normalizedOriginal: normalizedLine?.canonical ?? null,
+              normalizationNotes: normalizedLine?.notes ?? [],
+              contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+              contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+              groupIndex: group?.index,
+              groupText: includeGroupText ? group?.text : undefined
+            };
+          })
+        })
     });
 
     model = aiResponse.model;
@@ -1201,36 +1371,42 @@ async function generateWorldModel(
     preferredRenderings
   });
 
-  const response = await requestOpenAiWorldModel({
-    title: options.title,
-    artist: options.artist,
-    album: options.album,
-    sourceLanguage: requestedSourceLanguage,
-    songContext,
-    glossaryEntries,
-    artistMemory,
-    verses: sourceGroups.map((group) => ({
-      groupIndex: group.index,
-      startOrder: group.lineOrders[0] ?? 0,
-      endOrder: group.lineOrders[group.lineOrders.length - 1] ?? 0,
-      text: group.text
-    })),
-    lines: sourceLines.map((line) => {
-      const group = groupLookup.get(line.order);
-      const normalizedLine = normalizedSourceLookup.get(line.order);
-      const meaningLine = meaningLines[line.order];
+  const response = await withProviderStageRetry({
+    provider: "OpenAI",
+    stage: "world model",
+    retries: 1,
+    action: () =>
+      requestOpenAiWorldModel({
+        title: options.title,
+        artist: options.artist,
+        album: options.album,
+        sourceLanguage: requestedSourceLanguage,
+        songContext,
+        glossaryEntries,
+        artistMemory,
+        verses: sourceGroups.map((group) => ({
+          groupIndex: group.index,
+          startOrder: group.lineOrders[0] ?? 0,
+          endOrder: group.lineOrders[group.lineOrders.length - 1] ?? 0,
+          text: group.text
+        })),
+        lines: sourceLines.map((line) => {
+          const group = groupLookup.get(line.order);
+          const normalizedLine = normalizedSourceLookup.get(line.order);
+          const meaningLine = meaningLines[line.order];
 
-      return {
-        index: line.order + 1,
-        original: line.original,
-        normalizedOriginal: normalizedLine?.canonical ?? null,
-        meaning: meaningLine?.meaning ?? line.original,
-        impliedMeaning: meaningLine?.impliedMeaning ?? null,
-        register: meaningLine?.register ?? null,
-        groupIndex: group?.index ?? null,
-        groupText: group?.text ?? null
-      };
-    })
+          return {
+            index: line.order + 1,
+            original: line.original,
+            normalizedOriginal: normalizedLine?.canonical ?? null,
+            meaning: meaningLine?.meaning ?? line.original,
+            impliedMeaning: meaningLine?.impliedMeaning ?? null,
+            register: meaningLine?.register ?? null,
+            groupIndex: group?.index ?? null,
+            groupText: group?.text ?? null
+          };
+        })
+      })
   });
 
   return {
@@ -1255,6 +1431,7 @@ async function generateDraftLinesInBatches(
   verseStateLookup: Map<number, AiVerseState>,
   worldModelLineLookup: Map<number, AiWorldModelLine>,
   meaningLines: MeaningAnalysisLine[],
+  providerLabel: "OpenAI" | "Anthropic",
   requestDraft: DraftRequester,
   previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
@@ -1287,47 +1464,52 @@ async function generateDraftLinesInBatches(
   ]);
 
   for (const batch of batches) {
+    const aiResponse = await requestDraftBatchWithRecovery({
+      provider: providerLabel,
+      stage: providerLabel === "OpenAI" ? "generator A draft generation" : "generator B draft generation",
+      batch,
+      requestBatch: (currentBatch) =>
+        requestDraft({
+          title: options.title,
+          artist: options.artist,
+          album: options.album,
+          sourceLanguage: inferredSourceLanguage,
+          targetLanguage: normalizeLanguage(options.targetLanguage),
+          includeTransliteration: options.includeTransliteration,
+          includeNotes: options.includeNotes,
+          glossaryEntries,
+          songContext,
+          worldModel,
+          artistMemory,
+          lines: currentBatch.map((line) => {
+            const group = groupLookup.get(line.order);
+            const normalizedLine = normalizedSourceLookup.get(line.order);
+            const meaningLine = meaningLines[line.order];
 
-    const aiResponse = await requestDraft({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage: inferredSourceLanguage,
-      targetLanguage: normalizeLanguage(options.targetLanguage),
-      includeTransliteration: options.includeTransliteration,
-      includeNotes: options.includeNotes,
-      glossaryEntries,
-      songContext,
-      worldModel,
-      artistMemory,
-      lines: batch.map((line) => {
-        const group = groupLookup.get(line.order);
-        const normalizedLine = normalizedSourceLookup.get(line.order);
-        const meaningLine = meaningLines[line.order];
-
-        return {
-          index: line.order + 1,
-          original: line.original,
-          normalizedOriginal: normalizedLine?.canonical ?? null,
-          normalizationNotes: normalizedLine?.notes ?? [],
-          meaning: meaningLine?.meaning ?? line.original,
-          impliedMeaning: meaningLine?.impliedMeaning ?? null,
-          register: meaningLine?.register ?? null,
-          contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-          contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-          groupIndex: group?.index,
-          groupText: includeGroupText ? group?.text : undefined,
-          verseState: verseStateLookup.get(line.order) ?? null,
-          lineWorldModel: worldModelLineLookup.get(line.order) ?? null,
-          matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
-            line.original,
-            ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
-            ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
-            includeGroupText ? group?.text ?? "" : ""
-          ]),
-          previousTranslation: previousDraftLookup?.get(line.order) ?? null
-        };
-      })
+            return {
+              index: line.order + 1,
+              original: line.original,
+              normalizedOriginal: normalizedLine?.canonical ?? null,
+              normalizationNotes: normalizedLine?.notes ?? [],
+              meaning: meaningLine?.meaning ?? line.original,
+              impliedMeaning: meaningLine?.impliedMeaning ?? null,
+              register: meaningLine?.register ?? null,
+              contextBefore: buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+              contextAfter: buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+              groupIndex: group?.index,
+              groupText: includeGroupText ? group?.text : undefined,
+              verseState: verseStateLookup.get(line.order) ?? null,
+              lineWorldModel: worldModelLineLookup.get(line.order) ?? null,
+              matchingCorrections: buildMatchingCorrectionHints(correctionExamples, [
+                line.original,
+                ...buildContextLines(sourceLines, line.order, -contextWindowLines, -1),
+                ...buildContextLines(sourceLines, line.order, 1, contextWindowLines),
+                includeGroupText ? group?.text ?? "" : ""
+              ]),
+              previousTranslation: previousDraftLookup?.get(line.order) ?? null
+            };
+          })
+        })
     });
 
     model = aiResponse.model;
@@ -1745,7 +1927,7 @@ type GeminiComparisonResultLine = Awaited<ReturnType<typeof requestGeminiDraftCo
 
 function isRecoverableGeminiComparisonError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return /invalid comparison shape|changed the lyric line count|invalid comparison line|non-object comparison line|could not be parsed|empty response/i.test(
+  return /invalid comparison shape|changed the lyric line count|invalid comparison line|non-object comparison line|could not be parsed|empty response|timeout|timed out|aborted|fetch failed|connect/i.test(
     message
   );
 }
@@ -1845,7 +2027,7 @@ async function requestGeminiDraftComparisonWithRecovery(options: {
     return await requestGeminiDraftComparison(options.request, options.usageSink);
   } catch (error) {
     if (!isRecoverableGeminiComparisonError(error)) {
-      throw error;
+      throw annotateProviderStageError("Gemini", "draft comparison", error);
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1974,55 +2156,80 @@ async function applySurfacePolishToDraftLines(options: {
   const polishedByKey = new Map<string, AiDraftLine>();
 
   for (const batch of chunkArray(polishCandidates, SURFACE_POLISH_BATCH_SIZE)) {
-    const polishResponse = await requestOpenAiSurfacePolish({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
-      glossaryEntries: [],
-      songContext: options.songContext,
-      worldModel: options.worldModel,
-      artistMemory: options.artistMemory,
-      lines: batch.map(({ line, sourceLine, protectedAnchors, verseState, lineWorldModel }) => ({
-        index: line.order + 1,
-        original: sourceLine.original,
-        chosen: line.chosen,
-        meaning: line.meaning,
-        impliedMeaning: line.impliedMeaning,
-        register: line.register,
-        contextBefore: buildRefinementContext(sortedDraftLines, line.order, -CONTEXT_WINDOW_LINES, -1),
-        contextAfter: buildRefinementContext(sortedDraftLines, line.order, 1, CONTEXT_WINDOW_LINES),
-        verseState,
-        lineWorldModel,
-        protectedAnchors
-      }))
-    });
+    let polishResponse: Awaited<ReturnType<typeof requestOpenAiSurfacePolish>> | null = null;
+    let auditResponse: Awaited<ReturnType<typeof requestOpenAiSurfacePolishAudit>> | null = null;
 
-    const auditResponse = await requestOpenAiSurfacePolishAudit({
-      title: options.title,
-      artist: options.artist,
-      album: options.album,
-      sourceLanguage: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
-      glossaryEntries: [],
-      songContext: options.songContext,
-      worldModel: options.worldModel,
-      artistMemory: options.artistMemory,
-      lines: batch.map(({ line, sourceLine, protectedAnchors, verseState, lineWorldModel }, index) => ({
-        index: line.order + 1,
-        original: sourceLine.original,
-        originalChosen: line.chosen,
-        safePolish: polishResponse.lines[index]?.safePolish ?? line.chosen,
-        naturalPolish: polishResponse.lines[index]?.naturalPolish ?? line.chosen,
-        meaning: line.meaning,
-        impliedMeaning: line.impliedMeaning,
-        register: line.register,
-        verseState,
-        lineWorldModel,
-        protectedAnchors
-      }))
-    });
+    try {
+      const resolvedPolishResponse = await withProviderStageRetry({
+        provider: "OpenAI",
+        stage: "surface polish",
+        retries: 1,
+        action: () =>
+          requestOpenAiSurfacePolish({
+            title: options.title,
+            artist: options.artist,
+            album: options.album,
+            sourceLanguage: options.sourceLanguage,
+            targetLanguage: options.targetLanguage,
+            glossaryEntries: [],
+            songContext: options.songContext,
+            worldModel: options.worldModel,
+            artistMemory: options.artistMemory,
+            lines: batch.map(({ line, sourceLine, protectedAnchors, verseState, lineWorldModel }) => ({
+              index: line.order + 1,
+              original: sourceLine.original,
+              chosen: line.chosen,
+              meaning: line.meaning,
+              impliedMeaning: line.impliedMeaning,
+              register: line.register,
+              contextBefore: buildRefinementContext(sortedDraftLines, line.order, -CONTEXT_WINDOW_LINES, -1),
+              contextAfter: buildRefinementContext(sortedDraftLines, line.order, 1, CONTEXT_WINDOW_LINES),
+              verseState,
+              lineWorldModel,
+              protectedAnchors
+            }))
+          })
+      });
+      polishResponse = resolvedPolishResponse;
+
+      auditResponse = await withProviderStageRetry({
+        provider: "OpenAI",
+        stage: "surface polish audit",
+        retries: 1,
+        action: () =>
+          requestOpenAiSurfacePolishAudit({
+            title: options.title,
+            artist: options.artist,
+            album: options.album,
+            sourceLanguage: options.sourceLanguage,
+            targetLanguage: options.targetLanguage,
+            glossaryEntries: [],
+            songContext: options.songContext,
+            worldModel: options.worldModel,
+            artistMemory: options.artistMemory,
+            lines: batch.map(({ line, sourceLine, protectedAnchors, verseState, lineWorldModel }, index) => ({
+              index: line.order + 1,
+              original: sourceLine.original,
+              originalChosen: line.chosen,
+              safePolish: resolvedPolishResponse.lines[index]?.safePolish ?? line.chosen,
+              naturalPolish: resolvedPolishResponse.lines[index]?.naturalPolish ?? line.chosen,
+              meaning: line.meaning,
+              impliedMeaning: line.impliedMeaning,
+              register: line.register,
+              verseState,
+              lineWorldModel,
+              protectedAnchors
+            }))
+          })
+      });
+    } catch (error) {
+      console.warn(`[lafz] Skipping surface polish batch after provider error: ${getAiPipelineErrorMessage(error)}`);
+      continue;
+    }
+
+    if (!polishResponse || !auditResponse) {
+      continue;
+    }
 
     for (const [index, candidate] of batch.entries()) {
       const proposal = polishResponse.lines[index];
@@ -2494,6 +2701,7 @@ export async function generateAiTranslationDraft(
       verseStateLookup,
       worldModelLineLookup,
       meaningResponse.lines,
+      "OpenAI",
       openAiRequester,
       previousDraftLookup
     ),
@@ -2512,6 +2720,7 @@ export async function generateAiTranslationDraft(
       verseStateLookup,
       worldModelLineLookup,
       meaningResponse.lines,
+      "Anthropic",
       anthropicRequester,
       previousDraftLookup
     )
@@ -2792,96 +3001,114 @@ export async function regenerateDraftLines(
   const usageSinkG = { inputTokens: 0, outputTokens: 0 };
   const verseState = verseStateLookup.get(representativeSourceLine.order) ?? null;
 
-  const meaningResponse = await requestOpenAiMeaningAnalysis({
-    title: draft.title,
-    artist: draft.artist,
-    album: draft.album,
-    sourceLanguage: draft.sourceLanguage,
-    glossaryEntries,
-    songContext: draft.songContext,
-    artistMemory,
-    lines: [
-      {
-        index: representativeSourceLine.order + 1,
-        original: representativeSourceLine.original,
-        normalizedOriginal: normalizedLine?.canonical ?? null,
-        normalizationNotes: normalizedLine?.notes ?? [],
-        contextBefore,
-        contextAfter,
-        matchingCorrections
-      }
-    ]
+  const meaningResponse = await withProviderStageRetry({
+    provider: "OpenAI",
+    stage: "line regeneration meaning analysis",
+    retries: 1,
+    action: () =>
+      requestOpenAiMeaningAnalysis({
+        title: draft.title,
+        artist: draft.artist,
+        album: draft.album,
+        sourceLanguage: draft.sourceLanguage,
+        glossaryEntries,
+        songContext: draft.songContext,
+        artistMemory,
+        lines: [
+          {
+            index: representativeSourceLine.order + 1,
+            original: representativeSourceLine.original,
+            normalizedOriginal: normalizedLine?.canonical ?? null,
+            normalizationNotes: normalizedLine?.notes ?? [],
+            contextBefore,
+            contextAfter,
+            matchingCorrections
+          }
+        ]
+      })
   });
 
   const meaningLine = meaningResponse.lines[0];
-  const generatorAResponse = await requestOpenAiTranslationDraft({
-    title: draft.title,
-    artist: draft.artist,
-    album: draft.album,
-    sourceLanguage: draft.sourceLanguage,
-    targetLanguage: draft.targetLanguage,
-    includeTransliteration,
-    includeNotes,
-    glossaryEntries,
-    songContext: draft.songContext,
-    worldModel: draft.worldModel,
-    artistMemory,
-    lines: [
-      {
-        index: representativeSourceLine.order + 1,
-        original: representativeSourceLine.original,
-        normalizedOriginal: normalizedLine?.canonical ?? null,
-        normalizationNotes: normalizedLine?.notes ?? [],
-        meaning: meaningLine?.meaning ?? primaryLine.meaning,
-        impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
-        register: meaningLine?.register ?? primaryLine.register,
-        contextBefore,
-        contextAfter,
-        verseState,
-        lineWorldModel: worldModelLineLookup.get(representativeSourceLine.order) ?? null,
-        matchingCorrections,
-        previousTranslation: {
-          chosen: primaryLine.chosen,
-          confidence: primaryLine.confidence,
-          manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
-        }
-      }
-    ]
-  }, usageSinkA);
-  const generatorBResponse = await requestAnthropicTranslationDraft({
-    title: draft.title,
-    artist: draft.artist,
-    album: draft.album,
-    sourceLanguage: draft.sourceLanguage,
-    targetLanguage: draft.targetLanguage,
-    includeTransliteration,
-    includeNotes,
-    glossaryEntries,
-    songContext: draft.songContext,
-    worldModel: draft.worldModel,
-    artistMemory,
-    lines: [
-      {
-        index: representativeSourceLine.order + 1,
-        original: representativeSourceLine.original,
-        normalizedOriginal: normalizedLine?.canonical ?? null,
-        normalizationNotes: normalizedLine?.notes ?? [],
-        meaning: meaningLine?.meaning ?? primaryLine.meaning,
-        impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
-        register: meaningLine?.register ?? primaryLine.register,
-        contextBefore,
-        contextAfter,
-        verseState,
-        lineWorldModel: worldModelLineLookup.get(representativeSourceLine.order) ?? null,
-        matchingCorrections,
-        previousTranslation: {
-          chosen: primaryLine.chosen,
-          confidence: primaryLine.confidence,
-          manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
-        }
-      }
-    ]
-  }, usageSinkB);
+  const generatorAResponse = await withProviderStageRetry({
+    provider: "OpenAI",
+    stage: "line regeneration generator A",
+    retries: 1,
+    action: () =>
+      requestOpenAiTranslationDraft({
+        title: draft.title,
+        artist: draft.artist,
+        album: draft.album,
+        sourceLanguage: draft.sourceLanguage,
+        targetLanguage: draft.targetLanguage,
+        includeTransliteration,
+        includeNotes,
+        glossaryEntries,
+        songContext: draft.songContext,
+        worldModel: draft.worldModel,
+        artistMemory,
+        lines: [
+          {
+            index: representativeSourceLine.order + 1,
+            original: representativeSourceLine.original,
+            normalizedOriginal: normalizedLine?.canonical ?? null,
+            normalizationNotes: normalizedLine?.notes ?? [],
+            meaning: meaningLine?.meaning ?? primaryLine.meaning,
+            impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
+            register: meaningLine?.register ?? primaryLine.register,
+            contextBefore,
+            contextAfter,
+            verseState,
+            lineWorldModel: worldModelLineLookup.get(representativeSourceLine.order) ?? null,
+            matchingCorrections,
+            previousTranslation: {
+              chosen: primaryLine.chosen,
+              confidence: primaryLine.confidence,
+              manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
+            }
+          }
+        ]
+      }, usageSinkA)
+  });
+  const generatorBResponse = await withProviderStageRetry({
+    provider: "Anthropic",
+    stage: "line regeneration generator B",
+    retries: 1,
+    action: () =>
+      requestAnthropicTranslationDraft({
+        title: draft.title,
+        artist: draft.artist,
+        album: draft.album,
+        sourceLanguage: draft.sourceLanguage,
+        targetLanguage: draft.targetLanguage,
+        includeTransliteration,
+        includeNotes,
+        glossaryEntries,
+        songContext: draft.songContext,
+        worldModel: draft.worldModel,
+        artistMemory,
+        lines: [
+          {
+            index: representativeSourceLine.order + 1,
+            original: representativeSourceLine.original,
+            normalizedOriginal: normalizedLine?.canonical ?? null,
+            normalizationNotes: normalizedLine?.notes ?? [],
+            meaning: meaningLine?.meaning ?? primaryLine.meaning,
+            impliedMeaning: meaningLine?.impliedMeaning ?? primaryLine.impliedMeaning,
+            register: meaningLine?.register ?? primaryLine.register,
+            contextBefore,
+            contextAfter,
+            verseState,
+            lineWorldModel: worldModelLineLookup.get(representativeSourceLine.order) ?? null,
+            matchingCorrections,
+            previousTranslation: {
+              chosen: primaryLine.chosen,
+              confidence: primaryLine.confidence,
+              manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
+            }
+          }
+        ]
+      }, usageSinkB)
+  });
 
   const generatorALineResponse = generatorAResponse.lines[0];
   const generatorBLineResponse = generatorBResponse.lines[0];

@@ -9,7 +9,11 @@
     "typecheck": "tsc --noEmit",
     "backfill:supabase": "node --env-file=.env.local scripts/backfill-supabase.mjs",
     "backfill:r2": "node --env-file=.env.local scripts/backfill-r2.mjs",
-    "backfill:brain": "node --env-file=.env.local scripts/backfill-brain.mjs"
+    "backfill:brain": "node --env-file=.env.local scripts/backfill-brain.mjs",
+    "backfill:brain:embeddings": "node --env-file=.env.local scripts/backfill-brain-embeddings.mjs",
+    "reconcile:brain": "node --env-file=.env.local scripts/reconcile-brain.mjs",
+    "audit:brain": "node --env-file=.env.local scripts/audit-brain.mjs",
+    "benchmark:brain": "node --env-file=.env.local scripts/benchmark-brain.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1019.0",

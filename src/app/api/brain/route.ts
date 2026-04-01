@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
+import { buildSongTranslationMemoryPack } from "@/features/brain/memory-pack";
+import { readMemoryPackCache } from "@/features/brain/repository";
+import { buildMemoryPackCacheKey, splitArtistCredits } from "@/features/brain/normalize";
+import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,10 +43,39 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
+  const mode = request.nextUrl.searchParams.get("mode") ?? "graph";
   const seed = request.nextUrl.searchParams.get("seed") ?? null;
   const nodeType = request.nextUrl.searchParams.get("type") ?? null;
+  const spotifyTrackId = request.nextUrl.searchParams.get("spotifyTrackId") ?? null;
+  const artist = request.nextUrl.searchParams.get("artist") ?? null;
 
   try {
+    if (mode === "memory-pack") {
+      if (!spotifyTrackId || !artist) {
+        return NextResponse.json({ error: "spotifyTrackId and artist are required" }, { status: 400 });
+      }
+
+      const artistKeys = splitArtistCredits(artist).map((entry) => entry.key);
+      const draft = await getAiTranslationDraftByTrackId(spotifyTrackId).catch(() => null);
+      const candidateTexts = draft?.lines.slice(0, 24).map((line) => line.original) ?? [];
+      const cacheKey = buildMemoryPackCacheKey(artistKeys, spotifyTrackId, candidateTexts);
+      const pack = await buildSongTranslationMemoryPack({
+        spotifyTrackId,
+        artist,
+        candidateTexts
+      });
+      const cached = await readMemoryPackCache(cacheKey);
+
+      return NextResponse.json({
+        spotifyTrackId,
+        artist,
+        cacheKey,
+        cachedAt: cached?.updatedAt ?? null,
+        cacheVersion: cached?.version ?? null,
+        pack
+      });
+    }
+
     let seedNodes: { id: string; node_type: string; canonical_key: string; display_label: string; metadata: Record<string, unknown>; source_confidence: string }[] = [];
 
     if (seed) {

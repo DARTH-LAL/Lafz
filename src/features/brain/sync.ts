@@ -1,5 +1,6 @@
 import type { AiArtistMemory, AiCanonicalRendering, AiTranslationDraftFile } from "@/features/ai/types";
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
+import { getAiArtistMemory } from "@/features/ai/artist-memory";
 import { normalizeLookupText } from "@/features/ai/romanized-normalization";
 import { buildSongTranslationMemoryPack } from "@/features/brain/memory-pack";
 import {
@@ -9,13 +10,23 @@ import {
   upsertSongWorldModel
 } from "@/features/brain/repository";
 import {
+  buildBrainAliases,
   buildEdgeKey,
   buildEntityInstanceKey,
   buildSongNodeKey,
+  canonicalizeBrainMotif,
   normalizeBrainKey,
   splitArtistCredits,
   uniqStrings
 } from "@/features/brain/normalize";
+import { applyPolicyWeight, evaluateBrainNodePolicy, summarizePolicy } from "@/features/brain/policy";
+
+type HydratedArtistSyncContext = {
+  name: string;
+  artistKey: string;
+  memory: AiArtistMemory | null;
+  nodeId: string;
+};
 
 function confidenceToWeight(confidence: "low" | "medium" | "high" | null | undefined) {
   switch (confidence) {
@@ -57,6 +68,15 @@ function buildPersonaStyleCandidates(artistMemory: AiArtistMemory | null) {
   ]).slice(0, 6);
 }
 
+function withPolicyMetadata<T extends Record<string, unknown>>(nodeType: Parameters<typeof evaluateBrainNodePolicy>[0], label: string, metadata?: T) {
+  const policy = evaluateBrainNodePolicy(nodeType, label);
+
+  return {
+    ...(metadata ?? {}),
+    policy: summarizePolicy(policy)
+  };
+}
+
 async function upsertArtistNode(artistName: string, artistMemory: AiArtistMemory | null) {
   const artistKey = normalizeBrainKey(artistName);
 
@@ -68,9 +88,9 @@ async function upsertArtistNode(artistName: string, artistMemory: AiArtistMemory
     nodeType: "artist",
     canonicalKey: artistKey,
     displayLabel: artistName,
-    aliases: [artistName],
+    aliases: buildBrainAliases([artistName, artistMemory?.displayName]),
     description: artistMemory?.personaSummary ?? null,
-    metadata: {
+    metadata: withPolicyMetadata("artist", artistName, {
       artistKey,
       displayName: artistMemory?.displayName ?? artistName,
       personaSummary: artistMemory?.personaSummary ?? null,
@@ -84,7 +104,7 @@ async function upsertArtistNode(artistName: string, artistMemory: AiArtistMemory
       stanceNotes: artistMemory?.stanceNotes ?? [],
       perspectiveNotes: artistMemory?.perspectiveNotes ?? [],
       canonicalRenderings: artistMemory?.canonicalRenderings ?? []
-    }
+    })
   });
 
   if (artistNode && artistMemory?.artistKey === artistKey) {
@@ -94,18 +114,30 @@ async function upsertArtistNode(artistName: string, artistMemory: AiArtistMemory
   return artistNode;
 }
 
-async function upsertMotifLinks(songNodeId: string, artistNodeIds: string[], motifs: string[], sourceSongId: string) {
+async function upsertMotifLinks(
+  songNodeId: string,
+  artists: HydratedArtistSyncContext[],
+  motifs: string[],
+  sourceSongId: string
+) {
   for (const motif of uniqStrings(motifs)) {
-    const motifKey = normalizeBrainKey(motif);
+    const canonicalMotif = canonicalizeBrainMotif(motif);
+    const motifKey = canonicalMotif?.canonicalKey ?? null;
+    const motifLabel = canonicalMotif?.displayLabel ?? motif;
+    const policy = evaluateBrainNodePolicy("motif", motifLabel);
 
-    if (!motifKey) {
+    if (!motifKey || policy.scope === "song_local" || !policy.shouldInject) {
       continue;
     }
 
     const motifNode = await upsertBrainNode({
       nodeType: "motif",
       canonicalKey: motifKey,
-      displayLabel: motif
+      displayLabel: motifLabel,
+      aliases: buildBrainAliases([motifLabel, canonicalMotif?.sourceLabel]),
+      metadata: withPolicyMetadata("motif", motifLabel, {
+        sourceLabels: uniqStrings([canonicalMotif?.sourceLabel])
+      })
     });
 
     if (!motifNode) {
@@ -118,24 +150,39 @@ async function upsertMotifLinks(songNodeId: string, artistNodeIds: string[], mot
       sourceNodeId: songNodeId,
       targetNodeId: motifNode.id,
       sourceSongId,
-      weight: 0.8
+      weight: applyPolicyWeight(0.8, policy),
+      metadata: {
+        policy: summarizePolicy(policy)
+      }
     });
 
-    for (const artistNodeId of artistNodeIds) {
-      await upsertBrainEdge({
-        edgeKey: buildEdgeKey("artist_exhibits_motif", artistNodeId, motifNode.id),
-        edgeType: "artist_exhibits_motif",
-        sourceNodeId: artistNodeId,
-        targetNodeId: motifNode.id,
-        weight: 0.7
-      });
+    for (const artist of artists) {
+      const recurringMotifKeys = new Set(
+        uniqStrings(artist.memory?.recurringMotifs ?? [])
+          .map((value) => canonicalizeBrainMotif(value)?.canonicalKey ?? normalizeBrainKey(value))
+          .filter(Boolean)
+      );
+
+      if (recurringMotifKeys.has(motifKey)) {
+        await upsertBrainEdge({
+          edgeKey: buildEdgeKey("artist_exhibits_motif", artist.nodeId, motifNode.id),
+          edgeType: "artist_exhibits_motif",
+          sourceNodeId: artist.nodeId,
+          targetNodeId: motifNode.id,
+          weight: applyPolicyWeight(0.7, policy),
+          metadata: {
+            policy: summarizePolicy(policy)
+          }
+        });
+      }
     }
   }
 }
 
-async function upsertPersonaStyleLinks(artistNodeIds: string[], artistMemory: AiArtistMemory | null) {
+async function upsertPersonaStyleLinks(artistNodeId: string, artistMemory: AiArtistMemory | null) {
   for (const personaStyle of buildPersonaStyleCandidates(artistMemory)) {
     const personaKey = normalizeBrainKey(personaStyle);
+    const policy = evaluateBrainNodePolicy("persona_style", personaStyle);
 
     if (!personaKey) {
       continue;
@@ -144,37 +191,41 @@ async function upsertPersonaStyleLinks(artistNodeIds: string[], artistMemory: Ai
     const personaNode = await upsertBrainNode({
       nodeType: "persona_style",
       canonicalKey: personaKey,
-      displayLabel: personaStyle
+      displayLabel: personaStyle,
+      metadata: withPolicyMetadata("persona_style", personaStyle)
     });
 
     if (!personaNode) {
       continue;
     }
 
-    for (const artistNodeId of artistNodeIds) {
-      await upsertBrainEdge({
-        edgeKey: buildEdgeKey("artist_has_persona_style", artistNodeId, personaNode.id),
-        edgeType: "artist_has_persona_style",
-        sourceNodeId: artistNodeId,
-        targetNodeId: personaNode.id,
-        weight: 0.65
-      });
-    }
+    await upsertBrainEdge({
+      edgeKey: buildEdgeKey("artist_has_persona_style", artistNodeId, personaNode.id),
+      edgeType: "artist_has_persona_style",
+      sourceNodeId: artistNodeId,
+      targetNodeId: personaNode.id,
+      weight: applyPolicyWeight(0.65, policy),
+      metadata: {
+        policy: summarizePolicy(policy)
+      }
+    });
   }
 }
 
 async function upsertSymbolLinks(songNodeId: string, symbols: string[], sourceSongId: string) {
   for (const symbol of uniqStrings(symbols)) {
     const symbolKey = normalizeBrainKey(symbol);
+    const policy = evaluateBrainNodePolicy("symbol", symbol);
 
-    if (!symbolKey) {
+    if (!symbolKey || policy.scope === "song_local" || !policy.shouldInject) {
       continue;
     }
 
     const symbolNode = await upsertBrainNode({
       nodeType: "symbol",
       canonicalKey: symbolKey,
-      displayLabel: symbol
+      displayLabel: symbol,
+      metadata: withPolicyMetadata("symbol", symbol)
     });
 
     if (!symbolNode) {
@@ -187,7 +238,10 @@ async function upsertSymbolLinks(songNodeId: string, symbols: string[], sourceSo
       sourceNodeId: songNodeId,
       targetNodeId: symbolNode.id,
       sourceSongId,
-      weight: 0.75
+      weight: applyPolicyWeight(0.75, policy),
+      metadata: {
+        policy: summarizePolicy(policy)
+      }
     });
   }
 }
@@ -207,14 +261,14 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
       nodeType: "entity_instance",
       canonicalKey: instanceKey,
       displayLabel: entity.label,
-      aliases: entity.aliases,
+      aliases: buildBrainAliases([entity.label, ...entity.aliases]),
       description: entity.description,
-      metadata: {
+      metadata: withPolicyMetadata("entity_instance", entity.label, {
         entityKey: entity.entityKey,
         role: entity.role,
         salience: entity.salience,
         spotifyTrackId: draftFile.spotifyTrackId
-      }
+      })
     });
 
     if (!instanceNode) {
@@ -229,7 +283,10 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
       sourceNodeId: songNodeId,
       targetNodeId: instanceNode.id,
       sourceSongId,
-      weight: confidenceToWeight(entity.salience)
+      weight: confidenceToWeight(entity.salience),
+      metadata: {
+        scope: "song_local"
+      }
     });
 
     const entityTypeKey = normalizeBrainKey(entity.role);
@@ -241,7 +298,8 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
     const entityTypeNode = await upsertBrainNode({
       nodeType: "entity_type",
       canonicalKey: entityTypeKey,
-      displayLabel: entity.role ?? entity.label
+      displayLabel: entity.role ?? entity.label,
+      metadata: withPolicyMetadata("entity_type", entity.role ?? entity.label)
     });
 
     if (!entityTypeNode) {
@@ -253,7 +311,10 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
       edgeType: "entity_instance_is_type",
       sourceNodeId: instanceNode.id,
       targetNodeId: entityTypeNode.id,
-      weight: 0.9
+      weight: 0.9,
+      metadata: {
+        scope: "song_local"
+      }
     });
   }
 
@@ -276,7 +337,8 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
         dynamic: relationship.dynamic,
         powerBalance: relationship.powerBalance,
         evidence: relationship.evidence,
-        confidence: relationship.confidence
+        confidence: relationship.confidence,
+        scope: "song_local"
       },
       evidence: relationship.evidence ?? null
     });
@@ -284,26 +346,60 @@ async function upsertEntityLinks(draftFile: AiTranslationDraftFile, songNodeId: 
 }
 
 async function upsertTermLinks(
-  artistNodeIds: string[],
+  artists: HydratedArtistSyncContext[],
   songNodeId: string,
   sourceSongId: string,
   sourceLanguage: string | null,
-  glossaryEntries: AiGlossaryEntry[],
-  canonicalRenderings: AiCanonicalRendering[],
   lyricTexts: string[]
 ) {
-  const combinedEntries = [
-    ...glossaryEntries,
-    ...canonicalRenderings.map((entry) => ({
-      term: entry.term,
-      meaning: entry.rendering,
-      note: entry.note,
-      aliases: [] as string[],
-      category: "preferred_rendering" as const
-    }))
-  ];
+  const combinedEntries = new Map<
+    string,
+    {
+      entry: AiGlossaryEntry;
+      artistNodeIds: Set<string>;
+    }
+  >();
 
-  for (const entry of combinedEntries) {
+  for (const artist of artists) {
+    const artistEntries = [
+      ...(artist.memory?.glossaryEntries ?? []),
+      ...((artist.memory?.canonicalRenderings ?? []) as AiCanonicalRendering[]).map((entry) => ({
+        term: entry.term,
+        meaning: entry.rendering,
+        note: entry.note,
+        aliases: [] as string[],
+        category: "preferred_rendering" as const
+      }))
+    ];
+
+    for (const entry of artistEntries) {
+      const key = [
+        normalizeBrainKey(entry.term) ?? entry.term.trim().toLowerCase(),
+        normalizeBrainKey(entry.meaning) ?? entry.meaning.trim().toLowerCase(),
+        entry.category ?? "entry"
+      ].join("::");
+      const existing = combinedEntries.get(key) ?? {
+        entry,
+        artistNodeIds: new Set<string>()
+      };
+      existing.artistNodeIds.add(artist.nodeId);
+      if (!existing.entry.note && entry.note) {
+        existing.entry = {
+          ...existing.entry,
+          note: entry.note
+        };
+      }
+      if ((!existing.entry.aliases || existing.entry.aliases.length === 0) && Array.isArray(entry.aliases) && entry.aliases.length > 0) {
+        existing.entry = {
+          ...existing.entry,
+          aliases: entry.aliases
+        };
+      }
+      combinedEntries.set(key, existing);
+    }
+  }
+
+  for (const { entry, artistNodeIds } of combinedEntries.values()) {
     const termKey = normalizeBrainKey(entry.term);
     const meaningKey = normalizeBrainKey(entry.meaning);
 
@@ -315,12 +411,12 @@ async function upsertTermLinks(
       nodeType: "term_surface",
       canonicalKey: termKey,
       displayLabel: entry.term,
-      aliases: entry.aliases ?? [],
+      aliases: buildBrainAliases([entry.term, ...(entry.aliases ?? [])]),
       languageCode: sourceLanguage,
       description: entry.note ?? null,
-      metadata: {
+      metadata: withPolicyMetadata("term_surface", entry.term, {
         category: entry.category ?? "entry"
-      }
+      })
     });
 
     if (!termNode) {
@@ -333,18 +429,19 @@ async function upsertTermLinks(
       displayLabel: `${entry.term} -> ${entry.meaning}`,
       languageCode: sourceLanguage,
       description: entry.note ?? entry.meaning,
-      metadata: {
+      metadata: withPolicyMetadata("term_sense", `${entry.term} ${entry.meaning}`, {
         term: entry.term,
         meaning: entry.meaning,
         note: entry.note ?? null
-      }
+      })
     });
 
     const renderingNode = await upsertBrainNode({
       nodeType: "rendering",
       canonicalKey: buildRenderingKey(entry.meaning),
       displayLabel: entry.meaning,
-      description: entry.note ?? null
+      description: entry.note ?? null,
+      metadata: withPolicyMetadata("rendering", entry.meaning)
     });
 
     if (!senseNode || !renderingNode) {
@@ -356,7 +453,7 @@ async function upsertTermLinks(
       edgeType: "term_surface_maps_to_term_sense",
       sourceNodeId: termNode.id,
       targetNodeId: senseNode.id,
-      weight: 0.8,
+      weight: entry.category === "preferred_rendering" ? 0.88 : 0.8,
       metadata: {
         note: entry.note ?? null,
         category: entry.category ?? "entry"
@@ -368,7 +465,7 @@ async function upsertTermLinks(
       edgeType: "term_sense_prefers_rendering",
       sourceNodeId: senseNode.id,
       targetNodeId: renderingNode.id,
-      weight: 0.9,
+      weight: entry.category === "preferred_rendering" ? 0.95 : 0.84,
       metadata: {
         note: entry.note ?? null
       }
@@ -380,7 +477,7 @@ async function upsertTermLinks(
         edgeType: "artist_uses_term_surface",
         sourceNodeId: artistNodeId,
         targetNodeId: termNode.id,
-        weight: 0.7,
+        weight: termUsedInSong(entry.term, entry.aliases ?? [], lyricTexts) ? 0.76 : 0.58,
         metadata: {
           category: entry.category ?? "entry"
         }
@@ -391,7 +488,7 @@ async function upsertTermLinks(
         edgeType: "artist_prefers_rendering",
         sourceNodeId: artistNodeId,
         targetNodeId: renderingNode.id,
-        weight: 0.72,
+        weight: entry.category === "preferred_rendering" ? 0.88 : 0.68,
         metadata: {
           term: entry.term,
           note: entry.note ?? null
@@ -406,7 +503,7 @@ async function upsertTermLinks(
         sourceNodeId: songNodeId,
         targetNodeId: termNode.id,
         sourceSongId,
-        weight: 0.75,
+        weight: 0.86,
         metadata: {
           category: entry.category ?? "entry"
         }
@@ -415,15 +512,32 @@ async function upsertTermLinks(
   }
 }
 
+async function resolveArtistMemoryForCredit(
+  credit: { name: string; key: string },
+  primaryArtistKey: string | null,
+  primaryArtistMemory: AiArtistMemory | null
+) {
+  if (primaryArtistKey === credit.key) {
+    return primaryArtistMemory;
+  }
+
+  try {
+    const { memory } = await getAiArtistMemory(credit.name);
+    return memory?.artistKey === credit.key ? memory : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function syncDraftIntoLafzBrain(draftFile: AiTranslationDraftFile) {
   const songNode = await upsertBrainNode({
     nodeType: "song",
     canonicalKey: buildSongNodeKey(draftFile.spotifyTrackId),
     displayLabel: draftFile.title,
-    aliases: [draftFile.title],
+    aliases: buildBrainAliases([draftFile.title]),
     languageCode: draftFile.sourceLanguage,
     description: draftFile.songContext?.summary ?? draftFile.worldModel?.summary ?? null,
-    metadata: {
+    metadata: withPolicyMetadata("song", draftFile.title, {
       spotifyTrackId: draftFile.spotifyTrackId,
       title: draftFile.title,
       artist: draftFile.artist,
@@ -431,7 +545,7 @@ export async function syncDraftIntoLafzBrain(draftFile: AiTranslationDraftFile) 
       sourceLanguage: draftFile.sourceLanguage,
       targetLanguage: draftFile.targetLanguage,
       generatedAt: draftFile.generatedAt
-    }
+    })
   });
 
   if (!songNode) {
@@ -440,30 +554,39 @@ export async function syncDraftIntoLafzBrain(draftFile: AiTranslationDraftFile) 
 
   const artistCredits = splitArtistCredits(draftFile.artist);
   const primaryArtistKey = draftFile.artistMemory?.artistKey ?? artistCredits[0]?.key ?? null;
-  const artistNodes = await Promise.all(
-    artistCredits.map((credit) =>
-      upsertArtistNode(
-        credit.name,
-        primaryArtistKey === credit.key ? draftFile.artistMemory : null
-      )
-    )
-  );
-  const hydratedArtistNodes = artistNodes.filter((node): node is NonNullable<typeof node> => Boolean(node));
+  const hydratedArtists = (
+    await Promise.all(
+      artistCredits.map(async (credit) => {
+        const artistMemory = await resolveArtistMemoryForCredit(credit, primaryArtistKey, draftFile.artistMemory);
+        const artistNode = await upsertArtistNode(credit.name, artistMemory);
 
-  for (const artistNode of hydratedArtistNodes) {
+        if (!artistNode) {
+          return null;
+        }
+
+        return {
+          name: credit.name,
+          artistKey: credit.key,
+          memory: artistMemory,
+          nodeId: artistNode.id
+        } satisfies HydratedArtistSyncContext;
+      })
+    )
+  ).filter((artist): artist is HydratedArtistSyncContext => Boolean(artist));
+
+  for (const artist of hydratedArtists) {
     await upsertBrainEdge({
-      edgeKey: buildEdgeKey("artist_recorded_song", artistNode.id, songNode.id),
+      edgeKey: buildEdgeKey("artist_recorded_song", artist.nodeId, songNode.id),
       edgeType: "artist_recorded_song",
-      sourceNodeId: artistNode.id,
+      sourceNodeId: artist.nodeId,
       targetNodeId: songNode.id,
       weight: 0.95
     });
   }
 
-  await upsertPersonaStyleLinks(
-    hydratedArtistNodes.map((node) => node.id),
-    draftFile.artistMemory
-  );
+  for (const artist of hydratedArtists) {
+    await upsertPersonaStyleLinks(artist.nodeId, artist.memory);
+  }
 
   const motifs = uniqStrings([
     ...(draftFile.songContext?.themes ?? []),
@@ -471,16 +594,14 @@ export async function syncDraftIntoLafzBrain(draftFile: AiTranslationDraftFile) 
     ...(draftFile.artistMemory?.recurringMotifs ?? [])
   ]);
 
-  await upsertMotifLinks(songNode.id, hydratedArtistNodes.map((node) => node.id), motifs, songNode.id);
+  await upsertMotifLinks(songNode.id, hydratedArtists, motifs, songNode.id);
   await upsertSymbolLinks(songNode.id, draftFile.worldModel?.recurringSymbols ?? [], songNode.id);
   await upsertEntityLinks(draftFile, songNode.id, songNode.id);
   await upsertTermLinks(
-    hydratedArtistNodes.map((node) => node.id),
+    hydratedArtists,
     songNode.id,
     songNode.id,
     draftFile.sourceLanguage,
-    draftFile.artistMemory?.glossaryEntries ?? [],
-    draftFile.artistMemory?.canonicalRenderings ?? [],
     draftFile.lines.map((line) => line.original)
   );
 

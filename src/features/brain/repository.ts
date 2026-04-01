@@ -19,6 +19,7 @@ type UpsertBrainNodeInput = {
   description?: string | null;
   metadata?: Record<string, unknown>;
   sourceConfidence?: LafzBrainNodeRecord["sourceConfidence"];
+  embedding?: number[] | null;
 };
 
 type UpsertBrainEdgeInput = {
@@ -93,6 +94,30 @@ function asNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function asEmbedding(value: unknown) {
+  if (Array.isArray(value)) {
+    const numbers = value.filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry));
+    return numbers.length > 0 ? numbers : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return asEmbedding(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 function isBrainSchemaMissingError(error: unknown) {
   if (!error || typeof error !== "object") {
     return false;
@@ -144,6 +169,7 @@ function parseBrainNodeRow(row: unknown): LafzBrainNodeRecord | null {
     metadata: isRecord(row.metadata) ? row.metadata : {},
     sourceConfidence: (asString(row.source_confidence) as LafzBrainNodeRecord["sourceConfidence"] | null) ?? "ai_generated",
     isActive: row.is_active !== false,
+    embedding: asEmbedding(row.embedding),
     updatedAt: asString(row.updated_at)
   };
 }
@@ -315,6 +341,7 @@ export async function upsertBrainNode(input: UpsertBrainNodeInput) {
         description: input.description ?? null,
         metadata: input.metadata ?? {},
         source_confidence: input.sourceConfidence ?? "ai_generated",
+        embedding: input.embedding ?? null,
         is_active: true,
         updated_at: new Date().toISOString()
       },
@@ -331,6 +358,29 @@ export async function upsertBrainNode(input: UpsertBrainNodeInput) {
   }
 
   return parseBrainNodeRow(data);
+}
+
+export async function updateBrainNodeEmbedding(nodeId: string, embedding: number[]) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || !nodeId || embedding.length === 0) {
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("kg_nodes")
+    .update({
+      embedding,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", nodeId);
+
+  if (error) {
+    logBrainError(`update node embedding ${nodeId}`, error);
+    return false;
+  }
+
+  return true;
 }
 
 export async function upsertBrainEdge(input: UpsertBrainEdgeInput) {
@@ -483,7 +533,10 @@ export async function readMemoryPackCache(cacheKey: string) {
   return {
     cacheKey,
     payload: data.payload_json as LafzBrainMemoryPack,
-    updatedAt: asString(data.updated_at) ?? new Date(0).toISOString()
+    updatedAt: asString(data.updated_at) ?? new Date(0).toISOString(),
+    version:
+      asNumber(data.version, 0) ||
+      asNumber((data.payload_json as { audit?: { retrievalVersion?: unknown } })?.audit?.retrievalVersion, 1)
   } satisfies LafzBrainMemoryPackCacheRecord;
 }
 
@@ -501,7 +554,9 @@ export async function writeMemoryPackCache(record: LafzBrainMemoryPackCacheRecor
       scope_type: "song",
       scope_key: record.cacheKey,
       payload_json: record.payload,
-      version: 1,
+      version:
+        record.version ||
+        asNumber((record.payload as { audit?: { retrievalVersion?: unknown } })?.audit?.retrievalVersion, 1),
       updated_at: record.updatedAt
     },
     {

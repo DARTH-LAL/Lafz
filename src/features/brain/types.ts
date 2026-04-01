@@ -32,6 +32,8 @@ export type LafzBrainEdgeType =
 
 export type LafzBrainConfidence = "low" | "medium" | "high";
 
+export type LafzBrainKnowledgeScope = "canonical" | "artist_local" | "song_local";
+
 export type LafzBrainNodeRecord = {
   id: string;
   nodeType: LafzBrainNodeType;
@@ -43,6 +45,7 @@ export type LafzBrainNodeRecord = {
   metadata: Record<string, unknown>;
   sourceConfidence: "ai_generated" | "human_verified" | "human_created";
   isActive: boolean;
+  embedding: number[] | null;
   updatedAt: string | null;
 };
 
@@ -59,17 +62,52 @@ export type LafzBrainEdgeRecord = {
   updatedAt: string | null;
 };
 
+export type LafzBrainTextHint = {
+  value: string;
+  score: number;
+  confidence: LafzBrainConfidence;
+  reasons: string[];
+  sourceSongIds: string[];
+  sourceNodeIds: string[];
+};
+
 export type LafzBrainRenderingHint = {
   term: string;
   meaning: string;
   note?: string;
   source: "brain_rendering" | "brain_term";
+  score: number;
+  confidence: LafzBrainConfidence;
+  reasons: string[];
+  sourceSongIds: string[];
+  sourceNodeIds: string[];
 };
 
 export type LafzBrainSymbolHint = {
   symbol: string;
   note?: string;
   frequency: number;
+  score: number;
+  confidence: LafzBrainConfidence;
+  reasons: string[];
+  sourceSongIds: string[];
+  sourceNodeIds: string[];
+};
+
+export type LafzBrainMemoryPackAudit = {
+  retrievalVersion: number;
+  sourceSongIdsCount: number;
+  candidateTextCount: number;
+  candidateSignature?: string | null;
+  filteredCounts: {
+    style: number;
+    motif: number;
+    relationship: number;
+    symbol: number;
+    rendering: number;
+    semantic: number;
+  };
+  appliedRules: string[];
 };
 
 export type LafzBrainMemoryPack = {
@@ -77,14 +115,19 @@ export type LafzBrainMemoryPack = {
   artistKeys: string[];
   sourceSongIds: string[];
   styleHints: string[];
+  styleHintDetails: LafzBrainTextHint[];
   motifHints: string[];
+  motifHintDetails: LafzBrainTextHint[];
   relationshipPriors: string[];
+  relationshipPriorDetails: LafzBrainTextHint[];
   symbolHints: LafzBrainSymbolHint[];
   renderingHints: LafzBrainRenderingHint[];
+  audit: LafzBrainMemoryPackAudit;
 };
 
 export type LafzBrainMemoryPackCacheRecord = {
   cacheKey: string;
   payload: LafzBrainMemoryPack;
   updatedAt: string;
+  version: number;
 };
