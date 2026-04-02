@@ -83,6 +83,14 @@ type UpsertBrainClaimInput = {
   agentSessionId?: string | null;
 };
 
+type UpdateBrainClaimInput = {
+  claimId: string;
+  status?: LafzBrainClaimStatus;
+  payloadMerge?: Record<string, unknown>;
+  confidenceScore?: number | null;
+  lastSeenAt?: string | null;
+};
+
 type InsertBrainEvidenceInput = {
   claimId: string;
   sourceType: LafzBrainEvidenceSourceType;
@@ -163,6 +171,21 @@ function asStringArray(value: unknown) {
 
 function asNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function mergeJsonObjects(base: Record<string, unknown>, patch: Record<string, unknown>) {
+  const merged: Record<string, unknown> = { ...base };
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (isRecord(value) && isRecord(merged[key])) {
+      merged[key] = mergeJsonObjects(merged[key] as Record<string, unknown>, value);
+      continue;
+    }
+
+    merged[key] = value;
+  }
+
+  return merged;
 }
 
 function asEmbedding(value: unknown) {
@@ -862,11 +885,15 @@ export async function upsertBrainClaim(input: UpsertBrainClaimInput) {
 
   if (existing) {
     const nextConfidenceScore = Math.max(existing.confidenceScore, input.confidenceScore ?? existing.confidenceScore);
+    const nextPayload =
+      input.payload && Object.keys(input.payload).length > 0
+        ? mergeJsonObjects(existing.payload, input.payload)
+        : existing.payload;
     const { data, error } = await supabase
       .from("kg_claims")
       .update({
         confidence_score: nextConfidenceScore,
-        payload_json: input.payload ?? existing.payload,
+        payload_json: nextPayload,
         status: input.status ?? existing.status,
         source_count: existing.sourceCount + 1,
         last_seen_at: now,
@@ -1025,6 +1052,80 @@ export async function insertBrainPromotion(input: InsertBrainPromotionInput) {
   return parseBrainPromotionRow(data);
 }
 
+export async function updateBrainClaimStatus(claimId: string, status: LafzBrainClaimStatus) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || !claimId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("kg_claims")
+    .update({
+      status,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", claimId)
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`update claim status ${claimId} -> ${status}`, error);
+    return null;
+  }
+
+  return parseBrainClaimRow(data);
+}
+
+export async function updateBrainClaim(input: UpdateBrainClaimInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || !input.claimId) {
+    return null;
+  }
+
+  const existingRows = await readBrainClaimsByIds([input.claimId]);
+  const existing = existingRows[0] ?? null;
+
+  if (!existing) {
+    return null;
+  }
+
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (input.status) {
+    patch.status = input.status;
+  }
+
+  if (typeof input.confidenceScore === "number" && Number.isFinite(input.confidenceScore)) {
+    patch.confidence_score = input.confidenceScore;
+  }
+
+  if (input.lastSeenAt !== undefined) {
+    patch.last_seen_at = input.lastSeenAt;
+  }
+
+  if (input.payloadMerge && Object.keys(input.payloadMerge).length > 0) {
+    patch.payload_json = mergeJsonObjects(existing.payload, input.payloadMerge);
+  }
+
+  const { data, error } = await supabase
+    .from("kg_claims")
+    .update(patch)
+    .eq("id", input.claimId)
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(`update claim ${input.claimId}`, error);
+    return null;
+  }
+
+  return parseBrainClaimRow(data);
+}
+
 export async function listBrainPromotionsByClaimIds(claimIds: string[]) {
   const supabase = getSupabaseServerClient();
 
@@ -1104,6 +1205,51 @@ export async function upsertBrainEdge(input: UpsertBrainEdgeInput) {
   }
 
   return parseBrainEdgeRow(data);
+}
+
+export async function deactivateBrainEdge(input: {
+  edgeType: LafzBrainEdgeType;
+  sourceNodeId: string;
+  targetNodeId: string;
+  sourceSongId?: string | null;
+  reason: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return 0;
+  }
+
+  let query = supabase
+    .from("kg_edges")
+    .update({
+      is_active: false,
+      metadata: {
+        ...(input.metadata ?? {}),
+        cleanupDeactivated: true,
+        cleanupReason: input.reason,
+        cleanupAt: new Date().toISOString()
+      },
+      updated_at: new Date().toISOString()
+    })
+    .eq("edge_type", input.edgeType)
+    .eq("source_node_id", input.sourceNodeId)
+    .eq("target_node_id", input.targetNodeId)
+    .eq("is_active", true);
+
+  if (input.sourceSongId !== undefined) {
+    query = query.eq("source_song_id", input.sourceSongId ?? null);
+  }
+
+  const { data, error } = await query.select("id");
+
+  if (error) {
+    logBrainError(`deactivate edge ${input.edgeType}`, error);
+    return 0;
+  }
+
+  return Array.isArray(data) ? data.length : 0;
 }
 
 export async function upsertSongWorldModel(input: UpsertSongWorldModelInput) {
@@ -1253,6 +1399,47 @@ export async function writeMemoryPackCache(record: LafzBrainMemoryPackCacheRecor
   if (error) {
     logBrainError(`write memory pack cache ${record.cacheKey}`, error);
   }
+}
+
+export async function invalidateMemoryPackCachesByArtistKeys(artistKeys: string[]) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase || artistKeys.length === 0) {
+    return 0;
+  }
+
+  const { data, error } = await supabase.from("memory_pack_cache").select("cache_key, payload_json");
+
+  if (error) {
+    logBrainError("scan memory pack caches for invalidation", error);
+    return 0;
+  }
+
+  const cacheKeys = (data ?? [])
+    .filter((row) => isRecord(row))
+    .filter((row) => {
+      const payload = isRecord(row.payload_json) ? row.payload_json : {};
+      const payloadArtistKeys = Array.isArray(payload.artistKeys)
+        ? payload.artistKeys.map((value) => asString(value)).filter((value): value is string => Boolean(value))
+        : [];
+
+      return payloadArtistKeys.some((value) => artistKeys.includes(value));
+    })
+    .map((row) => asString((row as { cache_key?: unknown }).cache_key))
+    .filter((value): value is string => Boolean(value));
+
+  if (cacheKeys.length === 0) {
+    return 0;
+  }
+
+  const { error: deleteError } = await supabase.from("memory_pack_cache").delete().in("cache_key", cacheKeys);
+
+  if (deleteError) {
+    logBrainError("invalidate memory pack caches", deleteError);
+    return 0;
+  }
+
+  return cacheKeys.length;
 }
 
 export async function linkArtistProfileNode(artistKey: string, nodeId: string) {

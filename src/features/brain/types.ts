@@ -55,7 +55,7 @@ export type LafzBrainEvidenceSourceType =
 
 export type LafzBrainPromotionDecision = "accepted" | "rejected" | "deferred";
 
-export type LafzAgentJobType = "vocabulary_agent";
+export type LafzAgentJobType = "vocabulary_agent" | "cleanup_agent";
 
 export type LafzAgentJobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "cancelled" | "dead_lettered";
 

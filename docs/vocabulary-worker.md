@@ -41,6 +41,7 @@ LAFZ_AGENT_BACKLOG_REFILL_COOLDOWN_MS=60000
 LAFZ_AGENT_MAX_ATTEMPTS=3
 LAFZ_AGENT_RETRY_BASE_MS=30000
 LAFZ_AGENT_RETRY_MAX_MS=600000
+LAFZ_AGENT_STALE_JOB_TIMEOUT_MS=900000
 LAFZ_AGENT_RUNNER_SECRET=your-shared-secret
 LAFZ_APP_URL=https://your-app-domain
 LAFZ_AGENT_WORKER_POLL_MS=15000
@@ -59,6 +60,7 @@ This host will:
 - process queued jobs continuously
 - auto-refill from old translated songs when the queue runs dry
 - retry failed jobs with backoff before dead-lettering them
+- reclaim stale `running` or `claimed` jobs after the timeout above so a restart does not strand the queue
 - avoid running on contributor laptops by default
 
 ## Useful commands

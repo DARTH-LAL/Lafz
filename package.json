@@ -16,7 +16,9 @@
     "audit:brain": "node --env-file=.env.local scripts/audit-brain.mjs",
     "benchmark:brain": "node --env-file=.env.local scripts/benchmark-brain.mjs",
     "agent:vocabulary": "node --env-file=.env.local scripts/run-vocabulary-worker-daemon.mjs --once",
-    "agent:vocabulary:daemon": "node --env-file=.env.local scripts/run-vocabulary-worker-daemon.mjs"
+    "agent:vocabulary:daemon": "node --env-file=.env.local scripts/run-vocabulary-worker-daemon.mjs",
+    "agent:cleanup": "node --env-file=.env.local scripts/run-cleanup-worker-daemon.mjs --once",
+    "agent:cleanup:daemon": "node --env-file=.env.local scripts/run-cleanup-worker-daemon.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1019.0",

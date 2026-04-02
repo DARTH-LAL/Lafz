@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { startAiGenerationJob } from "@/features/ai/job-store";
 import { generateAiTranslationDraft } from "@/features/ai/translation-draft";
+import { ensureCleanupAgentWorkerStarted } from "@/features/brain/cleanup-agent";
 import { ensureVocabularyAgentWorkerStarted } from "@/features/brain/vocabulary-agent";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
@@ -90,6 +91,7 @@ function redirectWithStatus(request: NextRequest, redirectTo: string, status: st
 
 export async function POST(request: NextRequest) {
   ensureVocabularyAgentWorkerStarted();
+  ensureCleanupAgentWorkerStarted();
 
   const session = readSpotifySessionFromRequest(request);
 
