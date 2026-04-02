@@ -1,7 +1,7 @@
 import type { AiArtistMemory, AiTranslationDraftFile } from "@/features/ai/types";
 import { getAiArtistMemory } from "@/features/ai/artist-memory";
 import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
-import { enqueueCleanupAgentJob } from "@/features/brain/agent-jobs";
+import { enqueueEntityAgentJob } from "@/features/brain/agent-jobs";
 import { recordVocabularyClaimsIntoLafzBrain } from "@/features/brain/claims";
 import {
   enqueueVocabularyBacklogBatch,
@@ -408,7 +408,7 @@ async function processClaimedVocabularyAgentJob(workerId: string): Promise<Vocab
       artistsProcessed: artists.length
     };
 
-    void enqueueCleanupAgentJob({
+    void enqueueEntityAgentJob({
       draftFile,
       songNodeId
     }).catch(() => {
@@ -606,6 +606,20 @@ export function kickVocabularyAgentWorker(reason = "manual") {
       await runVocabularyAgentUntilIdle({ reason });
     } finally {
       globals.__lafzVocabularyAgentInFlight = null;
+
+      void hasActiveVocabularyAgentJobs()
+        .then((hasActiveJobs) => {
+          if (!hasActiveJobs) {
+            return;
+          }
+
+          setTimeout(() => {
+            kickVocabularyAgentWorker("drain-pending");
+          }, 0);
+        })
+        .catch((error) => {
+          console.error("[lafz-brain] vocabulary agent could not check for pending jobs after a run.", error);
+        });
     }
   })();
 }

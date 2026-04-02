@@ -4,15 +4,15 @@ import { splitArtistCredits, uniqStrings } from "@/features/brain/normalize";
 const DEFAULT_BACKLOG_BATCH_SIZE = 5;
 const DEFAULT_BACKLOG_REFILL_COOLDOWN_MS = 60_000;
 const BACKLOG_SCAN_PAGE_SIZE = 500;
-const CLEANUP_AGENT_JOB_VERSION = "v5";
+const PERSONA_AGENT_JOB_VERSION = "v2";
 
 type UnknownRecord = Record<string, unknown>;
 
-type EnqueueCleanupBacklogBatchOptions = {
+type EnqueuePersonaBacklogBatchOptions = {
   limit?: number;
 };
 
-type CleanupBacklogBatchResult = {
+type PersonaBacklogBatchResult = {
   candidatesFound: number;
   enqueued: number;
   exhausted: boolean;
@@ -32,12 +32,12 @@ function getBacklogBatchSize() {
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_BACKLOG_BATCH_SIZE;
 }
 
-export function getCleanupBacklogRefillCooldownMs() {
+export function getPersonaBacklogRefillCooldownMs() {
   const raw = Number.parseInt(process.env.LAFZ_AGENT_BACKLOG_REFILL_COOLDOWN_MS ?? "", 10);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_BACKLOG_REFILL_COOLDOWN_MS;
 }
 
-export function isCleanupBacklogAutoRefillEnabled() {
+export function isPersonaBacklogAutoRefillEnabled() {
   const value = process.env.LAFZ_AGENT_AUTO_BACKLOG_ENABLED?.trim().toLowerCase();
 
   if (value === "false" || value === "0" || value === "off") {
@@ -47,11 +47,11 @@ export function isCleanupBacklogAutoRefillEnabled() {
   return true;
 }
 
-function buildCleanupAgentJobKey(spotifyTrackId: string, generatedAt: string) {
-  return ["cleanup_agent", CLEANUP_AGENT_JOB_VERSION, spotifyTrackId, generatedAt].join("::");
+function buildPersonaAgentJobKey(spotifyTrackId: string, generatedAt: string) {
+  return ["persona_agent", PERSONA_AGENT_JOB_VERSION, spotifyTrackId, generatedAt].join("::");
 }
 
-function buildCleanupPayload(draft: UnknownRecord, songNodeId: string, fallbackTrackId: string, fallbackGeneratedAt: string) {
+function buildPersonaPayload(draft: UnknownRecord, songNodeId: string, fallbackTrackId: string, fallbackGeneratedAt: string) {
   const artist = asString(draft.artist);
   const artistKeys = uniqStrings(splitArtistCredits(artist).map((credit) => credit.key));
 
@@ -96,7 +96,7 @@ async function fetchPagedRows(fetchPage: (from: number, to: number) => Promise<u
   return rows;
 }
 
-export async function hasActiveCleanupAgentJobs() {
+export async function hasActivePersonaAgentJobs() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
@@ -106,20 +106,20 @@ export async function hasActiveCleanupAgentJobs() {
   const { count, error } = await supabase
     .from("agent_jobs")
     .select("*", { count: "exact", head: true })
-    .eq("job_type", "cleanup_agent")
+    .eq("job_type", "persona_agent")
     .in("status", ["pending", "claimed", "running"]);
 
   if (error) {
-    console.error("[lafz-brain] could not count active cleanup jobs.", error);
+    console.error("[lafz-brain] could not count active persona jobs.", error);
     return false;
   }
 
   return (count ?? 0) > 0;
 }
 
-export async function enqueueCleanupBacklogBatch(
-  options: EnqueueCleanupBacklogBatchOptions = {}
-): Promise<CleanupBacklogBatchResult> {
+export async function enqueuePersonaBacklogBatch(
+  options: EnqueuePersonaBacklogBatchOptions = {}
+): Promise<PersonaBacklogBatchResult> {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
@@ -163,7 +163,7 @@ export async function enqueueCleanupBacklogBatch(
       const { data, error } = await supabase
         .from("agent_jobs")
         .select("job_key")
-        .eq("job_type", "cleanup_agent")
+        .eq("job_type", "persona_agent")
         .range(from, to);
 
       if (error) {
@@ -173,7 +173,7 @@ export async function enqueueCleanupBacklogBatch(
       return data ?? [];
     })
   ]).catch((error) => {
-    console.error("[lafz-brain] could not scan cleanup backlog.", error);
+    console.error("[lafz-brain] could not scan persona backlog.", error);
     return [[], [], []] as const;
   });
 
@@ -222,7 +222,7 @@ export async function enqueueCleanupBacklogBatch(
       continue;
     }
 
-    const jobKey = buildCleanupAgentJobKey(spotifyTrackId, generatedAt);
+    const jobKey = buildPersonaAgentJobKey(spotifyTrackId, generatedAt);
 
     if (existingJobKeys.has(jobKey)) {
       continue;
@@ -231,13 +231,13 @@ export async function enqueueCleanupBacklogBatch(
     exhausted = false;
     candidates.push({
       job_key: jobKey,
-      job_type: "cleanup_agent",
+      job_type: "persona_agent",
       status: "pending",
       scope_type: "song",
       scope_key: spotifyTrackId,
       spotify_track_id: spotifyTrackId,
-      priority: 170,
-      payload_json: buildCleanupPayload(draft, songNodeId, spotifyTrackId, generatedAt)
+      priority: 172,
+      payload_json: buildPersonaPayload(draft, songNodeId, spotifyTrackId, generatedAt)
     });
 
     if (candidates.length >= limit) {
@@ -254,35 +254,28 @@ export async function enqueueCleanupBacklogBatch(
     };
   }
 
-  const now = new Date().toISOString();
-  const rows = candidates.map((job) => ({
-    ...job,
-    available_at: now,
-    updated_at: now
-  }));
-
   const { data, error } = await supabase
     .from("agent_jobs")
-    .upsert(rows, {
-      onConflict: "job_key",
-      ignoreDuplicates: true
-    })
+    .insert(candidates)
     .select("job_key");
 
   if (error) {
-    console.error("[lafz-brain] could not enqueue cleanup backlog batch.", error);
+    console.error("[lafz-brain] could not enqueue persona backlog jobs.", error);
     return {
       candidatesFound: candidates.length,
       enqueued: 0,
       exhausted,
-      sampleJobKeys: candidates.slice(0, 5).map((job) => String(job.job_key))
+      sampleJobKeys: []
     };
   }
 
   return {
     candidatesFound: candidates.length,
-    enqueued: Array.isArray(data) ? data.length : 0,
+    enqueued: data?.length ?? 0,
     exhausted,
-    sampleJobKeys: candidates.slice(0, 5).map((job) => String(job.job_key))
+    sampleJobKeys: (data ?? [])
+      .map((row) => (isRecord(row) ? asString(row.job_key) : null))
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 5)
   };
 }

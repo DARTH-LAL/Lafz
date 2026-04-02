@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ensureCleanupAgentWorkerStarted } from "@/features/brain/cleanup-agent";
+import { ensureEntityAgentWorkerStarted } from "@/features/brain/entity-agent";
+import { ensureMotifAgentWorkerStarted } from "@/features/brain/motif-agent";
+import { ensurePersonaAgentWorkerStarted } from "@/features/brain/persona-agent";
 import { ensureVocabularyAgentWorkerStarted } from "@/features/brain/vocabulary-agent";
 import {
   buildTrackTranslationFromAiDraft,
@@ -22,6 +25,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   ensureVocabularyAgentWorkerStarted();
+  ensureEntityAgentWorkerStarted();
+  ensureMotifAgentWorkerStarted();
+  ensurePersonaAgentWorkerStarted();
   ensureCleanupAgentWorkerStarted();
 
   const existingSession = readSpotifySessionFromRequest(request);

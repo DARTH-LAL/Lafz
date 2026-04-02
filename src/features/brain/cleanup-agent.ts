@@ -2,7 +2,12 @@ import type { AiTranslationDraftFile } from "@/features/ai/types";
 import { requestOpenAiEmbeddings } from "@/features/ai/openai";
 import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { cosineSimilarity } from "@/features/brain/embeddings";
-import { materializeAcceptedVocabularyClaims } from "@/features/brain/materializer";
+import {
+  materializeAcceptedEntityClaims,
+  materializeAcceptedMotifClaims,
+  materializeAcceptedPersonaClaims,
+  materializeAcceptedVocabularyClaims
+} from "@/features/brain/materializer";
 import { buildSongTranslationMemoryPack } from "@/features/brain/memory-pack";
 import {
   enqueueCleanupBacklogBatch,
@@ -27,6 +32,13 @@ import {
 } from "@/features/brain/repository";
 import {
   buildEntityInstanceKey,
+  canonicalizePersonaStyle,
+  canonicalizeRelationshipDynamic,
+  classifyBrainEntity,
+  isDirectiveLikePersonaStyleText,
+  isGenericSingleTokenPersonaStyle,
+  isReusableArtistEntityClass,
+  isSentenceLikePersonaStyleText,
   normalizeBrainKey,
   normalizeBrainText,
   splitArtistCredits,
@@ -44,7 +56,8 @@ const DEFAULT_CLEANUP_AGENT_POLL_MS = 15_000;
 const DEFAULT_CLEANUP_AGENT_MAX_ATTEMPTS = 3;
 const DEFAULT_CLEANUP_AGENT_RETRY_BASE_MS = 30_000;
 const DEFAULT_CLEANUP_AGENT_RETRY_MAX_MS = 10 * 60_000;
-const DEFAULT_CLEANUP_AGENT_STALE_JOB_TIMEOUT_MS = 15 * 60_000;
+const DEFAULT_CLEANUP_AGENT_STALE_JOB_TIMEOUT_MS = 5 * 60_000;
+const DEFAULT_CLEANUP_AGENT_HEARTBEAT_MS = 30_000;
 
 type CleanupAgentRuntimeMode = "disabled" | "embedded" | "standalone";
 
@@ -62,6 +75,7 @@ type CleanupAgentRunSummary = {
   inferredClaimsRejected: number;
   artistMergeTrimmed: number;
   motifClaimsTrimmed: number;
+  personaClaimsTrimmed: number;
   symbolClaimsTrimmed: number;
   relationshipClaimsTrimmed: number;
   materializedClaims: number;
@@ -161,30 +175,6 @@ const GENERIC_SYMBOL_WORDS = new Set([
   "beauty"
 ]);
 
-const ACTOR_ENTITY_KEYS = new Set([
-  "narrator",
-  "lover",
-  "beloved",
-  "girl",
-  "boy",
-  "woman",
-  "man",
-  "rival",
-  "rivals",
-  "crew",
-  "friend",
-  "friends",
-  "family",
-  "mother",
-  "father",
-  "god",
-  "rabb",
-  "self",
-  "haters",
-  "hater",
-  "people"
-]);
-
 function asString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
@@ -240,6 +230,16 @@ function getCleanupAgentStaleJobTimeoutMs() {
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_CLEANUP_AGENT_STALE_JOB_TIMEOUT_MS;
 }
 
+function getCleanupAgentHeartbeatMs() {
+  const raw = Number.parseInt(process.env.LAFZ_CLEANUP_AGENT_HEARTBEAT_MS ?? "", 10);
+
+  if (Number.isFinite(raw) && raw > 0) {
+    return raw;
+  }
+
+  return Math.min(DEFAULT_CLEANUP_AGENT_HEARTBEAT_MS, Math.max(15_000, Math.floor(getCleanupAgentStaleJobTimeoutMs() / 3)));
+}
+
 function computeCleanupAgentRetryDelayMs(attemptCount: number) {
   const retryIndex = Math.max(0, attemptCount - 1);
   const delay = getCleanupAgentRetryBaseMs() * 2 ** retryIndex;
@@ -254,6 +254,10 @@ function isCleanupClaimCandidate(claim: LafzBrainClaimRecord) {
   return (
     claim.claimType === "song_vocabulary_observation" ||
     claim.claimType === "artist_term_usage_observation" ||
+    claim.claimType === "artist_persona_style_observation" ||
+    claim.claimType === "artist_entity_role_observation" ||
+    claim.claimType === "artist_relationship_pattern_observation" ||
+    claim.claimType === "artist_motif_pattern_observation" ||
     claim.claimType === "song_motif_observation" ||
     claim.claimType === "song_symbol_observation" ||
     claim.claimType === "song_relationship_observation"
@@ -341,12 +345,26 @@ function getClaimSymbol(claim: LafzBrainClaimRecord) {
   return asString(claim.payload.symbol) ?? null;
 }
 
+function getClaimPersonaStyle(claim: LafzBrainClaimRecord) {
+  return asString(claim.payload.personaStyle) ?? null;
+}
+
 function getClaimSourceEntity(claim: LafzBrainClaimRecord) {
-  return asString(claim.payload.sourceEntity) ?? null;
+  return asString(claim.payload.sourceEntity) ?? asString(claim.payload.sourceRole) ?? null;
 }
 
 function getClaimTargetEntity(claim: LafzBrainClaimRecord) {
-  return asString(claim.payload.targetEntity) ?? null;
+  return asString(claim.payload.targetEntity) ?? asString(claim.payload.targetRole) ?? null;
+}
+
+function getClaimObservedSongCount(claim: LafzBrainClaimRecord) {
+  const observedSongIds = Array.isArray(claim.payload.observedSongIds)
+    ? claim.payload.observedSongIds
+        .map((value) => asString(value))
+        .filter((value): value is string => Boolean(value))
+    : [];
+  const fallbackTrackId = asString(claim.payload.spotifyTrackId);
+  return uniqStrings([...observedSongIds, fallbackTrackId]).length || claim.sourceCount;
 }
 
 function getClaimSongNodeId(claim: LafzBrainClaimRecord) {
@@ -367,6 +385,36 @@ function getClaimDynamic(claim: LafzBrainClaimRecord) {
 
 function getClaimPowerBalance(claim: LafzBrainClaimRecord) {
   return asString(claim.payload.powerBalance) ?? null;
+}
+
+function getClaimEntityClass(claim: LafzBrainClaimRecord) {
+  const computedClass = classifyBrainEntity(
+    asString(claim.payload.entityKey),
+    asString(claim.payload.entityRole) ?? asString(claim.payload.entityLabel),
+    asString(claim.payload.description)
+  );
+
+  return computedClass !== "other" ? computedClass : asString(claim.payload.entityClass) ?? computedClass;
+}
+
+function getClaimSourceEntityClass(claim: LafzBrainClaimRecord) {
+  const computedClass = classifyBrainEntity(
+    asString(claim.payload.sourceEntityKey),
+    asString(claim.payload.sourceRole),
+    null
+  );
+
+  return computedClass !== "other" ? computedClass : asString(claim.payload.sourceEntityClass) ?? computedClass;
+}
+
+function getClaimTargetEntityClass(claim: LafzBrainClaimRecord) {
+  const computedClass = classifyBrainEntity(
+    asString(claim.payload.targetEntityKey),
+    asString(claim.payload.targetRole),
+    null
+  );
+
+  return computedClass !== "other" ? computedClass : asString(claim.payload.targetEntityClass) ?? computedClass;
 }
 
 function getClaimAliases(claim: LafzBrainClaimRecord) {
@@ -492,7 +540,10 @@ function buildAdaptiveCleanupProfile(
   const vocabularyWeights = collectAverageWeights("song_vocabulary_observation");
   const motifWeights = collectAverageWeights("song_motif_observation");
   const symbolWeights = collectAverageWeights("song_symbol_observation");
-  const relationshipWeights = collectAverageWeights("song_relationship_observation");
+  const relationshipWeights = [
+    ...collectAverageWeights("song_relationship_observation"),
+    ...collectAverageWeights("artist_relationship_pattern_observation")
+  ];
   const vocabularyLineSupport = collectUniqueLineSupport("song_vocabulary_observation");
 
   return {
@@ -515,11 +566,6 @@ function isLowSignalMotifLabel(value: string | null) {
 function isLowSignalSymbolLabel(value: string | null) {
   const tokens = tokenizeNormalized(value);
   return tokens.length > 0 && tokens.length <= 2 && tokens.every((token) => GENERIC_SYMBOL_WORDS.has(token));
-}
-
-function isActorEntity(value: string | null) {
-  const normalized = normalizeBrainKey(value);
-  return normalized ? ACTOR_ENTITY_KEYS.has(normalized) : false;
 }
 
 function buildEvidenceMetricsByClaimId(evidenceRows: LafzBrainEvidenceRecord[]) {
@@ -579,11 +625,11 @@ function buildEvidenceMetricsByClaimId(evidenceRows: LafzBrainEvidenceRecord[]) 
 }
 
 function buildClaimSemanticText(claim: LafzBrainClaimRecord) {
-  if (claim.claimType === "song_relationship_observation") {
+  if (claim.claimType === "song_relationship_observation" || claim.claimType === "artist_relationship_pattern_observation") {
     return [
       claim.claimType,
       getClaimSourceEntity(claim),
-      getClaimDynamic(claim),
+      asString(claim.payload.dynamicFamilyLabel) ?? getClaimDynamic(claim),
       getClaimTargetEntity(claim),
       getClaimPowerBalance(claim)
     ]
@@ -597,6 +643,7 @@ function buildClaimSemanticText(claim: LafzBrainClaimRecord) {
     getClaimTerm(claim),
     ...getClaimAliases(claim),
     getClaimMeaning(claim),
+    getClaimPersonaStyle(claim),
     getClaimMotif(claim),
     getClaimSymbol(claim),
     getClaimNote(claim)
@@ -687,17 +734,18 @@ function getLatestPromotionByClaimId(promotions: LafzBrainPromotionRecord[]) {
 }
 
 function classifyRelationshipDynamic(dynamic: string | null) {
-  const tokens = tokenizeNormalized(dynamic);
+  const family = canonicalizeRelationshipDynamic(dynamic);
+  const key = family?.canonicalKey ?? normalizeBrainKey(dynamic);
 
-  if (tokens.some((token) => ["warning", "threat", "taunt", "dominance", "control", "rivalry"].includes(token))) {
+  if (key === "warning-and-dominance") {
     return "hostile";
   }
 
-  if (tokens.some((token) => ["love", "devotion", "romance", "care", "loyalty", "trust", "support"].includes(token))) {
+  if (key === "loyalty-and-backing" || key === "healing-and-reassurance") {
     return "supportive";
   }
 
-  if (tokens.some((token) => ["longing", "missing", "obsession", "yearning", "absence", "desire"].includes(token))) {
+  if (key === "devotion-and-longing" || key === "teasing-and-attraction") {
     return "yearning";
   }
 
@@ -1044,7 +1092,10 @@ function buildMotifCleanupActions(
   const actionMap = new Map<string, CleanupAction>();
 
   for (const claim of claims) {
-    if (claim.claimType !== "song_motif_observation" || !isCleanupClaimCandidate(claim)) {
+    if (
+      (claim.claimType !== "song_motif_observation" && claim.claimType !== "artist_motif_pattern_observation") ||
+      !isCleanupClaimCandidate(claim)
+    ) {
       continue;
     }
 
@@ -1061,9 +1112,25 @@ function buildMotifCleanupActions(
         claim,
         decision: "rejected",
         nextStatus: "deprecated",
-        cleanupRule: "song_local_motif",
+        cleanupRule: claim.claimType === "artist_motif_pattern_observation" ? "artist_song_local_motif" : "song_local_motif",
         priority: 85,
         reason: `Cleanup agent deprecated motif "${motif}" because it is too song-local for durable brain memory.`
+      });
+      continue;
+    }
+
+    if (
+      claim.claimType === "artist_motif_pattern_observation" &&
+      getClaimObservedSongCount(claim) < 2 &&
+      lowEvidence
+    ) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "artist_motif_needs_repetition",
+        priority: 82,
+        reason: `Cleanup agent held back artist motif "${motif}" because it does not yet repeat across enough songs.`
       });
       continue;
     }
@@ -1073,9 +1140,119 @@ function buildMotifCleanupActions(
         claim,
         decision: "rejected",
         nextStatus: "rejected",
-        cleanupRule: "low_signal_motif",
+        cleanupRule: claim.claimType === "artist_motif_pattern_observation" ? "artist_low_signal_motif" : "low_signal_motif",
         priority: 75,
         reason: `Cleanup agent rejected low-signal motif "${motif}" because it is too abstract and weakly supported.`
+      });
+    }
+  }
+
+  return actionMap;
+}
+
+function buildPersonaCleanupActions(
+  claims: LafzBrainClaimRecord[],
+  evidenceMetricsByClaimId: Map<string, ClaimEvidenceMetrics>,
+  adaptiveProfile: CleanupAdaptiveProfile
+) {
+  const actionMap = new Map<string, CleanupAction>();
+
+  for (const claim of claims) {
+    if (claim.claimType !== "artist_persona_style_observation" || !isCleanupClaimCandidate(claim)) {
+      continue;
+    }
+
+    const personaStyle = getClaimPersonaStyle(claim) ?? claim.normalizedKey;
+    const policy = isRecord(claim.payload.policy) ? claim.payload.policy : {};
+    const shouldInject = policy.shouldInject !== false;
+    const scope = asString(policy.scope);
+    const evidence = evidenceMetricsByClaimId.get(claim.id);
+    const lowEvidence =
+      (evidence?.averageWeight ?? 0) < adaptiveProfile.rereviewAverageWeightFloor &&
+      (evidence?.artistMemoryCount ?? 0) < 1;
+    const tokenCount = tokenizeNormalized(personaStyle).length;
+    const canonicalPersona = canonicalizePersonaStyle(personaStyle);
+
+    if (scope === "song_local" || !shouldInject) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "generic_persona_style",
+        priority: 86,
+        reason: `Cleanup agent rejected generic persona style "${personaStyle}" because it is too broad for reusable artist memory.`
+      });
+      continue;
+    }
+
+    if (isDirectiveLikePersonaStyleText(personaStyle)) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "directive_like_persona_style",
+        priority: 90,
+        reason: `Cleanup agent rejected persona style "${personaStyle}" because it reads like a translation directive rather than stable artist voice memory.`
+      });
+      continue;
+    }
+
+    if (isGenericSingleTokenPersonaStyle(personaStyle)) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "generic_single_token_persona_style",
+        priority: 88,
+        reason: `Cleanup agent rejected persona style "${personaStyle}" because single-word mood labels are too generic for reusable artist memory.`
+      });
+      continue;
+    }
+
+    if (canonicalPersona && canonicalPersona.displayLabel !== personaStyle) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "canonicalized_persona_duplicate",
+        priority: 87,
+        reason: `Cleanup agent deprecated persona style "${personaStyle}" because it should collapse into the canonical family "${canonicalPersona.displayLabel}" instead of remaining as raw sentence-level style memory.`
+      });
+      continue;
+    }
+
+    if (!canonicalPersona && isSentenceLikePersonaStyleText(personaStyle)) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "uncanonicalized_persona_observation",
+        priority: 84,
+        reason: `Cleanup agent rejected persona style "${personaStyle}" because it is a long observation that never collapsed into a stable canonical style family.`
+      });
+      continue;
+    }
+
+    if (tokenCount >= 7 && lowEvidence) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "verbose_persona_style",
+        priority: 80,
+        reason: `Cleanup agent rejected overly verbose persona style "${personaStyle}" because it reads more like a one-off description than stable artist voice memory.`
+      });
+      continue;
+    }
+
+    if (getClaimObservedSongCount(claim) < 2 && lowEvidence) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "persona_style_needs_repetition",
+        priority: 84,
+        reason: `Cleanup agent held back persona style "${personaStyle}" because it has not repeated across enough songs yet.`
       });
     }
   }
@@ -1130,27 +1307,74 @@ function buildSymbolCleanupActions(
   return actionMap;
 }
 
+function buildEntityRoleCleanupActions(
+  claims: LafzBrainClaimRecord[],
+  evidenceMetricsByClaimId: Map<string, ClaimEvidenceMetrics>
+) {
+  const actionMap = new Map<string, CleanupAction>();
+  const hardNonReusableClasses = new Set(["place", "body_part", "material_object", "symbolic", "abstract", "other"]);
+
+  for (const claim of claims) {
+    if (claim.claimType !== "artist_entity_role_observation" || !isCleanupClaimCandidate(claim)) {
+      continue;
+    }
+
+    const entityClass =
+      getClaimEntityClass(claim) ??
+      classifyBrainEntity(asString(claim.payload.entityKey), asString(claim.payload.entityRole), asString(claim.payload.description));
+    const reusableEntity = isReusableArtistEntityClass(entityClass);
+    const evidence = evidenceMetricsByClaimId.get(claim.id);
+    const lowSupport = (evidence?.averageWeight ?? 0) < 0.76 && getClaimObservedSongCount(claim) < 3;
+
+    if (!reusableEntity && (lowSupport || hardNonReusableClasses.has(entityClass ?? "other"))) {
+      registerCleanupAction(actionMap, {
+        claim,
+        decision: "rejected",
+        nextStatus: claim.status === "accepted" ? "deprecated" : "rejected",
+        cleanupRule: "non_reusable_entity_role",
+        priority: 90,
+        reason: `Cleanup agent moved "${asString(claim.payload.entityRole) ?? "entity"}" out of artist-entity memory because it behaves more like a symbolic or abstract concept than a reusable actor pattern.`
+      });
+    }
+  }
+
+  return actionMap;
+}
+
 function buildRelationshipCleanupActions(
   claims: LafzBrainClaimRecord[],
   evidenceMetricsByClaimId: Map<string, ClaimEvidenceMetrics>,
   adaptiveProfile: CleanupAdaptiveProfile
 ) {
   const actionMap = new Map<string, CleanupAction>();
+  const hardNonReusableClasses = new Set(["place", "body_part", "material_object", "symbolic", "abstract", "other"]);
 
   for (const claim of claims) {
-    if (claim.claimType !== "song_relationship_observation" || !isCleanupClaimCandidate(claim)) {
+    if (
+      (claim.claimType !== "song_relationship_observation" &&
+        claim.claimType !== "artist_relationship_pattern_observation") ||
+      !isCleanupClaimCandidate(claim)
+    ) {
       continue;
     }
 
     const sourceEntity = getClaimSourceEntity(claim);
     const targetEntity = getClaimTargetEntity(claim);
+    const sourceEntityClass =
+      getClaimSourceEntityClass(claim) ?? classifyBrainEntity(sourceEntity, sourceEntity, null);
+    const targetEntityClass =
+      getClaimTargetEntityClass(claim) ?? classifyBrainEntity(targetEntity, targetEntity, null);
     const evidence = evidenceMetricsByClaimId.get(claim.id);
     const lowEvidence =
       (evidence?.averageWeight ?? 0) < adaptiveProfile.relationshipAverageWeightFloor &&
       (evidence?.worldModelCount ?? 0) < 1;
-    const nonActorRelationship = !isActorEntity(sourceEntity) || !isActorEntity(targetEntity);
+    const nonActorRelationship =
+      !isReusableArtistEntityClass(sourceEntityClass) || !isReusableArtistEntityClass(targetEntityClass);
 
-    if (nonActorRelationship && claim.confidenceScore < 0.85 && lowEvidence) {
+    const hardNonReusableRelationship =
+      hardNonReusableClasses.has(sourceEntityClass ?? "other") || hardNonReusableClasses.has(targetEntityClass ?? "other");
+
+    if (nonActorRelationship && (hardNonReusableRelationship || (claim.confidenceScore < 0.85 && lowEvidence))) {
       registerCleanupAction(actionMap, {
         claim,
         decision: "rejected",
@@ -1172,12 +1396,23 @@ function buildRelationshipConflictActions(
   adaptiveProfile: CleanupAdaptiveProfile
 ) {
   const relationshipClaims = claims.filter(
-    (claim) => claim.claimType === "song_relationship_observation" && isCleanupClaimCandidate(claim)
+    (claim) =>
+      (claim.claimType === "song_relationship_observation" ||
+        claim.claimType === "artist_relationship_pattern_observation") &&
+      isCleanupClaimCandidate(claim)
   );
   const grouped = new Map<string, LafzBrainClaimRecord[]>();
 
   for (const claim of relationshipClaims) {
-    const key = [claim.scopeKey, normalizeBrainKey(getClaimSourceEntity(claim)), normalizeBrainKey(getClaimTargetEntity(claim))].join("::");
+    const sourceValue =
+      claim.claimType === "artist_relationship_pattern_observation"
+        ? asString(claim.payload.sourceRole)
+        : getClaimSourceEntity(claim);
+    const targetValue =
+      claim.claimType === "artist_relationship_pattern_observation"
+        ? asString(claim.payload.targetRole)
+        : getClaimTargetEntity(claim);
+    const key = [claim.scopeKey, normalizeBrainKey(sourceValue), normalizeBrainKey(targetValue)].join("::");
     const bucket = grouped.get(key) ?? [];
     bucket.push(claim);
     grouped.set(key, bucket);
@@ -1346,6 +1581,48 @@ async function reconcileGraphForCleanupAction(action: CleanupAction, spotifyTrac
     });
   }
 
+  if (action.claim.claimType === "artist_motif_pattern_observation") {
+    const artistKey = getClaimArtistOwnerKey(action.claim);
+    const motifNode = await readBrainNodeByTypeAndKey("motif", action.claim.normalizedKey);
+    const artistNode = artistKey ? await readBrainNodeByTypeAndKey("artist", artistKey) : null;
+
+    if (!motifNode || !artistNode) {
+      return 0;
+    }
+
+    return deactivateBrainEdge({
+      edgeType: "artist_exhibits_motif",
+      sourceNodeId: artistNode.id,
+      targetNodeId: motifNode.id,
+      reason: action.reason,
+      metadata: {
+        cleanupRule: action.cleanupRule,
+        claimId: action.claim.id
+      }
+    });
+  }
+
+  if (action.claim.claimType === "artist_persona_style_observation") {
+    const artistKey = getClaimArtistOwnerKey(action.claim);
+    const personaNode = await readBrainNodeByTypeAndKey("persona_style", action.claim.normalizedKey);
+    const artistNode = artistKey ? await readBrainNodeByTypeAndKey("artist", artistKey) : null;
+
+    if (!personaNode || !artistNode) {
+      return 0;
+    }
+
+    return deactivateBrainEdge({
+      edgeType: "artist_has_persona_style",
+      sourceNodeId: artistNode.id,
+      targetNodeId: personaNode.id,
+      reason: action.reason,
+      metadata: {
+        cleanupRule: action.cleanupRule,
+        claimId: action.claim.id
+      }
+    });
+  }
+
   if (action.claim.claimType === "song_symbol_observation") {
     const symbolNode = await readBrainNodeByTypeAndKey("symbol", action.claim.normalizedKey);
 
@@ -1388,6 +1665,71 @@ async function reconcileGraphForCleanupAction(action: CleanupAction, spotifyTrac
       sourceNodeId: sourceNode.id,
       targetNodeId: targetNode.id,
       sourceSongId: songNodeId,
+      reason: action.reason,
+      metadata: {
+        cleanupRule: action.cleanupRule,
+        claimId: action.claim.id
+      }
+    });
+  }
+
+  if (action.claim.claimType === "artist_entity_role_observation") {
+    const artistKey = getClaimArtistOwnerKey(action.claim);
+    const entityKey = asString(action.claim.payload.entityKey);
+    const entityRole = asString(action.claim.payload.entityRole);
+    const roleKey = normalizeBrainKey(entityKey) ?? normalizeBrainKey(entityRole);
+
+    if (!artistKey || !roleKey) {
+      return 0;
+    }
+
+    const [artistNode, entityTypeNode] = await Promise.all([
+      readBrainNodeByTypeAndKey("artist", artistKey),
+      readBrainNodeByTypeAndKey("entity_type", roleKey)
+    ]);
+
+    if (!artistNode || !entityTypeNode) {
+      return 0;
+    }
+
+    return deactivateBrainEdge({
+      edgeType: "artist_associates_entity_type",
+      sourceNodeId: artistNode.id,
+      targetNodeId: entityTypeNode.id,
+      reason: action.reason,
+      metadata: {
+        cleanupRule: action.cleanupRule,
+        claimId: action.claim.id
+      }
+    });
+  }
+
+  if (action.claim.claimType === "artist_relationship_pattern_observation") {
+    const artistKey = getClaimArtistOwnerKey(action.claim);
+    const sourceRole = asString(action.claim.payload.sourceRole);
+    const targetRole = asString(action.claim.payload.targetRole);
+    const sourceEntityKey = asString(action.claim.payload.sourceEntityKey);
+    const targetEntityKey = asString(action.claim.payload.targetEntityKey);
+
+    if (!artistKey || !sourceRole || !targetRole) {
+      return 0;
+    }
+
+    const [artistNode, sourceNode, targetNode] = await Promise.all([
+      readBrainNodeByTypeAndKey("artist", artistKey),
+      readBrainNodeByTypeAndKey("entity_type", normalizeBrainKey(sourceEntityKey) ?? normalizeBrainKey(sourceRole) ?? ""),
+      readBrainNodeByTypeAndKey("entity_type", normalizeBrainKey(targetEntityKey) ?? normalizeBrainKey(targetRole) ?? "")
+    ]);
+
+    if (!artistNode || !sourceNode || !targetNode) {
+      return 0;
+    }
+
+    return deactivateBrainEdge({
+      edgeType: "entity_type_related_to_entity_type",
+      sourceNodeId: sourceNode.id,
+      targetNodeId: targetNode.id,
+      sourceSongId: artistNode.id,
       reason: action.reason,
       metadata: {
         cleanupRule: action.cleanupRule,
@@ -1603,12 +1945,25 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
     }
   });
 
+  let heartbeatInterval: NodeJS.Timeout | null = null;
+
   try {
     await updateAgentJobStatus(job.id, "running", {
       workerId,
       heartbeat: true,
       lastError: null
     });
+
+    heartbeatInterval = setInterval(() => {
+      void heartbeatAgentJob(job.id, workerId).catch((error) => {
+        console.error("[lafz-brain] cleanup agent heartbeat failed.", {
+          jobKey: job.jobKey,
+          workerId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      });
+    }, getCleanupAgentHeartbeatMs());
+    heartbeatInterval.unref?.();
 
     const spotifyTrackId = job.spotifyTrackId;
 
@@ -1656,7 +2011,9 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
       buildRedundantExistingTermActions(candidateClaims),
       buildGenericPhraseActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile),
       buildMotifCleanupActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile),
+      buildPersonaCleanupActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile),
       buildSymbolCleanupActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile),
+      buildEntityRoleCleanupActions(candidateClaims, evidenceMetricsByClaimId),
       buildRelationshipCleanupActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile),
       buildRelationshipConflictActions(candidateClaims, evidenceMetricsByClaimId, embeddingByClaimId, adaptiveProfile),
       buildStaleRereviewActions(candidateClaims, evidenceMetricsByClaimId, adaptiveProfile)
@@ -1673,6 +2030,7 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
       inferredClaimsRejected: 0,
       artistMergeTrimmed: 0,
       motifClaimsTrimmed: 0,
+      personaClaimsTrimmed: 0,
       symbolClaimsTrimmed: 0,
       relationshipClaimsTrimmed: 0,
       materializedClaims: 0,
@@ -1781,11 +2139,18 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
         output.motifClaimsTrimmed += 1;
       }
 
+      if (action.claim.claimType === "artist_persona_style_observation") {
+        output.personaClaimsTrimmed += 1;
+      }
+
       if (action.claim.claimType === "song_symbol_observation") {
         output.symbolClaimsTrimmed += 1;
       }
 
-      if (action.claim.claimType === "song_relationship_observation") {
+      if (
+        action.claim.claimType === "song_relationship_observation" ||
+        action.claim.claimType === "artist_relationship_pattern_observation"
+      ) {
         output.relationshipClaimsTrimmed += 1;
       }
 
@@ -1800,6 +2165,33 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
     output.materializedEdgeTouches += materialization.edgeTouches;
     output.invalidatedMemoryPacks += materialization.invalidatedMemoryPacks;
     output.currentSongPackRefreshed = output.currentSongPackRefreshed || materialization.currentSongPackRefreshed;
+
+    const entityMaterialization = await materializeAcceptedEntityClaims({
+      draftFile
+    });
+    output.materializedClaims += entityMaterialization.claimsMaterialized;
+    output.materializedNodeTouches += entityMaterialization.nodeTouches;
+    output.materializedEdgeTouches += entityMaterialization.edgeTouches;
+    output.invalidatedMemoryPacks += entityMaterialization.invalidatedMemoryPacks;
+    output.currentSongPackRefreshed = output.currentSongPackRefreshed || entityMaterialization.currentSongPackRefreshed;
+
+    const motifMaterialization = await materializeAcceptedMotifClaims({
+      draftFile
+    });
+    output.materializedClaims += motifMaterialization.claimsMaterialized;
+    output.materializedNodeTouches += motifMaterialization.nodeTouches;
+    output.materializedEdgeTouches += motifMaterialization.edgeTouches;
+    output.invalidatedMemoryPacks += motifMaterialization.invalidatedMemoryPacks;
+    output.currentSongPackRefreshed = output.currentSongPackRefreshed || motifMaterialization.currentSongPackRefreshed;
+
+    const personaMaterialization = await materializeAcceptedPersonaClaims({
+      draftFile
+    });
+    output.materializedClaims += personaMaterialization.claimsMaterialized;
+    output.materializedNodeTouches += personaMaterialization.nodeTouches;
+    output.materializedEdgeTouches += personaMaterialization.edgeTouches;
+    output.invalidatedMemoryPacks += personaMaterialization.invalidatedMemoryPacks;
+    output.currentSongPackRefreshed = output.currentSongPackRefreshed || personaMaterialization.currentSongPackRefreshed;
 
     if (output.actionsApplied > 0 && !output.currentSongPackRefreshed) {
       await buildSongTranslationMemoryPack({
@@ -1884,6 +2276,7 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
       inferredClaimsRejected: 0,
       artistMergeTrimmed: 0,
       motifClaimsTrimmed: 0,
+      personaClaimsTrimmed: 0,
       symbolClaimsTrimmed: 0,
       relationshipClaimsTrimmed: 0,
       materializedClaims: 0,
@@ -1892,6 +2285,10 @@ async function processClaimedCleanupAgentJob(workerId: string): Promise<CleanupA
       invalidatedMemoryPacks: 0,
       currentSongPackRefreshed: false
     };
+  } finally {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
   }
 }
 
@@ -2015,6 +2412,20 @@ export function kickCleanupAgentWorker(reason = "manual") {
       await runCleanupAgentUntilIdle({ reason });
     } finally {
       globals.__lafzCleanupAgentInFlight = null;
+
+      void hasActiveCleanupAgentJobs()
+        .then((hasActiveJobs) => {
+          if (!hasActiveJobs) {
+            return;
+          }
+
+          setTimeout(() => {
+            kickCleanupAgentWorker("drain-pending");
+          }, 0);
+        })
+        .catch((error) => {
+          console.error("[lafz-brain] cleanup agent could not check for pending jobs after a run.", error);
+        });
     }
   })();
 }

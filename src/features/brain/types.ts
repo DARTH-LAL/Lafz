@@ -19,6 +19,7 @@ export type LafzBrainEdgeType =
   | "artist_recorded_song"
   | "artist_exhibits_motif"
   | "artist_has_persona_style"
+  | "artist_associates_entity_type"
   | "artist_uses_term_surface"
   | "artist_prefers_rendering"
   | "song_has_motif"
@@ -28,6 +29,7 @@ export type LafzBrainEdgeType =
   | "term_surface_maps_to_term_sense"
   | "term_sense_prefers_rendering"
   | "entity_instance_is_type"
+  | "entity_type_related_to_entity_type"
   | "entity_instance_related_to_entity_instance";
 
 export type LafzBrainConfidence = "low" | "medium" | "high";
@@ -36,10 +38,14 @@ export type LafzBrainKnowledgeScope = "canonical" | "artist_local" | "song_local
 
 export type LafzBrainClaimType =
   | "song_motif_observation"
+  | "artist_motif_pattern_observation"
+  | "artist_persona_style_observation"
   | "song_symbol_observation"
   | "song_relationship_observation"
   | "song_vocabulary_observation"
-  | "artist_term_usage_observation";
+  | "artist_term_usage_observation"
+  | "artist_entity_role_observation"
+  | "artist_relationship_pattern_observation";
 
 export type LafzBrainClaimScopeType = "global" | "artist" | "song";
 
@@ -55,7 +61,7 @@ export type LafzBrainEvidenceSourceType =
 
 export type LafzBrainPromotionDecision = "accepted" | "rejected" | "deferred";
 
-export type LafzAgentJobType = "vocabulary_agent" | "cleanup_agent";
+export type LafzAgentJobType = "vocabulary_agent" | "entity_agent" | "motif_agent" | "persona_agent" | "cleanup_agent";
 
 export type LafzAgentJobStatus = "pending" | "claimed" | "running" | "completed" | "failed" | "cancelled" | "dead_lettered";
 

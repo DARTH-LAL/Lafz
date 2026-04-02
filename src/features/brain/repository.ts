@@ -177,6 +177,22 @@ function mergeJsonObjects(base: Record<string, unknown>, patch: Record<string, u
   const merged: Record<string, unknown> = { ...base };
 
   for (const [key, value] of Object.entries(patch)) {
+    if (Array.isArray(value) && Array.isArray(merged[key])) {
+      const mergedArray = [...(merged[key] as unknown[]), ...value];
+      const arePrimitiveValues = mergedArray.every(
+        (entry) =>
+          typeof entry === "string" ||
+          typeof entry === "number" ||
+          typeof entry === "boolean" ||
+          entry === null
+      );
+
+      merged[key] = arePrimitiveValues
+        ? Array.from(new Set(mergedArray.map((entry) => JSON.stringify(entry)))).map((entry) => JSON.parse(entry))
+        : value;
+      continue;
+    }
+
     if (isRecord(value) && isRecord(merged[key])) {
       merged[key] = mergeJsonObjects(merged[key] as Record<string, unknown>, value);
       continue;

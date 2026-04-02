@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ensureVocabularyAgentWorkerStarted,
-  getVocabularyAgentProcessStatus,
-  kickVocabularyAgentWorker,
-  runVocabularyAgentUntilIdle
-} from "@/features/brain/vocabulary-agent";
+  ensureEntityAgentWorkerStarted,
+  getEntityAgentProcessStatus,
+  kickEntityAgentWorker,
+  runEntityAgentUntilIdle
+} from "@/features/brain/entity-agent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,18 +51,18 @@ export async function POST(request: NextRequest) {
   const maxJobs = parseMaxJobs(body?.maxJobs);
   const workerId =
     (typeof body?.workerId === "string" && body.workerId.trim().length > 0 ? body.workerId.trim() : null) ??
-    process.env.LAFZ_AGENT_WORKER_ID?.trim() ??
-    `lafz-standalone-worker-${process.pid}`;
+    process.env.LAFZ_ENTITY_AGENT_WORKER_ID?.trim() ??
+    `lafz-standalone-entity-worker-${process.pid}`;
 
-  const processed = await runVocabularyAgentUntilIdle({
+  const processed = await runEntityAgentUntilIdle({
     ignoreMode: true,
     workerId,
     reason: "remote",
     maxJobs
   });
 
-  ensureVocabularyAgentWorkerStarted();
-  kickVocabularyAgentWorker("remote-followup");
+  ensureEntityAgentWorkerStarted();
+  kickEntityAgentWorker("remote-followup");
 
   return NextResponse.json({
     ok: true,
@@ -70,6 +70,6 @@ export async function POST(request: NextRequest) {
     maxJobs,
     processedCount: processed.length,
     processed,
-    status: getVocabularyAgentProcessStatus()
+    status: getEntityAgentProcessStatus()
   });
 }

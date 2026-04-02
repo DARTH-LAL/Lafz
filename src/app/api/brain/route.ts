@@ -14,8 +14,11 @@ import {
 import { buildMemoryPackCacheKey, splitArtistCredits } from "@/features/brain/normalize";
 import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { NODE_COLORS } from "@/features/brain/colors";
-import { getCleanupAgentProcessStatus } from "@/features/brain/cleanup-agent";
-import { getVocabularyAgentProcessStatus } from "@/features/brain/vocabulary-agent";
+import { ensureCleanupAgentWorkerStarted, getCleanupAgentProcessStatus } from "@/features/brain/cleanup-agent";
+import { ensureEntityAgentWorkerStarted, getEntityAgentProcessStatus } from "@/features/brain/entity-agent";
+import { ensureMotifAgentWorkerStarted, getMotifAgentProcessStatus } from "@/features/brain/motif-agent";
+import { ensurePersonaAgentWorkerStarted, getPersonaAgentProcessStatus } from "@/features/brain/persona-agent";
+import { ensureVocabularyAgentWorkerStarted, getVocabularyAgentProcessStatus } from "@/features/brain/vocabulary-agent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,14 +37,44 @@ const TYPE_LIMITS: Record<string, number> = {
   persona_style: 10
 };
 
+function readSecretFromRequest(request: NextRequest) {
+  const authorization = request.headers.get("authorization")?.trim();
+
+  if (authorization?.toLowerCase().startsWith("bearer ")) {
+    return authorization.slice("bearer ".length).trim();
+  }
+
+  return request.headers.get("x-lafz-agent-secret")?.trim() ?? null;
+}
+
+function isRunnerAuthorized(request: NextRequest) {
+  const expectedSecret = process.env.LAFZ_AGENT_RUNNER_SECRET?.trim();
+
+  if (!expectedSecret) {
+    return false;
+  }
+
+  return readSecretFromRequest(request) === expectedSecret;
+}
+
 export async function GET(request: NextRequest) {
+  ensureVocabularyAgentWorkerStarted();
+  ensureEntityAgentWorkerStarted();
+  ensureMotifAgentWorkerStarted();
+  ensurePersonaAgentWorkerStarted();
+  ensureCleanupAgentWorkerStarted();
+
+  const mode = request.nextUrl.searchParams.get("mode") ?? "graph";
   const session = readSpotifySessionFromRequest(request);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const runnerAuthorized = isRunnerAuthorized(request);
+
+  if (!session && !(mode === "worker-status" && runnerAuthorized)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
-  const mode = request.nextUrl.searchParams.get("mode") ?? "graph";
   const seed = request.nextUrl.searchParams.get("seed") ?? null;
   const nodeType = request.nextUrl.searchParams.get("type") ?? null;
   const spotifyTrackId = request.nextUrl.searchParams.get("spotifyTrackId") ?? null;
@@ -169,13 +202,46 @@ export async function GET(request: NextRequest) {
 
     if (mode === "worker-status") {
       const queueStatuses = ["pending", "claimed", "running", "completed", "failed", "dead_lettered"] as const;
-      const [vocabularyCounts, cleanupCounts, { data: recentRuns }, { data: recentJobs }] = await Promise.all([
+      const [vocabularyCounts, entityCounts, motifCounts, personaCounts, cleanupCounts, { data: recentRuns }, { data: recentJobs }] = await Promise.all([
         Promise.all(
           queueStatuses.map(async (status) => {
             const { count } = await supabase
               .from("agent_jobs")
               .select("*", { count: "exact", head: true })
               .eq("job_type", "vocabulary_agent")
+              .eq("status", status);
+
+            return [status, count ?? 0] as const;
+          })
+        ),
+        Promise.all(
+          queueStatuses.map(async (status) => {
+            const { count } = await supabase
+              .from("agent_jobs")
+              .select("*", { count: "exact", head: true })
+              .eq("job_type", "entity_agent")
+              .eq("status", status);
+
+            return [status, count ?? 0] as const;
+          })
+        ),
+        Promise.all(
+          queueStatuses.map(async (status) => {
+            const { count } = await supabase
+              .from("agent_jobs")
+              .select("*", { count: "exact", head: true })
+              .eq("job_type", "motif_agent")
+              .eq("status", status);
+
+            return [status, count ?? 0] as const;
+          })
+        ),
+        Promise.all(
+          queueStatuses.map(async (status) => {
+            const { count } = await supabase
+              .from("agent_jobs")
+              .select("*", { count: "exact", head: true })
+              .eq("job_type", "persona_agent")
               .eq("status", status);
 
             return [status, count ?? 0] as const;
@@ -195,13 +261,13 @@ export async function GET(request: NextRequest) {
         supabase
           .from("agent_runs")
           .select("id, job_id, agent_role, status, worker_id, started_at, finished_at, output_json, error_text, created_at")
-          .in("agent_role", ["vocabulary_agent", "cleanup_agent"])
+          .in("agent_role", ["vocabulary_agent", "entity_agent", "motif_agent", "persona_agent", "cleanup_agent"])
           .order("created_at", { ascending: false })
           .limit(24),
         supabase
           .from("agent_jobs")
           .select("id, job_key, job_type, status, spotify_track_id, claimed_by, claimed_at, updated_at, last_error")
-          .in("job_type", ["vocabulary_agent", "cleanup_agent"])
+          .in("job_type", ["vocabulary_agent", "entity_agent", "motif_agent", "persona_agent", "cleanup_agent"])
           .order("updated_at", { ascending: false })
           .limit(24)
       ]);
@@ -215,6 +281,24 @@ export async function GET(request: NextRequest) {
             totals.vocabulary.claimsUpserted += typeof output.claimsUpserted === "number" ? output.claimsUpserted : 0;
             totals.vocabulary.evidencesInserted += typeof output.evidencesInserted === "number" ? output.evidencesInserted : 0;
             totals.vocabulary.promotionsRecorded += typeof output.promotionsRecorded === "number" ? output.promotionsRecorded : 0;
+          }
+
+          if (agentRole === "entity_agent") {
+            totals.entity.claimsUpserted += typeof output.claimsUpserted === "number" ? output.claimsUpserted : 0;
+            totals.entity.evidencesInserted += typeof output.evidencesInserted === "number" ? output.evidencesInserted : 0;
+            totals.entity.promotionsRecorded += typeof output.promotionsRecorded === "number" ? output.promotionsRecorded : 0;
+          }
+
+          if (agentRole === "motif_agent") {
+            totals.motif.claimsUpserted += typeof output.claimsUpserted === "number" ? output.claimsUpserted : 0;
+            totals.motif.evidencesInserted += typeof output.evidencesInserted === "number" ? output.evidencesInserted : 0;
+            totals.motif.promotionsRecorded += typeof output.promotionsRecorded === "number" ? output.promotionsRecorded : 0;
+          }
+
+          if (agentRole === "persona_agent") {
+            totals.persona.claimsUpserted += typeof output.claimsUpserted === "number" ? output.claimsUpserted : 0;
+            totals.persona.evidencesInserted += typeof output.evidencesInserted === "number" ? output.evidencesInserted : 0;
+            totals.persona.promotionsRecorded += typeof output.promotionsRecorded === "number" ? output.promotionsRecorded : 0;
           }
 
           if (agentRole === "cleanup_agent") {
@@ -231,6 +315,21 @@ export async function GET(request: NextRequest) {
             evidencesInserted: 0,
             promotionsRecorded: 0
           },
+          entity: {
+            claimsUpserted: 0,
+            evidencesInserted: 0,
+            promotionsRecorded: 0
+          },
+          motif: {
+            claimsUpserted: 0,
+            evidencesInserted: 0,
+            promotionsRecorded: 0
+          },
+          persona: {
+            claimsUpserted: 0,
+            evidencesInserted: 0,
+            promotionsRecorded: 0
+          },
           cleanup: {
             actionsApplied: 0,
             rejected: 0,
@@ -242,6 +341,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         worker: getVocabularyAgentProcessStatus(),
         queueCounts: Object.fromEntries(vocabularyCounts),
+        entityWorker: getEntityAgentProcessStatus(),
+        entityQueueCounts: Object.fromEntries(entityCounts),
+        motifWorker: getMotifAgentProcessStatus(),
+        motifQueueCounts: Object.fromEntries(motifCounts),
+        personaWorker: getPersonaAgentProcessStatus(),
+        personaQueueCounts: Object.fromEntries(personaCounts),
         cleanupWorker: getCleanupAgentProcessStatus(),
         cleanupQueueCounts: Object.fromEntries(cleanupCounts),
         recentContributionTotals,

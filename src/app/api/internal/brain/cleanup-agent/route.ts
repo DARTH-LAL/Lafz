@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCleanupAgentProcessStatus, runCleanupAgentUntilIdle } from "@/features/brain/cleanup-agent";
+import {
+  ensureCleanupAgentWorkerStarted,
+  getCleanupAgentProcessStatus,
+  kickCleanupAgentWorker,
+  runCleanupAgentUntilIdle
+} from "@/features/brain/cleanup-agent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +60,9 @@ export async function POST(request: NextRequest) {
     reason: "remote",
     maxJobs
   });
+
+  ensureCleanupAgentWorkerStarted();
+  kickCleanupAgentWorker("remote-followup");
 
   return NextResponse.json({
     ok: true,

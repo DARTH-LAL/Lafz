@@ -1,5 +1,11 @@
 import type { LafzBrainKnowledgeScope, LafzBrainNodeType } from "@/features/brain/types";
-import { normalizeBrainKey, tokenizeBrainText } from "@/features/brain/normalize";
+import {
+  isDirectiveLikePersonaStyleText,
+  isGenericSingleTokenPersonaStyle,
+  isSentenceLikePersonaStyleText,
+  normalizeBrainKey,
+  tokenizeBrainText
+} from "@/features/brain/normalize";
 
 type BrainPolicyDecision = {
   scope: LafzBrainKnowledgeScope;
@@ -38,7 +44,13 @@ const GENERIC_PERSONA_KEYS = new Set([
   "romantic",
   "emotional",
   "confident",
-  "intense"
+  "intense",
+  "aggressive",
+  "boastful",
+  "threatening",
+  "confrontational",
+  "proud",
+  "celebratory"
 ]);
 
 function clampScore(value: number) {
@@ -97,6 +109,33 @@ export function evaluateBrainNodePolicy(nodeType: LafzBrainNodeType, label: stri
 
   const isGeneric = classifyGenericConcept(nodeType, label);
   const multiToken = isMultiToken(label);
+
+  if (nodeType === "persona_style" && isDirectiveLikePersonaStyleText(label)) {
+    return {
+      scope: "artist_local",
+      stability: 0.35,
+      shouldInject: false,
+      reasons: ["Directive-like translation notes should not become reusable persona memory."]
+    };
+  }
+
+  if (nodeType === "persona_style" && isGenericSingleTokenPersonaStyle(label)) {
+    return {
+      scope: "artist_local",
+      stability: 0.42,
+      shouldInject: false,
+      reasons: ["Single-word mood labels are too broad to act as stable artist voice memory."]
+    };
+  }
+
+  if (nodeType === "persona_style" && isSentenceLikePersonaStyleText(label)) {
+    return {
+      scope: "artist_local",
+      stability: 0.46,
+      shouldInject: false,
+      reasons: ["Long sentence-style persona notes should be collapsed into canonical families before reuse."]
+    };
+  }
 
   if (nodeType === "symbol" || nodeType === "motif" || nodeType === "persona_style") {
     if (isGeneric) {

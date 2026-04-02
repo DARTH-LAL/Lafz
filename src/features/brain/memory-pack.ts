@@ -19,6 +19,8 @@ import {
   buildCandidateTextSignature,
   buildMemoryPackCacheKey,
   canonicalizeBrainMotif,
+  isCanonicalBrainMotifNode,
+  isReusableArtistEntityClass,
   normalizeBrainText,
   splitArtistCredits,
   tokenizeBrainText,
@@ -27,6 +29,7 @@ import {
 import { evaluateBrainNodePolicy } from "@/features/brain/policy";
 import type {
   LafzBrainConfidence,
+  LafzBrainEdgeRecord,
   LafzBrainMemoryPack,
   LafzBrainMemoryPackAudit,
   LafzBrainMemoryPackCacheRecord,
@@ -37,7 +40,7 @@ import type {
 } from "@/features/brain/types";
 
 const MEMORY_PACK_TTL_MS = 1000 * 60 * 15;
-const MEMORY_PACK_RETRIEVAL_VERSION = 2;
+const MEMORY_PACK_RETRIEVAL_VERSION = 5;
 const MAX_STYLE_HINTS = 8;
 const MAX_MOTIF_HINTS = 10;
 const MAX_RELATIONSHIP_PRIORS = 8;
@@ -468,14 +471,31 @@ function buildArtistStyleHintDetails(artistNodes: LafzBrainNodeRecord[], persona
 
 function buildMotifHintDetails(
   worldModels: SongWorldModelSource[],
-  artistMotifNodes: LafzBrainNodeRecord[],
+  artistMotifEdges: LafzBrainEdgeRecord[],
+  motifNodeById: Map<string, LafzBrainNodeRecord>,
   candidateTokenSet: Set<string>,
   queryEmbedding: number[] | null
 ) {
   const hints = new Map<string, HintAccumulator>();
   let filteredOut = 0;
 
-  for (const motifNode of artistMotifNodes) {
+  for (const edge of artistMotifEdges) {
+    const motifNode = motifNodeById.get(edge.targetNodeId);
+
+    if (!motifNode) {
+      filteredOut += 1;
+      continue;
+    }
+
+    const isClaimBacked =
+      typeof edge.metadata.materializedFromClaimId === "string" && edge.metadata.materializedFromClaimId.trim().length > 0;
+    const isCanonicalFamily = isCanonicalBrainMotifNode(motifNode.displayLabel, motifNode.canonicalKey);
+
+    if (!isClaimBacked && !isCanonicalFamily) {
+      filteredOut += 1;
+      continue;
+    }
+
     const canonicalMotif = canonicalizeBrainMotif(motifNode.displayLabel);
     const motifLabel = canonicalMotif?.displayLabel ?? motifNode.displayLabel;
     const policy = evaluateBrainNodePolicy("motif", motifLabel);
@@ -487,10 +507,18 @@ function buildMotifHintDetails(
 
     const score = clampScore(
       0.72 * policy.stability +
+        Math.min(edge.weight, 1) * 0.08 +
         lexicalOverlapBoost(motifLabel, candidateTokenSet) +
         semanticSimilarityBoost(motifNode, queryEmbedding)
     );
-    pushTextHint(hints, motifLabel, score, "Artist-level recurring motif from Lafz Brain.", undefined, motifNode.id);
+    pushTextHint(
+      hints,
+      motifLabel,
+      score,
+      isClaimBacked ? "Artist-level recurring motif promoted from repeated Lafz Brain claims." : "Canonical artist motif from Lafz Brain.",
+      undefined,
+      motifNode.id
+    );
   }
 
   for (const worldModel of worldModels) {
@@ -529,8 +557,65 @@ function buildMotifHintDetails(
   };
 }
 
-function buildRelationshipHintDetails(worldModels: SongWorldModelSource[]) {
+async function buildRelationshipHintDetails(
+  worldModels: SongWorldModelSource[],
+  artistNodes: LafzBrainNodeRecord[],
+  candidateTokenSet: Set<string>
+) {
   const hints = new Map<string, HintAccumulator>();
+
+  const artistNodeIds = new Set(artistNodes.map((node) => node.id));
+  const artistEntityEdges = await listBrainEdgesBySourceNodeIds(
+    artistNodes.map((node) => node.id),
+    ["artist_associates_entity_type"]
+  );
+  const sourceEntityTypeNodes = await readBrainNodesByIds(artistEntityEdges.map((edge) => edge.targetNodeId));
+  const sourceEntityNodeById = new Map(sourceEntityTypeNodes.map((node) => [node.id, node] as const));
+  const artistRelationshipEdges = (await listBrainEdgesBySourceNodeIds(
+    sourceEntityTypeNodes.map((node) => node.id),
+    ["entity_type_related_to_entity_type"]
+  )).filter((edge) => edge.sourceSongId && artistNodeIds.has(edge.sourceSongId));
+  const targetEntityTypeNodes = await readBrainNodesByIds(artistRelationshipEdges.map((edge) => edge.targetNodeId));
+  const targetEntityNodeById = new Map(targetEntityTypeNodes.map((node) => [node.id, node] as const));
+
+  for (const edge of artistRelationshipEdges) {
+    const sourceNode = sourceEntityNodeById.get(edge.sourceNodeId);
+    const targetNode = targetEntityNodeById.get(edge.targetNodeId);
+    const sourceEntityClass =
+      typeof sourceNode?.metadata.entityClass === "string" ? sourceNode.metadata.entityClass.trim() : null;
+    const targetEntityClass =
+      typeof targetNode?.metadata.entityClass === "string" ? targetNode.metadata.entityClass.trim() : null;
+    const dynamic =
+      typeof edge.metadata.dynamicFamilyLabel === "string"
+        ? edge.metadata.dynamicFamilyLabel.trim()
+        : typeof edge.metadata.dynamic === "string"
+          ? edge.metadata.dynamic.trim()
+          : null;
+    const powerBalance = typeof edge.metadata.powerBalance === "string" ? edge.metadata.powerBalance.trim() : null;
+
+    if (
+      !sourceNode ||
+      !targetNode ||
+      !dynamic ||
+      !isReusableArtistEntityClass(sourceEntityClass) ||
+      !isReusableArtistEntityClass(targetEntityClass)
+    ) {
+      continue;
+    }
+
+    const value = powerBalance
+      ? `${sourceNode.displayLabel} -> ${targetNode.displayLabel}: ${dynamic} (${powerBalance})`
+      : `${sourceNode.displayLabel} -> ${targetNode.displayLabel}: ${dynamic}`;
+    const score = clampScore(0.72 + lexicalOverlapBoost(value, candidateTokenSet) + Math.min(edge.weight, 1) * 0.16);
+    pushTextHint(
+      hints,
+      value,
+      score,
+      "Artist-level entity relationship pattern from Lafz Brain.",
+      undefined,
+      sourceNode.id
+    );
+  }
 
   for (const worldModel of worldModels) {
     for (const relationship of parseRelationshipEntries(worldModel)) {
@@ -791,14 +876,14 @@ async function computeSongTranslationMemoryPack(options: {
 
   const artistEdges = await listBrainEdgesBySourceNodeIds(
     artistNodes.map((node) => node.id),
-    ["artist_has_persona_style", "artist_exhibits_motif", "artist_recorded_song"]
+    ["artist_has_persona_style", "artist_exhibits_motif", "artist_recorded_song", "artist_associates_entity_type"]
   );
   const personaStyleNodes = await readBrainNodesByIds(
     artistEdges.filter((edge) => edge.edgeType === "artist_has_persona_style").map((edge) => edge.targetNodeId)
   );
-  const motifNodes = await readBrainNodesByIds(
-    artistEdges.filter((edge) => edge.edgeType === "artist_exhibits_motif").map((edge) => edge.targetNodeId)
-  );
+  const artistMotifEdges = artistEdges.filter((edge) => edge.edgeType === "artist_exhibits_motif");
+  const motifNodes = await readBrainNodesByIds(artistMotifEdges.map((edge) => edge.targetNodeId));
+  const motifNodeById = new Map(motifNodes.map((node) => [node.id, node] as const));
   const songNodeIds = uniqStrings(
     artistEdges.filter((edge) => edge.edgeType === "artist_recorded_song").map((edge) => edge.targetNodeId)
   );
@@ -823,8 +908,8 @@ async function computeSongTranslationMemoryPack(options: {
       ? await requestOpenAiEmbeddings([candidateEmbeddingText]).then((vectors) => vectors[0] ?? null).catch(() => null)
       : null;
   const style = buildArtistStyleHintDetails(artistNodes, personaStyleNodes);
-  const motifs = buildMotifHintDetails(worldModels, motifNodes, candidateTokenSet, candidateEmbedding);
-  const relationships = buildRelationshipHintDetails(worldModels);
+  const motifs = buildMotifHintDetails(worldModels, artistMotifEdges, motifNodeById, candidateTokenSet, candidateEmbedding);
+  const relationships = await buildRelationshipHintDetails(worldModels, artistNodes, candidateTokenSet);
   const symbols = buildSymbolHintDetails(worldModels, candidateTokenSet);
   const renderings = await buildRenderingHintsFromGraph(artistNodes, options.candidateTexts, candidateEmbedding);
   const sourceSongIds = uniqStrings(worldModels.map((entry) => entry.spotifyTrackId));

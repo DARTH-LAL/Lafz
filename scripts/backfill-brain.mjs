@@ -30,8 +30,37 @@ const GENERIC_PERSONA_KEYS = new Set([
   "romantic",
   "emotional",
   "confident",
-  "intense"
+  "intense",
+  "aggressive",
+  "boastful",
+  "threatening",
+  "confrontational",
+  "proud",
+  "celebratory"
 ]);
+const PERSONA_DIRECTIVE_PATTERNS = [
+  /\bkeep the english\b/,
+  /\bkeep english\b/,
+  /\btranslate\b/,
+  /\btranslation\b/,
+  /\brender(?:ing)?\b/,
+  /\bpreserve\b/,
+  /\bslang-aware\b/,
+  /\brhythm-friendly\b/,
+  /\bstatus symbols?\b/,
+  /\bexplicitly\b/
+];
+const PERSONA_SENTENCE_PATTERNS = [
+  /^(?:often|usually|frequently|typically)\b/,
+  /^(?:uses|use|leans|frames|contrasts|keeps|sounds|delivers)\b/,
+  /\bproof of toughness\b/,
+  /\bproof of status\b/,
+  /\bstrong masculine posture\b/,
+  /\breal ones\b/,
+  /\bfakes?\b/,
+  /\boutsiders\b/,
+  /\bself[- ]defining\b/
+];
 const MOTIF_TAXONOMY_RULES = [
   { canonicalKey: "loyalty-and-crew", displayLabel: "loyalty and crew", keywords: ["loyalty", "crew", "friends", "friendship", "yaari", "camaraderie", "brotherhood", "keeping one"] },
   { canonicalKey: "longing-and-absence", displayLabel: "longing and absence", keywords: ["longing", "absence", "distance", "overseas", "missing", "unfulfilled", "restless", "sleepless"] },
@@ -153,6 +182,21 @@ function clampScore(value) {
 
 function isMultiToken(label) {
   return tokenizeText(label).length > 1;
+}
+
+function isDirectiveLikePersonaStyle(value) {
+  const normalized = normalizeText(value);
+  return normalized ? PERSONA_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(normalized)) : false;
+}
+
+function isSentenceLikePersonaStyle(value) {
+  const normalized = normalizeText(value);
+
+  if (!normalized) {
+    return false;
+  }
+
+  return /[.!?]/.test(String(value)) || PERSONA_SENTENCE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function classifyGenericConcept(nodeType, label) {
@@ -448,9 +492,12 @@ function buildPersonaStyleCandidates(artistMemory) {
   return uniqStrings([
     ...asStringArray(artistMemory.voiceNotes),
     ...asStringArray(artistMemory.stanceNotes),
-    ...asStringArray(artistMemory.toneNotes),
-    ...asStringArray(artistMemory.translationPreferences).slice(0, 2)
-  ]).slice(0, 6);
+    ...asStringArray(artistMemory.toneNotes)
+  ])
+    .filter((value) => !isDirectiveLikePersonaStyle(value))
+    .filter((value) => !GENERIC_PERSONA_KEYS.has(normalizeKey(value) ?? ""))
+    .filter((value) => !isSentenceLikePersonaStyle(value))
+    .slice(0, 6);
 }
 
 async function upsertPersonaStyleLinks(supabase, nodeStore, artistNodeId, artistMemory) {

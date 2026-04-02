@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { startAiGenerationJob } from "@/features/ai/job-store";
 import { generateAiTranslationDraft } from "@/features/ai/translation-draft";
 import { ensureCleanupAgentWorkerStarted } from "@/features/brain/cleanup-agent";
+import { ensureEntityAgentWorkerStarted } from "@/features/brain/entity-agent";
+import { ensureMotifAgentWorkerStarted } from "@/features/brain/motif-agent";
+import { ensurePersonaAgentWorkerStarted } from "@/features/brain/persona-agent";
 import { ensureVocabularyAgentWorkerStarted } from "@/features/brain/vocabulary-agent";
 import { readSpotifySessionFromRequest } from "@/features/spotify/session";
 
@@ -91,6 +94,9 @@ function redirectWithStatus(request: NextRequest, redirectTo: string, status: st
 
 export async function POST(request: NextRequest) {
   ensureVocabularyAgentWorkerStarted();
+  ensureEntityAgentWorkerStarted();
+  ensureMotifAgentWorkerStarted();
+  ensurePersonaAgentWorkerStarted();
   ensureCleanupAgentWorkerStarted();
 
   const session = readSpotifySessionFromRequest(request);
