@@ -3,10 +3,11 @@
   "configurations": [
     {
       "name": "lafz-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js", "run", "dev"],
       "port": 3000,
-      "autoPort": false
+      "autoPort": false,
+      "env": { "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" }
     },
     {
       "name": "analytics-demo",

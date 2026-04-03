@@ -117,6 +117,51 @@ export type ClaimsData = {
   claims: BrainClaim[];
 };
 
+export type AgentWorkerStatus = {
+  runtimeMode: string;
+  workerId: string | null;
+  inFlight: boolean;
+  intervalActive: boolean;
+  startedAt: string | null;
+  lastKickReason: string | null;
+  lastActivityAt: string | null;
+  lastSummary: Record<string, unknown> | null;
+};
+
+export type AgentRun = {
+  id: string;
+  job_id: string;
+  agent_role: string;
+  status: string;
+  worker_id: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  output_json: Record<string, unknown> | null;
+  error_text: string | null;
+  created_at: string;
+};
+
+export type WorkerStatusData = {
+  worker: AgentWorkerStatus;
+  queueCounts: Record<string, number>;
+  entityWorker: AgentWorkerStatus;
+  entityQueueCounts: Record<string, number>;
+  motifWorker: AgentWorkerStatus;
+  motifQueueCounts: Record<string, number>;
+  personaWorker: AgentWorkerStatus;
+  personaQueueCounts: Record<string, number>;
+  cleanupWorker: AgentWorkerStatus;
+  cleanupQueueCounts: Record<string, number>;
+  recentContributionTotals: {
+    vocabulary: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
+    entity: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
+    motif: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
+    persona: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
+    cleanup: { actionsApplied: number; rejected: number; deprecated: number };
+  };
+  recentRuns: AgentRun[];
+};
+
 // ─── Shared constants ─────────────────────────────────────────────────────────
 
 // Re-export from the single source of truth so UI components only need one import
@@ -311,6 +356,264 @@ export function MemoryPackPanel({ memoryPack, loading, error }: { memoryPack: Me
       <RetrievalSection title="Relationships" items={topRelationships} />
       <RetrievalSection title="Symbols" items={topSymbols} />
       <RetrievalSection title="Renderings" items={topRenderings} />
+    </div>
+  );
+}
+
+// ─── Agents panel ─────────────────────────────────────────────────────────────
+
+const AGENT_META: Array<{
+  key: keyof WorkerStatusData;
+  countsKey: keyof WorkerStatusData;
+  label: string;
+  color: string;
+  totalsKey: keyof WorkerStatusData["recentContributionTotals"];
+}> = [
+  { key: "worker",        countsKey: "queueCounts",      label: "Vocabulary", color: "#a78bfa", totalsKey: "vocabulary" },
+  { key: "entityWorker",  countsKey: "entityQueueCounts", label: "Entity",    color: "#34d399", totalsKey: "entity" },
+  { key: "motifWorker",   countsKey: "motifQueueCounts",  label: "Motif",     color: "#60a5fa", totalsKey: "motif" },
+  { key: "personaWorker", countsKey: "personaQueueCounts",label: "Persona",   color: "#f472b6", totalsKey: "persona" },
+  { key: "cleanupWorker", countsKey: "cleanupQueueCounts",label: "Cleanup",   color: "#facc15", totalsKey: "cleanup" },
+];
+
+function AgentStatusDot({ worker, color }: { worker: AgentWorkerStatus; color: string }) {
+  const active = worker.inFlight;
+  const idle   = !active && worker.intervalActive;
+  const dotColor = active ? "#34d399" : idle ? color : "#4b3a5a";
+  const pulse    = active;
+  return (
+    <span
+      className={`inline-block h-2 w-2 rounded-full flex-shrink-0 ${pulse ? "animate-pulse" : ""}`}
+      style={{ background: dotColor, boxShadow: active ? `0 0 8px ${dotColor}` : idle ? `0 0 5px ${dotColor}88` : "none" }}
+    />
+  );
+}
+
+function AgentCard({ worker, queueCounts, label, color, totals }: {
+  worker: AgentWorkerStatus;
+  queueCounts: Record<string, number>;
+  label: string;
+  color: string;
+  totals: WorkerStatusData["recentContributionTotals"][keyof WorkerStatusData["recentContributionTotals"]];
+}) {
+  const pending    = queueCounts.pending ?? 0;
+  const running    = queueCounts.running ?? 0;
+  const completed  = queueCounts.completed ?? 0;
+  const failed     = queueCounts.failed ?? 0;
+  const deadLetter = queueCounts.dead_lettered ?? 0;
+
+  const isCleanup = "actionsApplied" in totals;
+  const cleanupTotals = isCleanup ? totals as { actionsApplied: number; rejected: number; deprecated: number } : null;
+  const claimTotals = !isCleanup ? totals as { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number } : null;
+
+  const lastActivity = worker.lastActivityAt
+    ? new Date(worker.lastActivityAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-2xl p-4"
+      style={{
+        background: "rgba(6,2,5,0.92)",
+        border: `1px solid ${color}33`,
+        boxShadow: `0 0 16px ${color}15, inset 0 1px 0 ${color}18`
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AgentStatusDot worker={worker} color={color} />
+          <span className="text-[13px] font-bold" style={{ color, textShadow: `0 0 8px ${color}66` }}>{label}</span>
+        </div>
+        <span
+          className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+          style={{
+            background: worker.inFlight ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)",
+            color: worker.inFlight ? "#34d399" : "#8a7898",
+            border: `1px solid ${worker.inFlight ? "rgba(52,211,153,0.28)" : "rgba(255,255,255,0.10)"}`
+          }}
+        >
+          {worker.inFlight ? "running" : worker.intervalActive ? "idle" : "inactive"}
+        </span>
+      </div>
+
+      {/* Queue counts */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {[
+          { label: "pending",   value: pending,    c: pending > 0 ? color : "#4b3a5a" },
+          { label: "running",   value: running,    c: running > 0 ? "#34d399" : "#4b3a5a" },
+          { label: "done",      value: completed,  c: completed > 0 ? "#8a7898" : "#4b3a5a" },
+          { label: "failed",    value: failed + deadLetter, c: (failed + deadLetter) > 0 ? "#fb7185" : "#4b3a5a" },
+        ].map((stat) => (
+          <div key={stat.label} className="flex flex-col items-center gap-0.5 rounded-xl py-2" style={{ background: "rgba(0,0,0,0.30)", border: `1px solid ${stat.c}22` }}>
+            <span className="text-[14px] font-bold" style={{ color: stat.c }}>{stat.value}</span>
+            <span className="text-[8px] uppercase tracking-widest font-semibold text-[#4b3a5a]">{stat.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent contribution totals */}
+      <div className="flex flex-col gap-1">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#4b3a5a]">Last 24 runs</p>
+        {claimTotals && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: `${color}12`, color, border: `1px solid ${color}28` }}>
+              {claimTotals.claimsUpserted} claims
+            </span>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {claimTotals.evidencesInserted} evidence
+            </span>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {claimTotals.promotionsRecorded} promotions
+            </span>
+          </div>
+        )}
+        {cleanupTotals && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: `${color}12`, color, border: `1px solid ${color}28` }}>
+              {cleanupTotals.actionsApplied} actions
+            </span>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(251,113,133,0.10)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.20)" }}>
+              {cleanupTotals.rejected} rejected
+            </span>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {cleanupTotals.deprecated} deprecated
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Last activity */}
+      {lastActivity && (
+        <p className="text-[10px] text-[#4b3a5a]">
+          Last active <span className="text-[#8a7898]">{lastActivity}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function AgentsPanel({ data, loading, onRefresh }: {
+  data: WorkerStatusData | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const [showRuns, setShowRuns] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-4 mt-6">
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-0.5 w-7 rounded-full bg-[linear-gradient(90deg,#a78bfa,transparent)] shadow-[0_0_8px_#a78bfa]" />
+          <p className="text-[11px] font-bold uppercase tracking-[2.5px] text-[#a78bfa] [text-shadow:0_0_16px_rgba(167,139,250,0.6)]">
+            Agents
+          </p>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
+          style={{ background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.30)", boxShadow: "0 0 10px rgba(167,139,250,0.15)" }}
+        >
+          <svg viewBox="0 0 24 24" className={`h-3 w-3 fill-current ${loading ? "animate-spin" : ""}`} aria-hidden="true">
+            <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      {loading && !data && (
+        <div className="flex items-center gap-3 rounded-2xl p-6" style={{ background: "rgba(6,2,5,0.85)", border: "1px solid rgba(167,139,250,0.20)" }}>
+          <div className="h-5 w-5 rounded-full border-2 border-[#a78bfa] border-t-transparent animate-spin" />
+          <span className="text-[12px] text-[#a78bfa]">Loading agent status…</span>
+        </div>
+      )}
+
+      {data && (
+        <>
+          {/* Agent cards grid */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {AGENT_META.map(({ key, countsKey, label, color, totalsKey }) => (
+              <AgentCard
+                key={label}
+                worker={data[key] as AgentWorkerStatus}
+                queueCounts={data[countsKey] as Record<string, number>}
+                label={label}
+                color={color}
+                totals={data.recentContributionTotals[totalsKey]}
+              />
+            ))}
+          </div>
+
+          {/* Recent runs toggle */}
+          {data.recentRuns.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowRuns(v => !v)}
+                className="flex items-center gap-1.5 self-start text-[10px] font-bold uppercase tracking-widest text-[#8a7898] hover:text-white transition"
+              >
+                <svg viewBox="0 0 24 24" className={`h-3 w-3 fill-current transition-transform ${showRuns ? "rotate-90" : ""}`} aria-hidden="true">
+                  <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                </svg>
+                {showRuns ? "Hide" : "Show"} recent runs ({data.recentRuns.length})
+              </button>
+              {showRuns && (
+                <div className="overflow-x-auto rounded-2xl" style={{ background: "rgba(6,2,5,0.90)", border: "1px solid rgba(167,139,250,0.18)" }}>
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(167,139,250,0.15)" }}>
+                        {["Agent", "Status", "Started", "Duration", "Output"].map(h => (
+                          <th key={h} className="px-4 py-3 text-left font-bold uppercase tracking-widest text-[#4b3a5a]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.recentRuns.slice(0, 16).map((run) => {
+                        const agentColor = AGENT_META.find(a => a.label.toLowerCase() + "_agent" === run.agent_role)?.color ?? "#8a7898";
+                        const durationMs = run.started_at && run.finished_at
+                          ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
+                          : null;
+                        const duration = durationMs !== null
+                          ? durationMs > 60000 ? `${(durationMs / 60000).toFixed(1)}m` : `${(durationMs / 1000).toFixed(1)}s`
+                          : "—";
+                        const output = run.output_json ?? {};
+                        const outputStr = run.status === "failed"
+                          ? (run.error_text ?? "error")
+                          : Object.entries(output).filter(([, v]) => typeof v === "number").map(([k, v]) => `${k}: ${v}`).join(", ") || "—";
+
+                        return (
+                          <tr key={run.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                            <td className="px-4 py-2.5 font-semibold" style={{ color: agentColor }}>{run.agent_role.replace("_agent", "")}</td>
+                            <td className="px-4 py-2.5">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                                style={
+                                  run.status === "completed" ? { background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" } :
+                                  run.status === "failed"    ? { background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.25)" } :
+                                  run.status === "running"   ? { background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" } :
+                                  { background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.10)" }
+                                }
+                              >
+                                {run.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-[#8a7898]">
+                              {run.started_at ? new Date(run.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-[#8a7898]">{duration}</td>
+                            <td className="px-4 py-2.5 text-[#8a7898] max-w-xs truncate">{outputStr}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   type GraphData,
   type MemoryPackData,
   type ClaimsData,
+  type WorkerStatusData,
   NODE_COLORS,
   NODE_TYPE_LABELS,
   NODE_TYPE_ORDER,
@@ -15,6 +16,7 @@ import {
   NodeDetail,
   MemoryPackPanel,
   ClaimsPanel,
+  AgentsPanel,
 } from "@/components/brain-shared";
 
 const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
@@ -42,6 +44,8 @@ export function BrainClient() {
   const [filterType, setFilterType] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphKey, setGraphKey] = useState(0);
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatusData | null>(null);
+  const [workerStatusLoading, setWorkerStatusLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightNodes = useRef(new Set<string>());
@@ -89,6 +93,26 @@ export function BrainClient() {
   }, []);
 
   useEffect(() => { fetchGraph(); }, [fetchGraph]);
+
+  const fetchWorkerStatus = useCallback(async () => {
+    setWorkerStatusLoading(true);
+    try {
+      const res = await fetch("/api/brain?mode=worker-status");
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setWorkerStatus(data);
+    } catch {
+      // silently fail — don't block graph with agent errors
+    } finally {
+      setWorkerStatusLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWorkerStatus();
+    const interval = setInterval(fetchWorkerStatus, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchWorkerStatus]);
 
   // Fetch memory pack + claims when a song node is selected
   useEffect(() => {
@@ -412,6 +436,7 @@ export function BrainClient() {
           </div>
         </div>
       </div>
+      <AgentsPanel data={workerStatus} loading={workerStatusLoading} onRefresh={fetchWorkerStatus} />
     </div>
   );
 }
