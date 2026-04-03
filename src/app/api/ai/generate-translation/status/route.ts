@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Missing jobId." }, { status: 400 });
   }
 
-  const job = getAiGenerationJob(jobId);
+  const job = await getAiGenerationJob(jobId);
 
   if (!job) {
     return NextResponse.json({ success: false, error: "Draft generation job not found." }, { status: 404 });

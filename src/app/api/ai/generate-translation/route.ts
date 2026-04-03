@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
   try {
     if (wantsJsonResponse(request)) {
-      const job = startAiGenerationJob({
+      const job = await startAiGenerationJob({
         spotifyTrackId,
         title,
         artist,
