@@ -107,32 +107,33 @@ export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm
     const overlay = glowRef.current;
     const bg      = bgGlowRef.current;
 
-    // Snap to full brightness instantly
+    // Snap to full brightness instantly — border ring only, no image tint
     if (overlay) {
       overlay.style.transition = "none";
       overlay.style.opacity    = "1";
-      overlay.style.background = "rgba(255,20,100,0.30)";
-      overlay.style.boxShadow  = "inset 0 0 90px rgba(255,20,100,0.90), inset 0 0 200px rgba(255,100,160,0.50)";
-      overlay.style.border     = "2px solid rgba(255,20,100,0.90)";
+      overlay.style.background = "transparent";
+      // Inset border ring: sharp 3px inner stroke + soft inner halo radiating from edges
+      overlay.style.boxShadow  =
+        "inset 0 0 0 3px rgba(255,20,100,1), " +
+        "inset 0 0 18px rgba(255,20,100,0.80), " +
+        "inset 0 0 40px rgba(255,80,140,0.35)";
     }
     if (bg) {
       bg.style.transition = "none";
       bg.style.opacity    = "1";
-      bg.style.transform  = "scale(1.15)";
+      bg.style.transform  = "scale(1.08)";
     }
 
-    // Fade out over 400ms
+    // Fade out over 450ms
     beatTimerRef.current = setTimeout(() => {
       if (overlay) {
-        overlay.style.transition = "all 0.4s ease-out";
+        overlay.style.transition = "box-shadow 0.45s ease-out, opacity 0.45s ease-out";
         overlay.style.opacity    = "0";
-        overlay.style.background = "transparent";
         overlay.style.boxShadow  = "none";
-        overlay.style.border     = "none";
       }
       if (bg) {
-        bg.style.transition = "all 0.4s ease-out";
-        bg.style.opacity    = "0.6";
+        bg.style.transition = "all 0.45s ease-out";
+        bg.style.opacity    = "0.55";
         bg.style.transform  = "scale(1)";
       }
     }, 80);
