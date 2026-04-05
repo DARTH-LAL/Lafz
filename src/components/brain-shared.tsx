@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { FloatingToast } from "@/components/floating-toast";
 import { NODE_COLORS as _NODE_COLORS } from "@/features/brain/colors";
+import type { LafzBrainCriticEvaluationReport, LafzBrainReviewItem, LafzBrainReviewSummary } from "@/features/brain/types";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -115,6 +117,8 @@ export type ClaimsData = {
   artist: string;
   claimCount: number;
   claims: BrainClaim[];
+  reviewQueue: LafzBrainReviewItem[];
+  reviewSummary: LafzBrainReviewSummary;
 };
 
 export type AgentJobHealth = {
@@ -135,6 +139,36 @@ export type AgentWorkerStatus = {
   lastActivityAt: string | null;
   lastSummary: Record<string, unknown> | null;
   jobHealth?: AgentJobHealth;
+};
+
+export type LearningProfile = {
+  scopeType: string;
+  claimType: string;
+  normalizedKey: string;
+  signalCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  deferredCount: number;
+  manualOverrideCount: number;
+  confidenceBias: number;
+  lastDecision: string | null;
+  lastDecidedBy: string | null;
+  lastDecisionAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type LearningSummary = {
+  profileCount: number;
+  signalCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  deferredCount: number;
+  manualOverrideCount: number;
+  positiveProfiles: number;
+  negativeProfiles: number;
+  confidenceBiasTotal: number;
+  averageConfidenceBias: number;
 };
 
 export type AgentRun = {
@@ -161,6 +195,9 @@ export type WorkerStatusData = {
   personaQueueCounts: Record<string, number>;
   cleanupWorker: AgentWorkerStatus;
   cleanupQueueCounts: Record<string, number>;
+  criticEvaluation: LafzBrainCriticEvaluationReport;
+  learningSummary: LearningSummary;
+  learningProfiles: LearningProfile[];
   recentContributionTotals: {
     vocabulary: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
     entity: { claimsUpserted: number; evidencesInserted: number; promotionsRecorded: number };
@@ -170,6 +207,8 @@ export type WorkerStatusData = {
   };
   recentRuns: AgentRun[];
 };
+
+type ClaimAction = "accept" | "reject" | "restore";
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
 
@@ -404,6 +443,15 @@ function fmtAge(ms: number): string {
   return `${Math.round(ms / 3_600_000)}h`;
 }
 
+function fmtBias(value: number) {
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(2)}`;
+}
+
+function fmtPct(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
 function AgentCard({ worker, queueCounts, label, color, totals }: {
   worker: AgentWorkerStatus;
   queueCounts: Record<string, number>;
@@ -619,6 +667,178 @@ export function AgentsPanel({ data, loading, onRefresh }: {
             ))}
           </div>
 
+          {/* Learning summary */}
+          <div
+            className="flex flex-col gap-3 rounded-2xl p-4"
+            style={{
+              background: "rgba(6,2,5,0.92)",
+              border: "1px solid rgba(255,20,100,0.20)",
+              boxShadow: "0 0 12px rgba(255,20,100,0.10)"
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">Learning</p>
+                <p className="mt-1 text-[12px] text-white font-semibold">
+                  {data.learningSummary.profileCount > 0
+                    ? `${data.learningSummary.signalCount} signals across ${data.learningSummary.profileCount} profiles`
+                    : "Waiting for the first feedback signals"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#8a7898]">
+                  Positive profiles: {data.learningSummary.positiveProfiles} • Negative profiles: {data.learningSummary.negativeProfiles}
+                </p>
+              </div>
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                style={{
+                  background: data.learningSummary.averageConfidenceBias >= 0 ? "rgba(52,211,153,0.12)" : "rgba(251,113,133,0.12)",
+                  color: data.learningSummary.averageConfidenceBias >= 0 ? "#34d399" : "#fb7185",
+                  border: `1px solid ${data.learningSummary.averageConfidenceBias >= 0 ? "rgba(52,211,153,0.25)" : "rgba(251,113,133,0.25)"}`
+                }}
+              >
+                avg bias {fmtBias(data.learningSummary.averageConfidenceBias)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {data.learningSummary.acceptedCount} accepted
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {data.learningSummary.deferredCount} deferred
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {data.learningSummary.rejectedCount} rejected
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {data.learningSummary.manualOverrideCount} manual overrides
+              </span>
+            </div>
+
+            {data.learningProfiles.length > 0 && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {data.learningProfiles.slice(0, 4).map((profile) => (
+                  <div
+                    key={`${profile.scopeType}:${profile.claimType}:${profile.normalizedKey}`}
+                    className="rounded-xl px-3 py-2.5"
+                    style={{ background: "rgba(15,8,12,0.88)", border: "1px solid rgba(255,20,100,0.14)" }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold text-white">
+                          {profile.claimType.replace(/_/g, " ")}
+                        </p>
+                        <p className="mt-0.5 text-[9px] uppercase tracking-widest text-[#8a7898]">
+                          {profile.scopeType} • {profile.signalCount} signals
+                        </p>
+                      </div>
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                        style={{
+                          background: profile.confidenceBias >= 0 ? "rgba(52,211,153,0.10)" : "rgba(251,113,133,0.10)",
+                          color: profile.confidenceBias >= 0 ? "#34d399" : "#fb7185",
+                          border: `1px solid ${profile.confidenceBias >= 0 ? "rgba(52,211,153,0.22)" : "rgba(251,113,133,0.22)"}`
+                        }}
+                      >
+                        {fmtBias(profile.confidenceBias)}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-[#8a7898]">{profile.normalizedKey}</p>
+                    <p className="mt-1 text-[10px] text-[#8a7898]">
+                      {profile.acceptedCount} accepted • {profile.rejectedCount} rejected • {profile.deferredCount} deferred
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Critic evaluation */}
+          <div
+            className="flex flex-col gap-3 rounded-2xl p-4"
+            style={{
+              background: "rgba(6,2,5,0.92)",
+              border: "1px solid rgba(96,165,250,0.20)",
+              boxShadow: "0 0 12px rgba(96,165,250,0.10)"
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#60a5fa]">Critic Eval</p>
+                <p className="mt-1 text-[12px] text-white font-semibold">
+                  {data.criticEvaluation.passedCases}/{data.criticEvaluation.totalCases} cases pass
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#8a7898]">
+                  {data.criticEvaluation.failedCases} mismatches • generated {new Date(data.criticEvaluation.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                style={{
+                  background: data.criticEvaluation.passRate >= 1 ? "rgba(52,211,153,0.12)" : "rgba(250,204,21,0.12)",
+                  color: data.criticEvaluation.passRate >= 1 ? "#34d399" : "#facc15",
+                  border: `1px solid ${data.criticEvaluation.passRate >= 1 ? "rgba(52,211,153,0.25)" : "rgba(250,204,21,0.25)"}`
+                }}
+              >
+                pass {fmtPct(data.criticEvaluation.passRate)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                band {fmtPct(data.criticEvaluation.reviewBandAccuracy)}
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                recommendation {fmtPct(data.criticEvaluation.reviewRecommendationAccuracy)}
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                queue {fmtPct(data.criticEvaluation.queueAccuracy)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-[#60a5fa]" style={{ background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.22)" }}>
+                {data.criticEvaluation.bandCounts.high} high
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-[#facc15]" style={{ background: "rgba(250,204,21,0.10)", border: "1px solid rgba(250,204,21,0.22)" }}>
+                {data.criticEvaluation.bandCounts.medium} medium
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-[#34d399]" style={{ background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.22)" }}>
+                {data.criticEvaluation.bandCounts.low} low
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {data.criticEvaluation.queueCounts.queued} queued • {data.criticEvaluation.queueCounts.skipped} skipped
+              </span>
+            </div>
+
+            {data.criticEvaluation.topFailures.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {data.criticEvaluation.topFailures.slice(0, 3).map((entry) => (
+                  <div key={entry.id} className="rounded-xl px-3 py-2" style={{ background: "rgba(15,8,12,0.88)", border: "1px solid rgba(251,113,133,0.18)" }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold text-white">{entry.id}</p>
+                        <p className="mt-0.5 text-[9px] uppercase tracking-widest text-[#8a7898]">
+                          {entry.claimType.replace(/_/g, " ")} • {entry.scopeType}
+                        </p>
+                      </div>
+                      <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest" style={{ background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.24)" }}>
+                        {entry.mismatches.length} mismatch{entry.mismatches.length === 1 ? "" : "es"}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-[#8a7898]">{entry.claimKey}</p>
+                    <p className="mt-1 text-[10px] leading-snug text-[#8a7898]">{entry.mismatches[0]}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[rgba(52,211,153,0.18)] bg-[rgba(52,211,153,0.06)] px-3 py-3">
+                <p className="text-[11px] font-semibold text-white">The critic matches the eval set.</p>
+                <p className="mt-1 text-[11px] text-[#8a7898]">No mismatches surfaced in the current benchmark.</p>
+              </div>
+            )}
+          </div>
+
           {/* Recent runs toggle */}
           {data.recentRuns.length > 0 && (
             <div className="flex flex-col gap-2">
@@ -702,9 +922,75 @@ function sortClaims(claims: BrainClaim[]): BrainClaim[] {
   });
 }
 
-export function ClaimsPanel({ claimsData, loading, error }: { claimsData: ClaimsData | null; loading: boolean; error?: string | null }) {
+export function ClaimsPanel({
+  claimsData,
+  loading,
+  error,
+  onActionComplete
+}: {
+  claimsData: ClaimsData | null;
+  loading: boolean;
+  error?: string | null;
+  onActionComplete?: () => void;
+}) {
   const [showAll, setShowAll] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set());
+  const [busyClaimId, setBusyClaimId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+
+  const claimById = new Map((claimsData?.claims ?? []).map((claim) => [claim.id, claim] as const));
+  const reviewQueue = claimsData?.reviewQueue ?? [];
+
+  const handleClaimAction = useCallback(
+    async (claimId: string, action: ClaimAction) => {
+      setBusyClaimId(claimId);
+
+      const noteByAction: Record<ClaimAction, string> = {
+        accept: "Accepted from the Lafz critic queue.",
+        reject: "Rejected from the Lafz critic queue.",
+        restore: "Re-opened from the Lafz critic queue."
+      };
+
+      try {
+        const response = await fetch("/api/brain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "claim-action",
+            claimId,
+            action,
+            note: noteByAction[action]
+          })
+        });
+
+        const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+        if (!response.ok || !payload?.ok) {
+          throw new Error(payload?.error ?? "Could not update claim.");
+        }
+
+        setToast({
+          message:
+            action === "accept"
+              ? "Claim accepted."
+              : action === "reject"
+                ? "Claim rejected."
+                : "Claim reopened for review.",
+          tone: "success"
+        });
+
+        onActionComplete?.();
+      } catch (actionError) {
+        setToast({
+          message: actionError instanceof Error ? actionError.message : "Could not update claim.",
+          tone: "error"
+        });
+      } finally {
+        setBusyClaimId(null);
+      }
+    },
+    [onActionComplete]
+  );
 
   if (loading) {
     return (
@@ -714,6 +1000,7 @@ export function ClaimsPanel({ claimsData, loading, error }: { claimsData: Claims
       </div>
     );
   }
+
   if (error) {
     return (
       <div className="rounded-2xl p-4" style={{ background: "rgba(6,2,5,0.92)", border: "1px solid rgba(251,113,133,0.30)", boxShadow: "0 0 12px rgba(251,113,133,0.10)" }}>
@@ -723,19 +1010,23 @@ export function ClaimsPanel({ claimsData, loading, error }: { claimsData: Claims
       </div>
     );
   }
-  if (!claimsData || claimsData.claims.length === 0) return null;
+
+  if (!claimsData || claimsData.claims.length === 0) {
+    return null;
+  }
 
   const sorted = sortClaims(claimsData.claims);
-  const accepted = sorted.filter(c => (c.latestPromotion?.decision ?? c.status) === "accepted").length;
-  const rejected = sorted.filter(c => (c.latestPromotion?.decision ?? c.status) === "rejected").length;
-  const deferred = sorted.filter(c => (c.latestPromotion?.decision ?? c.status) === "deferred").length;
+  const accepted = sorted.filter((claim) => (claim.latestPromotion?.decision ?? claim.status) === "accepted").length;
+  const rejected = sorted.filter((claim) => (claim.latestPromotion?.decision ?? claim.status) === "rejected").length;
+  const deferred = sorted.filter((claim) => (claim.latestPromotion?.decision ?? claim.status) === "deferred").length;
+  const reviewSummary = claimsData.reviewSummary;
 
   const PAGE = 6;
   const visible = showAll ? sorted : sorted.slice(0, PAGE);
   const hasMore = sorted.length > PAGE;
 
   function toggleEvidence(id: string) {
-    setExpandedEvidence(prev => {
+    setExpandedEvidence((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -743,81 +1034,274 @@ export function ClaimsPanel({ claimsData, loading, error }: { claimsData: Claims
   }
 
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "rgba(6,2,5,0.92)", border: "1px solid rgba(255,20,100,0.20)", boxShadow: "0 0 12px rgba(255,20,100,0.10)" }}>
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">Claims</p>
-        <p className="text-[11px] text-[#8a7898]">
-          {claimsData.claimCount} claim{claimsData.claimCount === 1 ? "" : "s"} • {accepted} accepted • {deferred} deferred • {rejected} rejected
-        </p>
-      </div>
+    <>
+      {toast ? <FloatingToast message={toast.message} tone={toast.tone} /> : null}
+      <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "rgba(6,2,5,0.92)", border: "1px solid rgba(255,20,100,0.20)", boxShadow: "0 0 12px rgba(255,20,100,0.10)" }}>
+        <div className="flex flex-col gap-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8a7898]">Claims</p>
+          <p className="text-[11px] text-[#8a7898]">
+            {claimsData.claimCount} claim{claimsData.claimCount === 1 ? "" : "s"} • {accepted} accepted • {deferred} deferred • {rejected} rejected
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-2">
-        {visible.map((claim) => {
-          const displayStatus = claim.latestPromotion?.decision ?? claim.status;
-          const statusStyle = getClaimStatusStyle(displayStatus);
-          const allEvidence = claim.evidence;
-          const evidenceExpanded = expandedEvidence.has(claim.id);
-          const shownEvidence = evidenceExpanded ? allEvidence : allEvidence.slice(0, 2);
-          const hasMoreEvidence = allEvidence.length > 2;
+        <div
+          className="flex flex-col gap-3 rounded-xl px-3 py-3"
+          style={{ background: "rgba(15,8,12,0.88)", border: "1px solid rgba(96,165,250,0.18)" }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#60a5fa]">Critic</p>
+              <p className="mt-1 text-[12px] font-semibold text-white">
+                {reviewSummary.reviewableCount > 0
+                  ? `${reviewSummary.reviewableCount} items need a decision`
+                  : "No immediate review items"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[#8a7898]">
+                {reviewSummary.needsRereviewCount} need re-review • {reviewSummary.lockedCount} locked
+              </p>
+            </div>
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+              style={{
+                background: reviewSummary.reviewNowCount > 0 ? "rgba(251,113,133,0.12)" : "rgba(96,165,250,0.12)",
+                color: reviewSummary.reviewNowCount > 0 ? "#fb7185" : "#60a5fa",
+                border: `1px solid ${reviewSummary.reviewNowCount > 0 ? "rgba(251,113,133,0.25)" : "rgba(96,165,250,0.25)"}`
+              }}
+            >
+              avg {reviewSummary.averageReviewScore.toFixed(2)}
+            </span>
+          </div>
 
-          return (
-            <div key={claim.id} className="rounded-xl px-3 py-3" style={{ background: "rgba(15,8,12,0.9)", border: "1px solid rgba(255,20,100,0.16)" }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-white leading-snug">{formatClaimLabel(claim)}</p>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-[#8a7898]">{claim.claimType.replace(/_/g, " ")} • {claim.scopeType}</p>
-                </div>
-                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest flex-shrink-0" style={statusStyle}>{displayStatus}</span>
-              </div>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-[rgba(251,113,133,0.20)] bg-[rgba(251,113,133,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#fb7185]">
+              {reviewSummary.reviewNowCount} review now
+            </span>
+            <span className="rounded-full border border-[rgba(250,204,21,0.20)] bg-[rgba(250,204,21,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#facc15]">
+              {reviewSummary.reviewSoonCount} review soon
+            </span>
+            <span className="rounded-full border border-[rgba(96,165,250,0.20)] bg-[rgba(96,165,250,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#60a5fa]">
+              {reviewSummary.monitorCount} monitor
+            </span>
+          </div>
 
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#ff6ba8]">conf {claim.confidenceScore.toFixed(2)}</span>
-                <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#8a7898]">evidence {claim.evidenceCount}</span>
-                <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#8a7898]">sources {claim.sourceCount}</span>
-              </div>
+          {reviewQueue.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {reviewQueue.map((item) => {
+                const claim = claimById.get(item.claimId);
+                const statusStyle = getClaimStatusStyle(claim?.latestPromotion?.decision ?? claim?.status ?? item.status);
+                const bandColor =
+                  item.reviewBand === "high"
+                    ? "#fb7185"
+                    : item.reviewBand === "medium"
+                      ? "#facc15"
+                      : "#60a5fa";
+                const busy = busyClaimId === item.claimId;
+                const visibleReasons = item.reasons.slice(0, 3);
 
-              {claim.latestPromotion?.reason && (
-                <p className="mt-2 text-[11px] leading-snug text-[#8a7898]">{claim.latestPromotion.reason}</p>
-              )}
-
-              {shownEvidence.length > 0 && (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {shownEvidence.map((ev) => (
-                    <div key={ev.id} className="rounded-lg border border-[rgba(255,20,100,0.12)] px-2.5 py-2">
-                      <p className="text-[10px] uppercase tracking-widest text-[#ff6ba8]">{ev.sourceType.replace(/_/g, " ")} • {ev.weight.toFixed(2)}</p>
-                      {typeof ev.payload.original === "string" && ev.payload.original ? (
-                        <p className="mt-1 text-[11px] leading-snug text-white/90">{String(ev.payload.original)}</p>
-                      ) : typeof ev.payload.summary === "string" && ev.payload.summary ? (
-                        <p className="mt-1 text-[11px] leading-snug text-white/80">{String(ev.payload.summary)}</p>
-                      ) : typeof ev.payload.evidence === "string" && ev.payload.evidence ? (
-                        <p className="mt-1 text-[11px] leading-snug text-white/80">{String(ev.payload.evidence)}</p>
-                      ) : null}
+                return (
+                  <div
+                    key={item.claimId}
+                    className="rounded-xl px-3 py-3"
+                    style={{ background: "rgba(10,5,8,0.92)", border: `1px solid ${bandColor}33` }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-white leading-snug">
+                          {claim ? formatClaimLabel(claim) : item.claimKey.replace(/::/g, " • ")}
+                        </p>
+                        <p className="mt-1 text-[10px] uppercase tracking-widest text-[#8a7898]">
+                          {item.claimType.replace(/_/g, " ")} • {item.scopeType}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                          style={{
+                            background: statusStyle.background,
+                            color: statusStyle.color,
+                            border: statusStyle.border
+                          }}
+                        >
+                          {claim?.latestPromotion?.decision ?? claim?.status ?? item.status}
+                        </span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                          style={{
+                            background: `${bandColor}14`,
+                            color: bandColor,
+                            border: `1px solid ${bandColor}2a`
+                          }}
+                        >
+                          critic {item.reviewScore.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  {hasMoreEvidence && (
-                    <button
-                      onClick={() => toggleEvidence(claim.id)}
-                      className="mt-0.5 text-[10px] font-bold text-[#ff6ba8] hover:text-white transition text-left"
+
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full border border-[rgba(255,255,255,0.10)] px-2 py-0.5 text-[9px] font-semibold text-white">
+                        {item.reviewRecommendation.replace(/_/g, " ")}
+                      </span>
+                      {item.needsRereview && (
+                        <span className="rounded-full border border-[rgba(251,113,133,0.18)] bg-[rgba(251,113,133,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#fb7185]">
+                          needs rereview
+                        </span>
+                      )}
+                      {item.learningBias !== 0 && (
+                        <span className="rounded-full border border-[rgba(96,165,250,0.18)] bg-[rgba(96,165,250,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#60a5fa]">
+                          bias {item.learningBias > 0 ? "+" : ""}
+                          {item.learningBias.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="rounded-full border border-[rgba(255,255,255,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#8a7898]">
+                        {item.evidenceCount} evidence
+                      </span>
+                      <span className="rounded-full border border-[rgba(255,255,255,0.10)] px-2 py-0.5 text-[9px] font-semibold text-[#8a7898]">
+                        {item.sourceCount} sources
+                      </span>
+                    </div>
+
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(8, Math.round(item.reviewScore * 100))}%`,
+                          background: `linear-gradient(90deg, ${bandColor}, #ffffff66)`
+                        }}
+                      />
+                    </div>
+
+                    {visibleReasons.length > 0 && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {visibleReasons.map((reason) => (
+                          <p key={reason} className="text-[11px] leading-snug text-[#8a7898]">
+                            {reason}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleClaimAction(item.claimId, "accept")}
+                        className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#34d399] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.26)" }}
+                      >
+                        {busy ? "Working…" : "Accept"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleClaimAction(item.claimId, "reject")}
+                        className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#fb7185] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ background: "rgba(251,113,133,0.10)", border: "1px solid rgba(251,113,133,0.26)" }}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleClaimAction(item.claimId, "restore")}
+                        className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#60a5fa] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.26)" }}
+                      >
+                        Re-open
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[rgba(96,165,250,0.16)] bg-[rgba(96,165,250,0.06)] px-3 py-3">
+              <p className="text-[11px] font-semibold text-white">No claims need immediate review.</p>
+              <p className="mt-1 text-[11px] text-[#8a7898]">The critic is happy with the current claim set.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {visible.map((claim) => {
+            const displayStatus = claim.latestPromotion?.decision ?? claim.status;
+            const statusStyle = getClaimStatusStyle(displayStatus);
+            const allEvidence = claim.evidence;
+            const evidenceExpanded = expandedEvidence.has(claim.id);
+            const shownEvidence = evidenceExpanded ? allEvidence : allEvidence.slice(0, 2);
+            const hasMoreEvidence = allEvidence.length > 2;
+            const reviewItem = reviewQueue.find((entry) => entry.claimId === claim.id) ?? null;
+
+            return (
+              <div key={claim.id} className="rounded-xl px-3 py-3" style={{ background: "rgba(15,8,12,0.9)", border: "1px solid rgba(255,20,100,0.16)" }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-white leading-snug">{formatClaimLabel(claim)}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-widest text-[#8a7898]">{claim.claimType.replace(/_/g, " ")} • {claim.scopeType}</p>
+                  </div>
+                  <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest flex-shrink-0" style={statusStyle}>{displayStatus}</span>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#ff6ba8]">conf {claim.confidenceScore.toFixed(2)}</span>
+                  <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#8a7898]">evidence {claim.evidenceCount}</span>
+                  <span className="rounded-full border border-[rgba(255,20,100,0.16)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#8a7898]">sources {claim.sourceCount}</span>
+                  {reviewItem && (
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                      style={{
+                        background: reviewItem.reviewBand === "high" ? "rgba(251,113,133,0.10)" : reviewItem.reviewBand === "medium" ? "rgba(250,204,21,0.10)" : "rgba(96,165,250,0.10)",
+                        color: reviewItem.reviewBand === "high" ? "#fb7185" : reviewItem.reviewBand === "medium" ? "#facc15" : "#60a5fa",
+                        borderColor: reviewItem.reviewBand === "high" ? "rgba(251,113,133,0.22)" : reviewItem.reviewBand === "medium" ? "rgba(250,204,21,0.22)" : "rgba(96,165,250,0.22)"
+                      }}
                     >
-                      {evidenceExpanded ? "Show less" : `+${allEvidence.length - 2} more evidence`}
-                    </button>
+                      critic {reviewItem.reviewScore.toFixed(2)}
+                    </span>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
 
-      {hasMore && (
-        <button
-          onClick={() => setShowAll(v => !v)}
-          className="mt-1 w-full rounded-xl py-2 text-[11px] font-bold text-[#ff6ba8] transition hover:text-white"
-          style={{ background: "rgba(255,20,100,0.08)", border: "1px solid rgba(255,20,100,0.20)" }}
-        >
-          {showAll ? "Show less" : `Show all ${sorted.length} claims`}
-        </button>
-      )}
-    </div>
+                {claim.latestPromotion?.reason && (
+                  <p className="mt-2 text-[11px] leading-snug text-[#8a7898]">{claim.latestPromotion.reason}</p>
+                )}
+
+                {shownEvidence.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {shownEvidence.map((ev) => (
+                      <div key={ev.id} className="rounded-lg border border-[rgba(255,20,100,0.12)] px-2.5 py-2">
+                        <p className="text-[10px] uppercase tracking-widest text-[#ff6ba8]">{ev.sourceType.replace(/_/g, " ")} • {ev.weight.toFixed(2)}</p>
+                        {typeof ev.payload.original === "string" && ev.payload.original ? (
+                          <p className="mt-1 text-[11px] leading-snug text-white/90">{String(ev.payload.original)}</p>
+                        ) : typeof ev.payload.summary === "string" && ev.payload.summary ? (
+                          <p className="mt-1 text-[11px] leading-snug text-white/80">{String(ev.payload.summary)}</p>
+                        ) : typeof ev.payload.evidence === "string" && ev.payload.evidence ? (
+                          <p className="mt-1 text-[11px] leading-snug text-white/80">{String(ev.payload.evidence)}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                    {hasMoreEvidence && (
+                      <button
+                        onClick={() => toggleEvidence(claim.id)}
+                        className="mt-0.5 text-[10px] font-bold text-[#ff6ba8] hover:text-white transition text-left"
+                      >
+                        {evidenceExpanded ? "Show less" : `+${allEvidence.length - 2} more evidence`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {hasMore && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="mt-1 w-full rounded-xl py-2 text-[11px] font-bold text-[#ff6ba8] transition hover:text-white"
+            style={{ background: "rgba(255,20,100,0.08)", border: "1px solid rgba(255,20,100,0.20)" }}
+          >
+            {showAll ? "Show less" : `Show all ${sorted.length} claims`}
+          </button>
+        )}
+      </div>
+    </>
   );
 }

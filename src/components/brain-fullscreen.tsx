@@ -41,6 +41,7 @@ export function BrainFullscreen() {
   const [claimsData, setClaimsData] = useState<ClaimsData | null>(null);
   const [claimsLoading, setClaimsLoading] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
+  const [claimsRefreshNonce, setClaimsRefreshNonce] = useState(0);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
@@ -146,7 +147,11 @@ export function BrainFullscreen() {
     fetchMemoryPack();
     fetchClaims();
     return () => { cancelled = true; };
-  }, [selectedNode]);
+  }, [selectedNode, claimsRefreshNonce]);
+
+  const handleClaimsMutated = useCallback(() => {
+    setClaimsRefreshNonce((value) => value + 1);
+  }, []);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -412,7 +417,12 @@ export function BrainFullscreen() {
         <div className="flex flex-col gap-3 overflow-y-auto px-4 py-4" style={{ flex: 1 }}>
           <NodeDetail node={activeNode} />
           <MemoryPackPanel memoryPack={memoryPack} loading={memoryPackLoading} error={memoryPackError} />
-          <ClaimsPanel claimsData={claimsData} loading={claimsLoading} error={claimsError} />
+          <ClaimsPanel
+            claimsData={claimsData}
+            loading={claimsLoading}
+            error={claimsError}
+            onActionComplete={handleClaimsMutated}
+          />
         </div>
       </div>
 

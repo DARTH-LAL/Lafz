@@ -1,0 +1,730 @@
+{
+  "version": 1,
+  "description": "Curated critic evaluation set for Lafz brain claim review prioritization.",
+  "cases": [
+    {
+      "id": "vocab-proposed-thin-low",
+      "description": "Proposed vocabulary claim with thin evidence should be reviewed soon, not auto-passed.",
+      "input": {
+        "claim": {
+          "id": "eval-vocab-1",
+          "claimKey": "song::track-a::song_vocabulary_observation::apna",
+          "claimType": "song_vocabulary_observation",
+          "scopeType": "song",
+          "scopeKey": "track-a",
+          "normalizedKey": "apna",
+          "status": "proposed",
+          "confidenceScore": 0.43,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": null,
+        "learningProfile": null
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "vocab-proposed-decay-rereview",
+      "description": "Thin vocabulary claim with rereview pressure and decay should escalate hard.",
+      "input": {
+        "claim": {
+          "id": "eval-vocab-2",
+          "claimKey": "song::track-b::song_vocabulary_observation::jatt",
+          "claimType": "song_vocabulary_observation",
+          "scopeType": "song",
+          "scopeKey": "track-b",
+          "normalizedKey": "jatt",
+          "status": "proposed",
+          "confidenceScore": 0.38,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {
+              "needsRereview": true,
+              "decayCount": 2
+            },
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.04,
+          "signalCount": 3
+        }
+      },
+      "expected": {
+        "reviewBand": "high",
+        "reviewRecommendation": "review_now",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "vocab-accepted-strong-monitor",
+      "description": "Strong accepted vocabulary claim should remain a low-priority monitor item.",
+      "input": {
+        "claim": {
+          "id": "eval-vocab-3",
+          "claimKey": "song::track-c::song_vocabulary_observation::veer",
+          "claimType": "song_vocabulary_observation",
+          "scopeType": "song",
+          "scopeKey": "track-c",
+          "normalizedKey": "veer",
+          "status": "accepted",
+          "confidenceScore": 0.92,
+          "sourceCount": 4,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.02,
+          "signalCount": 6
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "vocab-accepted-manual-locked",
+      "description": "Accepted vocabulary claim with a manual lock should stay out of the review queue.",
+      "input": {
+        "claim": {
+          "id": "eval-vocab-4",
+          "claimKey": "song::track-d::song_vocabulary_observation::pyaar",
+          "claimType": "song_vocabulary_observation",
+          "scopeType": "song",
+          "scopeKey": "track-d",
+          "normalizedKey": "pyaar",
+          "status": "accepted",
+          "confidenceScore": 0.88,
+          "sourceCount": 4,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {
+              "locked": true
+            },
+            "manual": {
+              "locked": true
+            }
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "manual_override",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.03,
+          "signalCount": 9
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "entity-accepted-deferred",
+      "description": "Accepted entity claim with a deferred promotion should be held for review soon.",
+      "input": {
+        "claim": {
+          "id": "eval-entity-1",
+          "claimKey": "artist::artist-a::artist_entity_role_observation::gang-leader",
+          "claimType": "artist_entity_role_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-a",
+          "normalizedKey": "gang-leader",
+          "status": "accepted",
+          "confidenceScore": 0.57,
+          "sourceCount": 1,
+          "evidenceCount": 2,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.03,
+          "signalCount": 4
+        }
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "entity-proposed-low-signal",
+      "description": "Thin proposed entity claim should be reviewed, but not treated as an emergency.",
+      "input": {
+        "claim": {
+          "id": "eval-entity-2",
+          "claimKey": "song::track-e::artist_entity_role_observation::dealer",
+          "claimType": "artist_entity_role_observation",
+          "scopeType": "song",
+          "scopeKey": "track-e",
+          "normalizedKey": "dealer",
+          "status": "proposed",
+          "confidenceScore": 0.49,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": null,
+        "learningProfile": null
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "entity-accepted-strong-monitor",
+      "description": "Strong accepted entity claim should stay out of the review queue.",
+      "input": {
+        "claim": {
+          "id": "eval-entity-3",
+          "claimKey": "artist::artist-b::artist_relationship_pattern_observation::protective",
+          "claimType": "artist_relationship_pattern_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-b",
+          "normalizedKey": "protective",
+          "status": "accepted",
+          "confidenceScore": 0.91,
+          "sourceCount": 3,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.02,
+          "signalCount": 7
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "relationship-accepted-deferred",
+      "description": "Accepted relationship claim with a deferred signal should be reviewed soon.",
+      "input": {
+        "claim": {
+          "id": "eval-rel-1",
+          "claimKey": "song::track-f::song_relationship_observation::push-pull",
+          "claimType": "song_relationship_observation",
+          "scopeType": "song",
+          "scopeKey": "track-f",
+          "normalizedKey": "push-pull",
+          "status": "accepted",
+          "confidenceScore": 0.55,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.02,
+          "signalCount": 2
+        }
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "relationship-rejected-terminal",
+      "description": "Rejected relationship claim should not be surfaced as a review candidate.",
+      "input": {
+        "claim": {
+          "id": "eval-rel-2",
+          "claimKey": "song::track-g::song_relationship_observation::conflict",
+          "claimType": "song_relationship_observation",
+          "scopeType": "song",
+          "scopeKey": "track-g",
+          "normalizedKey": "conflict",
+          "status": "rejected",
+          "confidenceScore": 0.32,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "rejected",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.06,
+          "signalCount": 5
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "motif-proposed-thin",
+      "description": "Low-signal proposed motif should get a normal review nudge.",
+      "input": {
+        "claim": {
+          "id": "eval-motif-1",
+          "claimKey": "song::track-h::song_motif_observation::jet-set",
+          "claimType": "song_motif_observation",
+          "scopeType": "song",
+          "scopeKey": "track-h",
+          "normalizedKey": "jet-set",
+          "status": "proposed",
+          "confidenceScore": 0.46,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": null,
+        "learningProfile": null
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "motif-rereview-escalate",
+      "description": "An aging motif claim with decay and rereview should be escalated immediately.",
+      "input": {
+        "claim": {
+          "id": "eval-motif-2",
+          "claimKey": "artist::artist-c::artist_motif_pattern_observation::revenge",
+          "claimType": "artist_motif_pattern_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-c",
+          "normalizedKey": "revenge",
+          "status": "proposed",
+          "confidenceScore": 0.39,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {
+              "needsRereview": true,
+              "decayCount": 1
+            },
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.05,
+          "signalCount": 3
+        }
+      },
+      "expected": {
+        "reviewBand": "high",
+        "reviewRecommendation": "review_now",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "motif-accepted-strong",
+      "description": "Confident accepted motif should be a monitor item.",
+      "input": {
+        "claim": {
+          "id": "eval-motif-3",
+          "claimKey": "artist::artist-d::artist_motif_pattern_observation::freedom",
+          "claimType": "artist_motif_pattern_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-d",
+          "normalizedKey": "freedom",
+          "status": "accepted",
+          "confidenceScore": 0.93,
+          "sourceCount": 4,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.04,
+          "signalCount": 8
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "motif-accepted-deferred",
+      "description": "Accepted motif with deferred feedback should be reviewed soon.",
+      "input": {
+        "claim": {
+          "id": "eval-motif-4",
+          "claimKey": "song::track-i::song_motif_observation::sunrise",
+          "claimType": "song_motif_observation",
+          "scopeType": "song",
+          "scopeKey": "track-i",
+          "normalizedKey": "sunrise",
+          "status": "accepted",
+          "confidenceScore": 0.58,
+          "sourceCount": 1,
+          "evidenceCount": 2,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.02,
+          "signalCount": 4
+        }
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "persona-proposed-weak",
+      "description": "A weak proposed persona claim should be queued, but not over-promoted.",
+      "input": {
+        "claim": {
+          "id": "eval-persona-1",
+          "claimKey": "artist::artist-e::artist_persona_style_observation::intense",
+          "claimType": "artist_persona_style_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-e",
+          "normalizedKey": "intense",
+          "status": "proposed",
+          "confidenceScore": 0.42,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": null,
+        "learningProfile": null
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "persona-cleanup-locked",
+      "description": "Cleanup-locked persona claim should not enter the queue even if it looks suspicious.",
+      "input": {
+        "claim": {
+          "id": "eval-persona-2",
+          "claimKey": "artist::artist-f::artist_persona_style_observation::directive",
+          "claimType": "artist_persona_style_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-f",
+          "normalizedKey": "directive",
+          "status": "proposed",
+          "confidenceScore": 0.41,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {
+              "locked": true
+            },
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.03,
+          "signalCount": 2
+        }
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "persona-accepted-strong",
+      "description": "A confident accepted persona claim should be treated as stable knowledge.",
+      "input": {
+        "claim": {
+          "id": "eval-persona-3",
+          "claimKey": "artist::artist-g::artist_persona_style_observation::brooding",
+          "claimType": "artist_persona_style_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-g",
+          "normalizedKey": "brooding",
+          "status": "accepted",
+          "confidenceScore": 0.94,
+          "sourceCount": 4,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.05,
+          "signalCount": 10
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "symbol-low-signal",
+      "description": "Low-signal symbol claims should stay reviewable until they prove durable.",
+      "input": {
+        "claim": {
+          "id": "eval-symbol-1",
+          "claimKey": "song::track-j::song_symbol_observation::chain",
+          "claimType": "song_symbol_observation",
+          "scopeType": "song",
+          "scopeKey": "track-j",
+          "normalizedKey": "chain",
+          "status": "accepted",
+          "confidenceScore": 0.54,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "deferred",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.04,
+          "signalCount": 3
+        }
+      },
+      "expected": {
+        "reviewBand": "medium",
+        "reviewRecommendation": "review_soon",
+        "shouldQueue": true
+      }
+    },
+    {
+      "id": "symbol-accepted-strong",
+      "description": "A durable symbol should be a monitor item.",
+      "input": {
+        "claim": {
+          "id": "eval-symbol-2",
+          "claimKey": "song::track-k::song_symbol_observation::throne",
+          "claimType": "song_symbol_observation",
+          "scopeType": "song",
+          "scopeKey": "track-k",
+          "normalizedKey": "throne",
+          "status": "accepted",
+          "confidenceScore": 0.95,
+          "sourceCount": 4,
+          "evidenceCount": 4,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.03,
+          "signalCount": 9
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "terminal-deprecated-symbol",
+      "description": "Deprecated symbol claims are terminal and should not queue.",
+      "input": {
+        "claim": {
+          "id": "eval-symbol-3",
+          "claimKey": "song::track-l::song_symbol_observation::crown",
+          "claimType": "song_symbol_observation",
+          "scopeType": "song",
+          "scopeKey": "track-l",
+          "normalizedKey": "crown",
+          "status": "deprecated",
+          "confidenceScore": 0.35,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "rejected",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.07,
+          "signalCount": 2
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    },
+    {
+      "id": "terminal-rejected-vocabulary",
+      "description": "Rejected vocabulary claims should remain out of the queue.",
+      "input": {
+        "claim": {
+          "id": "eval-vocab-5",
+          "claimKey": "song::track-m::song_vocabulary_observation::dil",
+          "claimType": "song_vocabulary_observation",
+          "scopeType": "song",
+          "scopeKey": "track-m",
+          "normalizedKey": "dil",
+          "status": "rejected",
+          "confidenceScore": 0.31,
+          "sourceCount": 1,
+          "evidenceCount": 1,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {},
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "rejected",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": -0.09,
+          "signalCount": 5
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": false
+      }
+    }
+  ]
+}

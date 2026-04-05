@@ -211,6 +211,152 @@ export type LafzBrainPromotionRecord = {
   createdAt: string | null;
 };
 
+export type LafzBrainReviewRecommendation = "review_now" | "review_soon" | "monitor";
+
+export type LafzBrainReviewBand = "high" | "medium" | "low";
+
+export type LafzBrainReviewItem = {
+  claimId: string;
+  claimKey: string;
+  claimType: LafzBrainClaimType;
+  scopeType: LafzBrainClaimScopeType;
+  scopeKey: string;
+  normalizedKey: string;
+  status: LafzBrainClaimStatus;
+  confidenceScore: number;
+  sourceCount: number;
+  evidenceCount: number;
+  updatedAt: string | null;
+  reviewScore: number;
+  reviewBand: LafzBrainReviewBand;
+  reviewRecommendation: LafzBrainReviewRecommendation;
+  reasons: string[];
+  learningBias: number;
+  learningSignalCount: number;
+  latestDecision: LafzBrainPromotionDecision | null;
+  latestDecidedBy: string | null;
+  latestDecisionAt: string | null;
+  manualLocked: boolean;
+  cleanupLocked: boolean;
+  needsRereview: boolean;
+  decayCount: number;
+  lastCleanupRule: string | null;
+};
+
+export type LafzBrainReviewSummary = {
+  reviewableCount: number;
+  reviewNowCount: number;
+  reviewSoonCount: number;
+  monitorCount: number;
+  acceptedCount: number;
+  proposedCount: number;
+  rejectedCount: number;
+  deprecatedCount: number;
+  lockedCount: number;
+  needsRereviewCount: number;
+  averageReviewScore: number;
+};
+
+export type LafzBrainLearningProfileRecord = {
+  id: string;
+  scopeType: LafzBrainClaimScopeType;
+  claimType: LafzBrainClaimType;
+  normalizedKey: string;
+  signalCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  deferredCount: number;
+  manualOverrideCount: number;
+  confidenceBias: number;
+  lastDecision: LafzBrainPromotionDecision | null;
+  lastDecidedBy: string | null;
+  lastClaimId: string | null;
+  lastDecisionAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type LafzBrainCriticEvalInput = {
+  claim: Pick<
+    LafzBrainClaimRecord,
+    | "id"
+    | "claimKey"
+    | "claimType"
+    | "scopeType"
+    | "scopeKey"
+    | "normalizedKey"
+    | "status"
+    | "confidenceScore"
+    | "sourceCount"
+    | "evidenceCount"
+    | "updatedAt"
+    | "payload"
+  >;
+  latestPromotion?: Pick<LafzBrainPromotionRecord, "decision" | "decidedBy" | "createdAt"> | null;
+  learningProfile?: Pick<LafzBrainLearningProfileRecord, "confidenceBias" | "signalCount"> | null;
+};
+
+export type LafzBrainCriticEvalExpectation = {
+  reviewBand: LafzBrainReviewBand;
+  reviewRecommendation: LafzBrainReviewRecommendation;
+  shouldQueue: boolean;
+};
+
+export type LafzBrainCriticEvalCase = {
+  id: string;
+  description: string;
+  input: LafzBrainCriticEvalInput;
+  expected: LafzBrainCriticEvalExpectation;
+};
+
+export type LafzBrainCriticEvalSet = {
+  version: number;
+  description: string;
+  cases: LafzBrainCriticEvalCase[];
+};
+
+export type LafzBrainCriticEvalCaseResult = {
+  id: string;
+  description: string;
+  claimType: LafzBrainClaimType;
+  scopeType: LafzBrainClaimScopeType;
+  claimKey: string;
+  expected: LafzBrainCriticEvalExpectation;
+  actual: {
+    reviewScore: number;
+    reviewBand: LafzBrainReviewBand;
+    reviewRecommendation: LafzBrainReviewRecommendation;
+    shouldQueue: boolean;
+    reasons: string[];
+  };
+  mismatches: string[];
+  passed: boolean;
+};
+
+export type LafzBrainCriticEvaluationReport = {
+  version: number;
+  description: string;
+  generatedAt: string;
+  totalCases: number;
+  passedCases: number;
+  failedCases: number;
+  reviewBandMatches: number;
+  reviewRecommendationMatches: number;
+  queueMatches: number;
+  reviewBandAccuracy: number;
+  reviewRecommendationAccuracy: number;
+  queueAccuracy: number;
+  passRate: number;
+  bandCounts: Record<LafzBrainReviewBand, number>;
+  recommendationCounts: Record<LafzBrainReviewRecommendation, number>;
+  queueCounts: {
+    queued: number;
+    skipped: number;
+  };
+  topFailures: LafzBrainCriticEvalCaseResult[];
+  cases: LafzBrainCriticEvalCaseResult[];
+};
+
 export type LafzAgentJobRecord = {
   id: string;
   jobKey: string;

@@ -18,6 +18,7 @@ import type {
   LafzBrainMemoryPackCacheRecord,
   LafzBrainNodeRecord,
   LafzBrainNodeType,
+  LafzBrainLearningProfileRecord,
   LafzBrainPromotionDecision,
   LafzBrainPromotionRecord
 } from "@/features/brain/types";
@@ -112,6 +113,15 @@ type InsertBrainPromotionInput = {
   payload?: Record<string, unknown>;
 };
 
+type UpsertBrainLearningProfileInput = {
+  claimId: string;
+  claimType: LafzBrainClaimType;
+  scopeType: LafzBrainClaimScopeType;
+  normalizedKey: string;
+  decision: LafzBrainPromotionDecision;
+  decidedBy?: string | null;
+};
+
 type EnqueueAgentJobInput = {
   jobKey: string;
   jobType: LafzAgentJobType;
@@ -171,6 +181,10 @@ function asStringArray(value: unknown) {
 
 function asNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function clampBrainConfidenceScore(value: number) {
+  return Math.max(0.2, Math.min(1, value));
 }
 
 function mergeJsonObjects(base: Record<string, unknown>, patch: Record<string, unknown>) {
@@ -432,6 +446,70 @@ function parseBrainPromotionRow(row: unknown): LafzBrainPromotionRecord | null {
     payload: isRecord(row.payload_json) ? row.payload_json : {},
     createdAt: asString(row.created_at)
   };
+}
+
+function parseBrainLearningProfileRow(row: unknown): LafzBrainLearningProfileRecord | null {
+  if (!isRecord(row)) {
+    return null;
+  }
+
+  const id = asString(row.id);
+  const scopeType = asString(row.scope_type) as LafzBrainClaimScopeType | null;
+  const claimType = asString(row.claim_type) as LafzBrainClaimType | null;
+  const normalizedKey = asString(row.normalized_key);
+
+  if (!id || !scopeType || !claimType || !normalizedKey) {
+    return null;
+  }
+
+  return {
+    id,
+    scopeType,
+    claimType,
+    normalizedKey,
+    signalCount: asNumber(row.signal_count, 0),
+    acceptedCount: asNumber(row.accepted_count, 0),
+    rejectedCount: asNumber(row.rejected_count, 0),
+    deferredCount: asNumber(row.deferred_count, 0),
+    manualOverrideCount: asNumber(row.manual_override_count, 0),
+    confidenceBias: asNumber(row.confidence_bias, 0),
+    lastDecision: (asString(row.last_decision) as LafzBrainPromotionDecision | null) ?? null,
+    lastDecidedBy: asString(row.last_decided_by),
+    lastClaimId: asString(row.last_claim_id),
+    lastDecisionAt: asString(row.last_decision_at),
+    createdAt: asString(row.created_at),
+    updatedAt: asString(row.updated_at)
+  };
+}
+
+function isManualLearningSignal(decidedBy: string | null | undefined) {
+  if (!decidedBy) {
+    return false;
+  }
+
+  const normalized = decidedBy.trim().toLowerCase();
+  return normalized.startsWith("manual") || normalized.includes("human");
+}
+
+function computeBrainLearningBias(profile: {
+  signalCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  deferredCount: number;
+  manualOverrideCount: number;
+}) {
+  const totalSignals = Math.max(0, profile.signalCount);
+
+  if (totalSignals === 0) {
+    return 0;
+  }
+
+  const directionalScore = profile.acceptedCount - profile.rejectedCount * 1.15 - profile.deferredCount * 0.2;
+  const normalizedScore = directionalScore / totalSignals;
+  const strength = Math.min(1, totalSignals / 8) * (0.7 + Math.min(1, profile.manualOverrideCount / 4) * 0.3);
+  const bias = normalizedScore * strength * 0.22;
+
+  return Math.max(-0.2, Math.min(0.2, bias));
 }
 
 function parseAgentJobRow(row: unknown): LafzAgentJobRecord | null {
@@ -828,6 +906,127 @@ export async function listBrainClaimsByScope(scopeType: LafzBrainClaimScopeType,
   return (data ?? []).map(parseBrainClaimRow).filter((row): row is LafzBrainClaimRecord => Boolean(row));
 }
 
+export async function readBrainLearningProfileByKey(
+  scopeType: LafzBrainClaimScopeType,
+  claimType: LafzBrainClaimType,
+  normalizedKey: string
+) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("kg_learning_profiles")
+    .select("*")
+    .eq("scope_type", scopeType)
+    .eq("claim_type", claimType)
+    .eq("normalized_key", normalizedKey)
+    .maybeSingle();
+
+  if (error) {
+    logBrainError(`read learning profile ${scopeType}:${claimType}:${normalizedKey}`, error);
+    return null;
+  }
+
+  return parseBrainLearningProfileRow(data);
+}
+
+export async function listBrainLearningProfiles(limit = 24) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return [] as LafzBrainLearningProfileRecord[];
+  }
+
+  const { data, error } = await supabase
+    .from("kg_learning_profiles")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logBrainError("list learning profiles", error);
+    return [];
+  }
+
+  return (data ?? []).map(parseBrainLearningProfileRow).filter((row): row is LafzBrainLearningProfileRecord => Boolean(row));
+}
+
+export async function upsertBrainLearningProfileFromPromotion(input: UpsertBrainLearningProfileInput) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const existingClaim = (await readBrainClaimsByIds([input.claimId]))[0] ?? null;
+
+  if (!existingClaim) {
+    return null;
+  }
+
+  const existingProfile = await readBrainLearningProfileByKey(
+    input.scopeType,
+    input.claimType,
+    input.normalizedKey
+  );
+  const now = new Date().toISOString();
+  const nextSignalCount = (existingProfile?.signalCount ?? 0) + 1;
+  const nextAcceptedCount =
+    (existingProfile?.acceptedCount ?? 0) + (input.decision === "accepted" ? 1 : 0);
+  const nextRejectedCount =
+    (existingProfile?.rejectedCount ?? 0) + (input.decision === "rejected" ? 1 : 0);
+  const nextDeferredCount =
+    (existingProfile?.deferredCount ?? 0) + (input.decision === "deferred" ? 1 : 0);
+  const nextManualOverrideCount =
+    (existingProfile?.manualOverrideCount ?? 0) + (isManualLearningSignal(input.decidedBy) ? 1 : 0);
+  const nextConfidenceBias = computeBrainLearningBias({
+    signalCount: nextSignalCount,
+    acceptedCount: nextAcceptedCount,
+    rejectedCount: nextRejectedCount,
+    deferredCount: nextDeferredCount,
+    manualOverrideCount: nextManualOverrideCount
+  });
+
+  const { data, error } = await supabase
+    .from("kg_learning_profiles")
+    .upsert(
+      {
+        scope_type: input.scopeType,
+        claim_type: input.claimType,
+        normalized_key: input.normalizedKey,
+        signal_count: nextSignalCount,
+        accepted_count: nextAcceptedCount,
+        rejected_count: nextRejectedCount,
+        deferred_count: nextDeferredCount,
+        manual_override_count: nextManualOverrideCount,
+        confidence_bias: nextConfidenceBias,
+        last_decision: input.decision,
+        last_decided_by: input.decidedBy ?? null,
+        last_claim_id: existingClaim.id,
+        last_decision_at: now,
+        updated_at: now
+      },
+      {
+        onConflict: "scope_type,claim_type,normalized_key"
+      }
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    logBrainError(
+      `upsert learning profile ${input.scopeType}:${input.claimType}:${input.normalizedKey}`,
+      error
+    );
+    return null;
+  }
+
+  return parseBrainLearningProfileRow(data);
+}
+
 export async function listBrainEdgesBySourceNodeIds(sourceNodeIds: string[], edgeTypes?: LafzBrainEdgeType[]) {
   const supabase = getSupabaseServerClient();
 
@@ -928,6 +1127,10 @@ export async function upsertBrainClaim(input: UpsertBrainClaimInput) {
     return parseBrainClaimRow(data);
   }
 
+  const learningProfile = await readBrainLearningProfileByKey(input.scopeType, input.claimType, input.normalizedKey);
+  const learningBias = learningProfile ? learningProfile.confidenceBias : 0;
+  const nextConfidenceScore = clampBrainConfidenceScore((input.confidenceScore ?? 0.5) + learningBias);
+
   const { data, error } = await supabase
     .from("kg_claims")
     .insert({
@@ -937,7 +1140,7 @@ export async function upsertBrainClaim(input: UpsertBrainClaimInput) {
       scope_key: input.scopeKey,
       normalized_key: input.normalizedKey,
       status: input.status ?? "proposed",
-      confidence_score: input.confidenceScore ?? 0.5,
+      confidence_score: nextConfidenceScore,
       source_count: 1,
       evidence_count: 0,
       payload_json: input.payload ?? {},
@@ -1063,6 +1266,21 @@ export async function insertBrainPromotion(input: InsertBrainPromotionInput) {
 
   if (claimUpdateError) {
     logBrainError(`update promoted claim ${input.claimId}`, claimUpdateError);
+  }
+
+  const updatedClaim = (await readBrainClaimsByIds([input.claimId]))[0] ?? null;
+
+  if (updatedClaim) {
+    void upsertBrainLearningProfileFromPromotion({
+      claimId: input.claimId,
+      claimType: updatedClaim.claimType,
+      scopeType: updatedClaim.scopeType,
+      normalizedKey: updatedClaim.normalizedKey,
+      decision: input.decision,
+      decidedBy: input.decidedBy ?? null
+    }).catch((error) => {
+      logBrainError(`record learning signal for claim ${input.claimId}`, error);
+    });
   }
 
   return parseBrainPromotionRow(data);

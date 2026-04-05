@@ -12,9 +12,13 @@ import {
   readMemoryPackCache,
   updateBrainClaim
 } from "@/features/brain/repository";
+import { buildBrainClaimReviewQueue } from "@/features/brain/review";
 import { buildMemoryPackCacheKey, splitArtistCredits } from "@/features/brain/normalize";
 import { getAiTranslationDraftByTrackId } from "@/features/ai/repository";
 import { NODE_COLORS } from "@/features/brain/colors";
+import criticEvalSet from "../../../../data/brain/critic-eval-set.json";
+import { buildBrainCriticEvaluationReport } from "@/features/brain/critic-evaluation";
+import type { LafzBrainCriticEvalSet } from "@/features/brain/types";
 import { ensureCleanupAgentWorkerStarted, getCleanupAgentProcessStatus } from "@/features/brain/cleanup-agent";
 import { ensureEntityAgentWorkerStarted, getEntityAgentProcessStatus } from "@/features/brain/entity-agent";
 import { ensureMotifAgentWorkerStarted, getMotifAgentProcessStatus } from "@/features/brain/motif-agent";
@@ -221,9 +225,10 @@ export async function GET(request: NextRequest) {
         return rightTime - leftTime;
       });
       const claimIds = claims.map((claim) => claim.id);
-      const [evidenceRows, promotionRows] = await Promise.all([
+      const [evidenceRows, promotionRows, learningProfiles] = await Promise.all([
         listBrainEvidenceByClaimIds(claimIds),
-        listBrainPromotionsByClaimIds(claimIds)
+        listBrainPromotionsByClaimIds(claimIds),
+        listBrainLearningProfiles(1000)
       ]);
 
       const evidenceByClaimId = new Map<string, typeof evidenceRows>();
@@ -239,6 +244,12 @@ export async function GET(request: NextRequest) {
           latestPromotionByClaimId.set(promotion.claimId, promotion);
         }
       }
+
+      const claimReviewQueue = buildBrainClaimReviewQueue({
+        claims,
+        promotions: promotionRows,
+        learningProfiles
+      });
 
       return NextResponse.json({
         spotifyTrackId,
@@ -293,7 +304,9 @@ export async function GET(request: NextRequest) {
                 }
               : null
           };
-        })
+        }),
+        reviewQueue: claimReviewQueue.reviewQueue,
+        reviewSummary: claimReviewQueue.reviewSummary
       });
     }
 
@@ -304,6 +317,7 @@ export async function GET(request: NextRequest) {
       const motifWorker = getMotifAgentProcessStatus();
       const personaWorker = getPersonaAgentProcessStatus();
       const cleanupWorker = getCleanupAgentProcessStatus();
+      const criticEvaluation = buildBrainCriticEvaluationReport(criticEvalSet as LafzBrainCriticEvalSet);
 
       const [vocabularyCounts, entityCounts, motifCounts, personaCounts, cleanupCounts, { data: recentRuns }, { data: recentJobs }, { data: activeJobs }, learningProfiles] = await Promise.all([
         Promise.all(
@@ -515,6 +529,7 @@ export async function GET(request: NextRequest) {
         },
         cleanupQueueCounts: Object.fromEntries(cleanupCounts),
         jobHealthByType,
+        criticEvaluation,
         learningSummary: {
           ...learningSummary,
           averageConfidenceBias:

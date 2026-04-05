@@ -38,6 +38,7 @@ export function BrainClient() {
   const [claimsData, setClaimsData] = useState<ClaimsData | null>(null);
   const [claimsLoading, setClaimsLoading] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
+  const [claimsRefreshNonce, setClaimsRefreshNonce] = useState(0);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
@@ -170,7 +171,12 @@ export function BrainClient() {
     fetchMemoryPack();
     fetchClaims();
     return () => { cancelled = true; };
-  }, [selectedNode]);
+  }, [selectedNode, claimsRefreshNonce]);
+
+  const handleClaimsMutated = useCallback(() => {
+    setClaimsRefreshNonce((value) => value + 1);
+    void fetchWorkerStatus();
+  }, [fetchWorkerStatus]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -404,7 +410,12 @@ export function BrainClient() {
         <div className="flex w-64 flex-shrink-0 flex-col gap-3 overflow-y-auto">
           <NodeDetail node={activeNode} />
           <MemoryPackPanel memoryPack={memoryPack} loading={memoryPackLoading} error={memoryPackError} />
-          <ClaimsPanel claimsData={claimsData} loading={claimsLoading} error={claimsError} />
+          <ClaimsPanel
+            claimsData={claimsData}
+            loading={claimsLoading}
+            error={claimsError}
+            onActionComplete={handleClaimsMutated}
+          />
 
           {/* Legend */}
           <div

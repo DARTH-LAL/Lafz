@@ -1,0 +1,23 @@
+[Unit]
+Description=Lafz brain worker daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lafz
+Group=lafz
+WorkingDirectory=/opt/lafz
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/etc/lafz/lafz-shared.env
+EnvironmentFile=/etc/lafz/lafz-worker.env
+ExecStart=/usr/bin/env npm run agent:brain:daemon
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillSignal=SIGINT
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

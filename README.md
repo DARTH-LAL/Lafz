@@ -33,6 +33,10 @@ This repository is intentionally scoped as a personal prototype:
 - Plain reading mode when only untimed lyrics are available
 - Clean loading, empty, and error states
 
+## Always-on deployment
+
+If you want Lafz to keep running when your terminal closes, see [`deploy/systemd/README.md`](deploy/systemd/README.md) for the systemd setup that runs the web app and the brain worker as always-on services.
+
 ## Architecture
 
 The project keeps the reusable parts separated so the same core logic can later move into iPhone, Android, or React Native clients.
