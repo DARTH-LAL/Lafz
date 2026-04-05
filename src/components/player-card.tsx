@@ -76,6 +76,7 @@ type PlayerCardProps = {
   playback: PlaybackState;
   visualProgressMs: number;
   beatCount?: number;
+  debugBpm?: number | null;
   onPlaybackCommand: (
     command:
       | { action: "play" | "pause" | "next" | "previous" }
@@ -85,36 +86,56 @@ type PlayerCardProps = {
   ) => Promise<void>;
 };
 
-export function PlayerCard({ playback, visualProgressMs, beatCount = 0, onPlaybackCommand }: PlayerCardProps) {
+export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm, onPlaybackCommand }: PlayerCardProps) {
   if (!playback.track) {
     return null;
   }
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  // Beat glow — inset shadow on album art + outer bg flash
-  const glowRef    = useRef<HTMLDivElement>(null);
-  const bgGlowRef  = useRef<HTMLDivElement>(null);
+  // Beat glow — direct JS transition, no CSS keyframe restart issues
+  const glowRef   = useRef<HTMLDivElement>(null);
+  const bgGlowRef = useRef<HTMLDivElement>(null);
+  const beatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (beatCount === 0) return;
 
-    // 1. Inset glow on the album art (inset shadows are never clipped)
-    const art = glowRef.current;
-    if (art) {
-      art.style.animation = "none";
-      void art.offsetHeight;
-      art.style.animation = "lafz-beat-glow-pulse 0.55s cubic-bezier(0.22,1,0.36,1) forwards";
+    // Clear any in-progress fade
+    if (beatTimerRef.current) clearTimeout(beatTimerRef.current);
+
+    const overlay = glowRef.current;
+    const bg      = bgGlowRef.current;
+
+    // Snap to full brightness instantly
+    if (overlay) {
+      overlay.style.transition = "none";
+      overlay.style.opacity    = "1";
+      overlay.style.background = "rgba(255,20,100,0.30)";
+      overlay.style.boxShadow  = "inset 0 0 90px rgba(255,20,100,0.90), inset 0 0 200px rgba(255,100,160,0.50)";
+      overlay.style.border     = "2px solid rgba(255,20,100,0.90)";
+    }
+    if (bg) {
+      bg.style.transition = "none";
+      bg.style.opacity    = "1";
+      bg.style.transform  = "scale(1.15)";
     }
 
-    // 2. Flash the blurred background element brighter
-    const bg = bgGlowRef.current;
-    if (bg) {
-      bg.style.transition = "opacity 0.05s ease";
-      bg.style.opacity    = "1";
-      setTimeout(() => {
-        if (bg) { bg.style.transition = "opacity 0.45s ease"; bg.style.opacity = "0.6"; }
-      }, 60);
-    }
+    // Fade out over 400ms
+    beatTimerRef.current = setTimeout(() => {
+      if (overlay) {
+        overlay.style.transition = "all 0.4s ease-out";
+        overlay.style.opacity    = "0";
+        overlay.style.background = "transparent";
+        overlay.style.boxShadow  = "none";
+        overlay.style.border     = "none";
+      }
+      if (bg) {
+        bg.style.transition = "all 0.4s ease-out";
+        bg.style.opacity    = "0.6";
+        bg.style.transform  = "scale(1)";
+      }
+    }, 80);
   }, [beatCount]);
 
   const triggerCommand = async (
@@ -138,11 +159,11 @@ export function PlayerCard({ playback, visualProgressMs, beatCount = 0, onPlayba
   return (
     <section className="flex h-full min-h-0 flex-col px-7 py-5">
       <div className="relative mb-4 min-h-0 flex-1">
-        <div ref={bgGlowRef} className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.3)_0%,rgba(255,140,66,0.14)_42%,transparent_72%)] blur-[18px]" style={{ opacity: 0.6 }} />
+        <div ref={bgGlowRef} className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.55)_0%,rgba(255,140,66,0.25)_42%,transparent_72%)] blur-[18px]" style={{ opacity: 0.6 }} />
 
         <div className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.20)] bg-[#130f20]">
-          {/* Beat flash overlay — sits on top of album art, inset so overflow can't clip it */}
-          <div ref={glowRef} className="pointer-events-none absolute inset-0 z-10 rounded-[22px]" />
+          {/* Beat flash overlay */}
+          <div ref={glowRef} className="pointer-events-none absolute inset-0 z-10 rounded-[22px]" style={{ opacity: 0 }} />
           {playback.track.albumArtUrl ? (
             <Image
               src={playback.track.albumArtUrl}

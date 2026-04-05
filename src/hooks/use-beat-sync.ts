@@ -2,97 +2,73 @@
 
 import { useEffect, useRef } from "react";
 
-type Beat = { start: number; duration: number; confidence: number };
-
 /**
- * Fetches Spotify audio-analysis beats for `trackId` and fires `onBeat`
- * each time the playhead crosses a beat boundary, in sync with
- * `visualProgressMs` (the smoothed clock from usePlaybackClock).
- *
- * Only fires when `isPlaying` is true. Automatically resets on seek.
+ * Fetches BPM via Spotify audio-features and runs a metronome
+ * synced to the playback position. Fires onBeat() every beat.
+ * Automatically starts/stops with isPlaying.
  */
 export function useBeatSync({
   trackId,
   visualProgressMs,
   isPlaying,
   onBeat,
+  onBpmLoaded,
 }: {
   trackId: string | null;
   visualProgressMs: number;
   isPlaying: boolean;
   onBeat: () => void;
+  onBpmLoaded?: (bpm: number) => void;
 }) {
-  const beatsRef           = useRef<Beat[]>([]);
-  const lastBeatIdxRef     = useRef<number>(-1);
-  const onBeatRef          = useRef(onBeat);
-  const rafRef             = useRef<number | null>(null);
-  const progressRef        = useRef(visualProgressMs);
-  const isPlayingRef       = useRef(isPlaying);
-  const prevProgressRef    = useRef(visualProgressMs);
+  const onBeatRef      = useRef(onBeat);
+  const onBpmLoadedRef = useRef(onBpmLoaded);
+  const progressRef    = useRef(visualProgressMs);
+  const bpmRef         = useRef<number>(120);
 
-  // Keep refs up-to-date without restarting effects
+  // Keep refs current on every render
   useEffect(() => { onBeatRef.current = onBeat; });
+  useEffect(() => { onBpmLoadedRef.current = onBpmLoaded; });
+  useEffect(() => { progressRef.current = visualProgressMs; }, [visualProgressMs]);
+
+  // Fetch BPM when track changes
   useEffect(() => {
-    // Detect seeks: if progress jumps > 2s in either direction, reset beat cursor
-    const diff = Math.abs(visualProgressMs - prevProgressRef.current);
-    if (diff > 2_000) {
-      lastBeatIdxRef.current = -1;
-    }
-    prevProgressRef.current  = visualProgressMs;
-    progressRef.current      = visualProgressMs;
-  }, [visualProgressMs]);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+    if (!trackId) return;
+    bpmRef.current = 120; // reset to default while loading
 
-  // Fetch beats whenever the track changes
-  useEffect(() => {
-    if (!trackId) {
-      beatsRef.current     = [];
-      lastBeatIdxRef.current = -1;
-      return;
-    }
-
-    beatsRef.current     = [];
-    lastBeatIdxRef.current = -1;
-
-    void fetch(`/api/spotify/audio-analysis?trackId=${trackId}`)
+    void fetch(`/api/spotify/audio-features?trackId=${trackId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { beats: Beat[] } | null) => {
-        if (data?.beats && data.beats.length > 0) {
-          // Only use high-confidence beats (≥ 0.4) to avoid ghost pulses
-          beatsRef.current = data.beats.filter((b) => b.confidence >= 0.4);
-          lastBeatIdxRef.current = -1;
+      .then((data: { tempo?: number } | null) => {
+        if (data?.tempo && data.tempo > 40) {
+          bpmRef.current = data.tempo;
+          onBpmLoadedRef.current?.(data.tempo);
+          console.log(`[lafz] BPM ${data.tempo.toFixed(1)}`);
         }
       })
-      .catch(() => {
-        // Silently fail — beat sync is a nice-to-have
-      });
+      .catch(() => {});
   }, [trackId]);
 
-  // rAF loop — detect beat crossings
+  // Metronome: start when playing, stop when paused
   useEffect(() => {
-    function tick() {
-      if (isPlayingRef.current && beatsRef.current.length > 0) {
-        const nowSec = progressRef.current / 1000;
-        const beats  = beatsRef.current;
-        let idx      = lastBeatIdxRef.current;
+    if (!isPlaying || !trackId) return;
 
-        // Advance cursor for every beat we've passed since last frame
-        while (idx + 1 < beats.length && beats[idx + 1].start <= nowSec) {
-          idx++;
-        }
+    const beatMs = () => (60 / bpmRef.current) * 1000;
 
-        if (idx > lastBeatIdxRef.current) {
-          lastBeatIdxRef.current = idx;
-          onBeatRef.current();
-        }
-      }
+    // Phase-align to current position
+    const phase        = progressRef.current % beatMs();
+    const delayMs      = beatMs() - phase;
 
-      rafRef.current = requestAnimationFrame(tick);
-    }
+    let interval: ReturnType<typeof setInterval> | null = null;
 
-    rafRef.current = requestAnimationFrame(tick);
+    const firstBeat = setTimeout(() => {
+      onBeatRef.current();
+      interval = setInterval(() => {
+        onBeatRef.current();
+      }, beatMs());
+    }, delayMs);
+
     return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      clearTimeout(firstBeat);
+      if (interval) clearInterval(interval);
     };
-  }, []); // mount once — refs handle all live values
+  }, [isPlaying, trackId]); // restart metronome when track or play state changes
 }
