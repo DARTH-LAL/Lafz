@@ -17,6 +17,7 @@ import {
   requestOpenAiTranslationDraft,
   requestOpenAiWorldModel
 } from "@/features/ai/openai";
+import { evaluateSurfacePolishCandidate } from "@/features/ai/surface-polish";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { buildTrackTranslationFromAiDraft, getAiTranslationDraftByTrackId, writeAiTranslationDraftFile } from "@/features/ai/repository";
 import { calcModelCost, recordAiUsageRun } from "@/features/ai/usage-tracker";
@@ -2234,44 +2235,26 @@ async function applySurfacePolishToDraftLines(options: {
     for (const [index, candidate] of batch.entries()) {
       const proposal = polishResponse.lines[index];
       const audit = auditResponse.lines[index];
-      const originalAnchorScore = scoreCandidateAgainstAnchor(candidate.line.chosen, candidate.line, candidate.verseState);
-
-      if (!proposal || !audit || !proposal.apply || audit.winner === "original" || audit.fluencyGain === "none") {
+      if (!proposal || !audit) {
         continue;
       }
 
-      const candidateText =
-        audit.winner === "safe"
-          ? proposal.safePolish
-          : audit.winner === "natural"
-            ? proposal.naturalPolish
-            : candidate.line.chosen;
+      const evaluation = evaluateSurfacePolishCandidate({
+        sourceLine: candidate.sourceLine,
+        draftLine: candidate.line,
+        proposal,
+        audit,
+        verseState: candidate.verseState,
+        lineWorldModel: candidate.lineWorldModel
+      });
 
-      if (!candidateText || normalizeEnglishChoiceKey(candidateText) === normalizeEnglishChoiceKey(candidate.line.chosen)) {
-        continue;
-      }
-
-      if (!preservesProtectedAnchors(candidateText, candidate.protectedAnchors)) {
-        continue;
-      }
-
-      if (audit.semanticRisk === "high" || (audit.semanticRisk === "medium" && audit.winner === "natural")) {
-        continue;
-      }
-
-      const polishedAnchorScore = scoreCandidateAgainstAnchor(candidateText, candidate.line, candidate.verseState);
-      if (polishedAnchorScore + 1 < originalAnchorScore) {
+      if (!evaluation.applied) {
         continue;
       }
 
       polishedByKey.set(candidate.key, {
         ...candidate.line,
-        chosen: candidateText,
-        confidence:
-          audit.semanticRisk === "medium" && candidate.line.confidence === "high"
-            ? "medium"
-            : candidate.line.confidence,
-        selectorReason: appendSurfacePolishReason(candidate.line.selectorReason, audit.reason ?? proposal.reason)
+        ...evaluation.line
       });
     }
   }

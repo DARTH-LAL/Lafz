@@ -1,0 +1,490 @@
+{
+  "version": 1,
+  "description": "Curated surface polish evaluation set for Lafz lyric translation fluency guardrails.",
+  "cases": [
+    {
+      "id": "safe-contraction",
+      "description": "A simple fluency cleanup should be applied when meaning and anchors stay intact.",
+      "input": {
+        "sourceLine": {
+          "original": "main theek hu main sambhal raha hu"
+        },
+        "draftLine": {
+          "chosen": "I am fine and I am holding on",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "I am fine and still holding on",
+          "impliedMeaning": "steady and resilient",
+          "register": "calm"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Tightened the phrasing without changing the meaning.",
+          "safePolish": "I'm fine and holding on",
+          "naturalPolish": "I'm fine, still holding on"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "I'm fine and holding on",
+          "reason": "Keeps the same meaning with cleaner English.",
+          "fluencyGain": "minor",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "steady endurance",
+          "dominantIntents": ["survival", "pride"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": ["night"]
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": true,
+        "chosen": "I'm fine and holding on",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "natural-smoother",
+      "description": "A smoother rewrite can win when it still keeps the same semantic bones.",
+      "input": {
+        "sourceLine": {
+          "original": "main kabhi nahi jhukta"
+        },
+        "draftLine": {
+          "chosen": "I never bend for anybody",
+          "confidence": "high",
+          "selectorReason": null,
+          "meaning": "I never bow down to anyone",
+          "impliedMeaning": "defiant and proud",
+          "register": "defiant"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "A smoother English line was available.",
+          "safePolish": "I never bend for anyone",
+          "naturalPolish": "I don't bow to anyone"
+        },
+        "audit": {
+          "winner": "natural",
+          "chosen": "I don't bow to anyone",
+          "reason": "Natural phrasing is clearer but still faithful.",
+          "fluencyGain": "clear",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "defiant self-respect",
+          "dominantIntents": ["pride"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": []
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": true,
+        "chosen": "I don't bow to anyone",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "downgrade-high-confidence",
+      "description": "A medium-risk polish can still apply, but it should soften the confidence level.",
+      "input": {
+        "sourceLine": {
+          "original": "main sab sambhal leta hu"
+        },
+        "draftLine": {
+          "chosen": "I stay calm even when the room turns hard",
+          "confidence": "high",
+          "selectorReason": null,
+          "meaning": "I keep my cool under pressure",
+          "impliedMeaning": "controlled and steady",
+          "register": "restrained"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "A small phrasing tweak improves flow.",
+          "safePolish": "I stay calm when the room gets rough",
+          "naturalPolish": "I stay calm when the room gets tougher"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "I stay calm when the room gets rough",
+          "reason": "Still faithful, but slightly softer than the original.",
+          "fluencyGain": "minor",
+          "semanticRisk": "medium"
+        },
+        "verseState": {
+          "summary": "controlled under pressure",
+          "dominantIntents": ["control", "pride"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": ["room"]
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": true,
+        "chosen": "I stay calm when the room gets rough",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "anchor-drop-reject",
+      "description": "A polish that drops a protected named anchor should be rejected.",
+      "input": {
+        "sourceLine": {
+          "original": "veer da naam"
+        },
+        "draftLine": {
+          "chosen": "Veer's name still rings out",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "Veer's name still carries weight",
+          "impliedMeaning": "status and recognition",
+          "register": "proud"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "A shorter line looked tempting.",
+          "safePolish": "His name still rings out",
+          "naturalPolish": "The name still rings out"
+        },
+        "audit": {
+          "winner": "natural",
+          "chosen": "The name still rings out",
+          "reason": "Cleaner English, but it loses the named anchor.",
+          "fluencyGain": "clear",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "status and reputation",
+          "dominantIntents": ["flex"]
+        },
+        "lineWorldModel": {
+          "referents": ["Veer"],
+          "imagery": ["name"]
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": false,
+        "chosen": "Veer's name still rings out",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "high-risk-reject",
+      "description": "High semantic risk should keep the original line.",
+      "input": {
+        "sourceLine": {
+          "original": "main akela aya"
+        },
+        "draftLine": {
+          "chosen": "I came in alone and I leave alone",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "I arrived alone and I leave alone",
+          "impliedMeaning": "self-reliant and untouchable",
+          "register": "defiant"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Polish could improve the cadence.",
+          "safePolish": "I came in alone and I leave alone",
+          "naturalPolish": "I came in alone, and I go out alone"
+        },
+        "audit": {
+          "winner": "natural",
+          "chosen": "I came in alone, and I go out alone",
+          "reason": "Too much semantic risk for the polish pass.",
+          "fluencyGain": "clear",
+          "semanticRisk": "high"
+        },
+        "verseState": {
+          "summary": "loner pride",
+          "dominantIntents": ["pride"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": ["alone"]
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": false,
+        "chosen": "I came in alone and I leave alone",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "no-fluency-gain-reject",
+      "description": "If the audit says there is no fluency gain, the original should stay.",
+      "input": {
+        "sourceLine": {
+          "original": "main bilkul waisa hi hu"
+        },
+        "draftLine": {
+          "chosen": "I know exactly what I want",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "I know exactly what I want",
+          "impliedMeaning": "clarity and certainty",
+          "register": "direct"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Potential cleanup exists, but not much.",
+          "safePolish": "I know exactly what I want",
+          "naturalPolish": "I know what I want"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "I know exactly what I want",
+          "reason": "The safe version does not improve fluency enough.",
+          "fluencyGain": "none",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "plain certainty",
+          "dominantIntents": ["control"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": []
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": false,
+        "chosen": "I know exactly what I want",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "low-confidence-ineligible",
+      "description": "Low-confidence lines should not enter the polish pass.",
+      "input": {
+        "sourceLine": {
+          "original": "main chal raha hu"
+        },
+        "draftLine": {
+          "chosen": "I'm still moving forward",
+          "confidence": "low",
+          "selectorReason": null,
+          "meaning": "I'm still moving forward",
+          "impliedMeaning": "resilience",
+          "register": "calm"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "This line is too uncertain to polish.",
+          "safePolish": "I'm still moving forward",
+          "naturalPolish": "I'm still pushing ahead"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "I'm still moving forward",
+          "reason": "Polish should not run on low-confidence lines.",
+          "fluencyGain": "clear",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "steady resilience",
+          "dominantIntents": ["survival"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": ["road"]
+        }
+      },
+      "expected": {
+        "eligible": false,
+        "applied": false,
+        "chosen": "I'm still moving forward",
+        "confidence": "low"
+      }
+    },
+    {
+      "id": "manual-review-ineligible",
+      "description": "Manually reviewed lines should skip polish entirely.",
+      "input": {
+        "sourceLine": {
+          "original": "main tera intezar kar raha hu"
+        },
+        "draftLine": {
+          "chosen": "I'm waiting for you",
+          "confidence": "high",
+          "selectorReason": "Manually reviewed in Lafz.",
+          "meaning": "I'm waiting for you",
+          "impliedMeaning": "patient longing",
+          "register": "soft"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Manual review should stop polish.",
+          "safePolish": "I'm waiting for you",
+          "naturalPolish": "I'm waiting here for you"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "I'm waiting for you",
+          "reason": "Manual review must remain untouched.",
+          "fluencyGain": "clear",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "patient longing",
+          "dominantIntents": ["romance"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": ["wait"]
+        }
+      },
+      "expected": {
+        "eligible": false,
+        "applied": false,
+        "chosen": "I'm waiting for you",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "hook-line-ineligible",
+      "description": "Short hook lines should stay raw instead of being over-smoothed.",
+      "input": {
+        "sourceLine": {
+          "original": "oh oh oh"
+        },
+        "draftLine": {
+          "chosen": "Oh oh oh, we go",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "Hook chant",
+          "impliedMeaning": "repeated chant",
+          "register": "chant"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Hook energy should not be flattened.",
+          "safePolish": "Oh oh oh, we go",
+          "naturalPolish": "Oh oh oh, we move"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "Oh oh oh, we go",
+          "reason": "Hook energy should stay intact.",
+          "fluencyGain": "minor",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "chant hook",
+          "dominantIntents": ["hook"]
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": []
+        }
+      },
+      "expected": {
+        "eligible": false,
+        "applied": false,
+        "chosen": "Oh oh oh, we go",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "adlib-line-ineligible",
+      "description": "Plain ad-libs should never be sent through polish.",
+      "input": {
+        "sourceLine": {
+          "original": "yeah"
+        },
+        "draftLine": {
+          "chosen": "Yeah",
+          "confidence": "medium",
+          "selectorReason": null,
+          "meaning": "Ad-lib",
+          "impliedMeaning": null,
+          "register": "chant"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "Ad-libs should not be polished.",
+          "safePolish": "Yeah",
+          "naturalPolish": "Yeah"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "Yeah",
+          "reason": "No polish should happen on ad-libs.",
+          "fluencyGain": "minor",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "ad-lib",
+          "dominantIntents": []
+        },
+        "lineWorldModel": {
+          "referents": [],
+          "imagery": []
+        }
+      },
+      "expected": {
+        "eligible": false,
+        "applied": false,
+        "chosen": "Yeah",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "anchor-score-drop-reject",
+      "description": "A candidate that loses too much anchor overlap should be rejected even if it reads well.",
+      "input": {
+        "sourceLine": {
+          "original": "veer crew nu sambhal ke rakhda"
+        },
+        "draftLine": {
+          "chosen": "Veer keeps the crew moving with iron discipline",
+          "confidence": "high",
+          "selectorReason": null,
+          "meaning": "Veer keeps the crew moving with iron discipline",
+          "impliedMeaning": "control and authority",
+          "register": "firm"
+        },
+        "proposal": {
+          "apply": true,
+          "reason": "A shorter version looked tempting.",
+          "safePolish": "Veer keeps the crew moving",
+          "naturalPolish": "Veer keeps the crew moving steady"
+        },
+        "audit": {
+          "winner": "safe",
+          "chosen": "Veer keeps the crew moving",
+          "reason": "Cleaner English, but it drops too much semantic detail.",
+          "fluencyGain": "minor",
+          "semanticRisk": "low"
+        },
+        "verseState": {
+          "summary": "crew control and authority",
+          "dominantIntents": ["flex", "control"]
+        },
+        "lineWorldModel": {
+          "referents": ["Veer", "crew"],
+          "imagery": ["discipline"]
+        }
+      },
+      "expected": {
+        "eligible": true,
+        "applied": false,
+        "chosen": "Veer keeps the crew moving with iron discipline",
+        "confidence": "high"
+      }
+    }
+  ]
+}
