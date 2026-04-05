@@ -21,10 +21,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!response.ok) {
-    return NextResponse.json(
-      { error: "Spotify audio analysis unavailable" },
-      { status: response.status }
-    );
+    return NextResponse.json({ beats: [] });
   }
 
   const data = await response.json() as { beats?: Array<{ start: number; duration: number; confidence: number }> };

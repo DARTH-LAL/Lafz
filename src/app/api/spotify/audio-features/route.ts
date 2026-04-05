@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
   });
 
   if (!response.ok) {
-    // Spotify restricted audio-features for many apps (Nov 2024) — graceful fallback
     return NextResponse.json({ tempo: 120, timeSignature: 4, energy: 0.5 });
   }
+
 
   const data = await response.json() as { tempo?: number; time_signature?: number; energy?: number };
 

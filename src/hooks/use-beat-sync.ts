@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+type Beat = { start: number; duration: number; confidence: number };
 
 /**
- * Fetches BPM via Spotify audio-features and runs a metronome
- * synced to the playback position. Fires onBeat() every beat.
- * Automatically starts/stops with isPlaying.
+ * Fires onBeat() on every beat, using one of two strategies:
+ *  1. Exact timestamps from Spotify audio-analysis (most accurate)
+ *  2. BPM metronome from Spotify audio-features (fallback)
  */
 export function useBeatSync({
   trackId,
@@ -20,55 +22,107 @@ export function useBeatSync({
   onBeat: () => void;
   onBpmLoaded?: (bpm: number) => void;
 }) {
-  const onBeatRef      = useRef(onBeat);
-  const onBpmLoadedRef = useRef(onBpmLoaded);
-  const progressRef    = useRef(visualProgressMs);
-  const bpmRef         = useRef<number>(120);
+  const onBeatRef   = useRef(onBeat);
+  const onBpmRef    = useRef(onBpmLoaded);
+  const progressRef = useRef(visualProgressMs);
 
-  // Keep refs current on every render
   useEffect(() => { onBeatRef.current = onBeat; });
-  useEffect(() => { onBpmLoadedRef.current = onBpmLoaded; });
+  useEffect(() => { onBpmRef.current  = onBpmLoaded; });
   useEffect(() => { progressRef.current = visualProgressMs; }, [visualProgressMs]);
 
-  // Fetch BPM when track changes
+  // beats[] drives strategy A; bpm drives strategy B
+  const [beats, setBeats] = useState<Beat[]>([]);
+  const [bpm,   setBpm]   = useState<number>(120);
+
+  // Fetch beat data when track changes
   useEffect(() => {
     if (!trackId) return;
-    bpmRef.current = 120; // reset to default while loading
+    setBeats([]);
+    setBpm(120);
 
-    void fetch(`/api/spotify/audio-features?trackId=${trackId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { tempo?: number } | null) => {
-        if (data?.tempo && data.tempo > 40) {
-          bpmRef.current = data.tempo;
-          onBpmLoadedRef.current?.(data.tempo);
-          console.log(`[lafz] BPM ${data.tempo.toFixed(1)}`);
+    void (async () => {
+      try {
+        // Strategy A: exact beat timestamps
+        const analysisRes  = await fetch(`/api/spotify/audio-analysis?trackId=${trackId}`);
+        const analysisData = analysisRes.ok
+          ? (await analysisRes.json() as { beats?: Beat[]; _spotifyStatus?: number })
+          : null;
+
+        if (analysisData?._spotifyStatus) {
+          console.warn(`[lafz] audio-analysis blocked by Spotify (${analysisData._spotifyStatus})`);
         }
-      })
-      .catch(() => {});
+
+        if (analysisData?.beats && analysisData.beats.length > 0) {
+          setBeats(analysisData.beats);
+          const sample = analysisData.beats.slice(0, 16).map((b) => b.duration);
+          const avgDur = sample.reduce((a, b) => a + b, 0) / sample.length;
+          const derivedBpm = 60 / avgDur;
+          setBpm(derivedBpm);
+          onBpmRef.current?.(derivedBpm);
+          console.log(`[lafz] ${analysisData.beats.length} beats, ~${derivedBpm.toFixed(1)} BPM`);
+          return;
+        }
+      } catch { /* fall through */ }
+
+      try {
+        // Strategy B: BPM from audio-features
+        const featRes  = await fetch(`/api/spotify/audio-features?trackId=${trackId}`);
+        const featData = featRes.ok
+          ? (await featRes.json() as { tempo?: number; _spotifyStatus?: number })
+          : null;
+        const tempo = featData?.tempo;
+        if (tempo && tempo > 40) {
+          setBpm(tempo);
+          onBpmRef.current?.(tempo);
+          console.log(`[lafz] BPM ${tempo.toFixed(1)} (feat) spotify=${featData?._spotifyStatus ?? "ok"}`);
+        }
+      } catch { /* stick with 120 */ }
+    })();
   }, [trackId]);
 
-  // Metronome: start when playing, stop when paused
+  // Playback engine — restarts whenever isPlaying, trackId, beats, or bpm change
   useEffect(() => {
     if (!isPlaying || !trackId) return;
 
-    const beatMs = () => (60 / bpmRef.current) * 1000;
+    // ── Strategy A: rAF beat-crossing detection ────────────────────────
+    if (beats.length > 0) {
+      let lastIdx = -1;
+      let rafId: number;
 
-    // Phase-align to current position
-    const phase        = progressRef.current % beatMs();
-    const delayMs      = beatMs() - phase;
+      const tick = () => {
+        const posS = progressRef.current / 1000;
+        // Binary search for current beat
+        let lo = 0, hi = beats.length - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (beats[mid].start <= posS) { idx = mid; lo = mid + 1; }
+          else { hi = mid - 1; }
+        }
+        if (idx !== lastIdx && idx >= 0) {
+          lastIdx = idx;
+          onBeatRef.current();
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+
+      rafId = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(rafId);
+    }
+
+    // ── Strategy B: BPM metronome ──────────────────────────────────────
+    const beatMs  = (60 / bpm) * 1000;
+    const phase   = progressRef.current % beatMs;
+    const delayMs = beatMs - phase;
 
     let interval: ReturnType<typeof setInterval> | null = null;
-
-    const firstBeat = setTimeout(() => {
+    const timer = setTimeout(() => {
       onBeatRef.current();
-      interval = setInterval(() => {
-        onBeatRef.current();
-      }, beatMs());
+      interval = setInterval(() => onBeatRef.current(), beatMs);
     }, delayMs);
 
     return () => {
-      clearTimeout(firstBeat);
+      clearTimeout(timer);
       if (interval) clearInterval(interval);
     };
-  }, [isPlaying, trackId]); // restart metronome when track or play state changes
+  }, [isPlaying, trackId, beats, bpm]);
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AiPipelineBadge } from "@/components/ai-pipeline-badge";
 import { AiDraftWorkspace } from "@/components/ai-draft-workspace";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppTopBar } from "@/components/app-top-bar";
@@ -40,6 +41,8 @@ export function LibraryTrackDetail({
   aiStatus,
   aiMessage
 }: LibraryTrackDetailProps) {
+  const pipelineModel = aiDraft?.generator.model ?? record?.ai_draft_model ?? null;
+
   if (!record) {
     return (
       <main className="relative min-h-screen w-full overflow-x-hidden text-[#fff0f6]">
@@ -127,6 +130,7 @@ export function LibraryTrackDetail({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <TranslationStatusBadge status={record.studio_status} />
+              <AiPipelineBadge model={pipelineModel} />
               <span className="text-[11px] uppercase tracking-[0.22em] text-white">
                 {record.explicit_translation_status ?? "pending"}
               </span>

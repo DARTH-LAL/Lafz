@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
 
+import { AiPipelineBadge } from "@/components/ai-pipeline-badge";
 import { BulkDeleteButton } from "@/components/bulk-delete-button";
 import { DeleteTrackButton } from "@/components/delete-track-button";
 import { TranslationStatusBadge } from "@/components/translation-status-badge";
@@ -139,6 +140,7 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
   const progress = progressConfig(record);
   const playlist = record.source_playlists[0];
   const resolvedArt = artUrl ?? null;
+  const pipelineModel = record.ai_draft_model;
 
   const glow = cardGlow(record.studio_status);
 
@@ -197,11 +199,14 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
       {/* Card body */}
       <div className="flex flex-1 flex-col gap-3 p-4">
         {/* Playlist chip */}
-        {playlist && (
-          <span className="inline-block w-fit rounded-full border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.07)] px-2.5 py-0.5 text-[10px] font-semibold text-[#ff6aaa]">
-            {playlist.playlist_name}
-          </span>
-        )}
+        <div className="flex flex-wrap gap-1.5">
+          {playlist && (
+            <span className="inline-block w-fit rounded-full border border-[rgba(255,20,100,0.18)] bg-[rgba(255,20,100,0.07)] px-2.5 py-0.5 text-[10px] font-semibold text-[#ff6aaa]">
+              {playlist.playlist_name}
+            </span>
+          )}
+          <AiPipelineBadge model={pipelineModel} />
+        </div>
 
         {/* Title + artist */}
         <div>
@@ -258,6 +263,8 @@ function SongCard({ record, artUrl }: { record: LibraryQueueRecord; artUrl?: str
 
 /* ─── List row ──────────────────────────────────────────────────────────── */
 function ListRow({ record }: { record: LibraryQueueRecord }) {
+  const pipelineModel = record.ai_draft_model;
+
   return (
     <tr
       className="group border-b border-[rgba(255,255,255,0.04)] bg-[rgba(6,4,16,0.65)] align-top transition-all last:border-b-0 hover:bg-[rgba(255,20,100,0.05)] [border-left:3px_solid_transparent] hover:[border-left-color:#ff1464]"
@@ -278,6 +285,9 @@ function ListRow({ record }: { record: LibraryQueueRecord }) {
       </td>
       <td className="px-6 py-5">
         <TranslationStatusBadge status={record.studio_status} />
+        <div className="mt-2">
+          <AiPipelineBadge model={pipelineModel} />
+        </div>
         {!record.translation_file_exists && record.ai_draft_exists ? (
           <p className="mt-2 text-[11px] leading-5 text-[#ff6aaa]">
             AI draft: {record.ai_draft_line_count} lines ({record.ai_draft_mode})
