@@ -7,6 +7,7 @@ import {
   listBrainClaimsByScope,
   listBrainEvidenceByClaimIds,
   listBrainPromotionsByClaimIds,
+  listBrainLearningProfiles,
   readBrainClaimsByIds,
   readMemoryPackCache,
   updateBrainClaim
@@ -36,6 +37,102 @@ const TYPE_LIMITS: Record<string, number> = {
   entity_type: 10,
   persona_style: 10
 };
+
+const AGENT_JOB_TYPES = [
+  "vocabulary_agent",
+  "entity_agent",
+  "motif_agent",
+  "persona_agent",
+  "cleanup_agent"
+] as const;
+
+type AgentJobType = (typeof AGENT_JOB_TYPES)[number];
+
+type AgentJobHealth = {
+  activeJobCount: number;
+  staleJobCount: number;
+  oldestStaleHeartbeatAt: string | null;
+  oldestStaleJobAgeMs: number | null;
+  sampleStaleJobKeys: string[];
+};
+
+type ActiveAgentJobRow = {
+  job_type: AgentJobType;
+  job_key: string;
+  claimed_at: string | null;
+  last_heartbeat_at: string | null;
+};
+
+function createEmptyAgentJobHealth(): AgentJobHealth {
+  return {
+    activeJobCount: 0,
+    staleJobCount: 0,
+    oldestStaleHeartbeatAt: null,
+    oldestStaleJobAgeMs: null,
+    sampleStaleJobKeys: []
+  };
+}
+
+function buildAgentJobHealthByType(
+  rows: ActiveAgentJobRow[],
+  timeoutMsByJobType: Record<AgentJobType, number>
+) {
+  const rowsByJobType = new Map<AgentJobType, ActiveAgentJobRow[]>();
+
+  for (const row of rows) {
+    const existing = rowsByJobType.get(row.job_type) ?? [];
+    existing.push(row);
+    rowsByJobType.set(row.job_type, existing);
+  }
+
+  const nowMs = Date.now();
+  const healthByJobType = Object.fromEntries(
+    AGENT_JOB_TYPES.map((jobType) => [jobType, createEmptyAgentJobHealth()])
+  ) as Record<AgentJobType, AgentJobHealth>;
+
+  for (const jobType of AGENT_JOB_TYPES) {
+    const jobRows = rowsByJobType.get(jobType) ?? [];
+    const timeoutMs = timeoutMsByJobType[jobType];
+    const staleRows = jobRows
+      .map((row) => {
+        const heartbeatAt = row.last_heartbeat_at ?? row.claimed_at;
+
+        if (!heartbeatAt) {
+          return null;
+        }
+
+        const heartbeatMs = new Date(heartbeatAt).getTime();
+
+        if (!Number.isFinite(heartbeatMs)) {
+          return null;
+        }
+
+        return {
+          row,
+          heartbeatAt,
+          heartbeatMs
+        };
+      })
+      .filter((entry): entry is { row: ActiveAgentJobRow; heartbeatAt: string; heartbeatMs: number } => {
+        if (!entry) {
+          return false;
+        }
+
+        return nowMs - entry.heartbeatMs >= timeoutMs;
+      })
+      .sort((left, right) => left.heartbeatMs - right.heartbeatMs);
+
+    healthByJobType[jobType] = {
+      activeJobCount: jobRows.length,
+      staleJobCount: staleRows.length,
+      oldestStaleHeartbeatAt: staleRows[0]?.heartbeatAt ?? null,
+      oldestStaleJobAgeMs: staleRows[0] ? Math.max(0, nowMs - staleRows[0].heartbeatMs) : null,
+      sampleStaleJobKeys: staleRows.slice(0, 5).map((entry) => entry.row.job_key)
+    };
+  }
+
+  return healthByJobType;
+}
 
 function readSecretFromRequest(request: NextRequest) {
   const authorization = request.headers.get("authorization")?.trim();
@@ -200,9 +297,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (mode === "worker-status") {
+  if (mode === "worker-status") {
       const queueStatuses = ["pending", "claimed", "running", "completed", "failed", "dead_lettered"] as const;
-      const [vocabularyCounts, entityCounts, motifCounts, personaCounts, cleanupCounts, { data: recentRuns }, { data: recentJobs }] = await Promise.all([
+      const vocabularyWorker = getVocabularyAgentProcessStatus();
+      const entityWorker = getEntityAgentProcessStatus();
+      const motifWorker = getMotifAgentProcessStatus();
+      const personaWorker = getPersonaAgentProcessStatus();
+      const cleanupWorker = getCleanupAgentProcessStatus();
+
+      const [vocabularyCounts, entityCounts, motifCounts, personaCounts, cleanupCounts, { data: recentRuns }, { data: recentJobs }, { data: activeJobs }, learningProfiles] = await Promise.all([
         Promise.all(
           queueStatuses.map(async (status) => {
             const { count } = await supabase
@@ -269,8 +372,22 @@ export async function GET(request: NextRequest) {
           .select("id, job_key, job_type, status, spotify_track_id, claimed_by, claimed_at, updated_at, last_error")
           .in("job_type", ["vocabulary_agent", "entity_agent", "motif_agent", "persona_agent", "cleanup_agent"])
           .order("updated_at", { ascending: false })
-          .limit(24)
+          .limit(24),
+        supabase
+          .from("agent_jobs")
+          .select("job_type, job_key, claimed_at, last_heartbeat_at")
+          .in("job_type", AGENT_JOB_TYPES)
+          .in("status", ["claimed", "running"]),
+        listBrainLearningProfiles(24)
       ]);
+
+      const jobHealthByType = buildAgentJobHealthByType((activeJobs ?? []) as ActiveAgentJobRow[], {
+        vocabulary_agent: vocabularyWorker.staleJobTimeoutMs,
+        entity_agent: entityWorker.staleJobTimeoutMs,
+        motif_agent: motifWorker.staleJobTimeoutMs,
+        persona_agent: personaWorker.staleJobTimeoutMs,
+        cleanup_agent: cleanupWorker.staleJobTimeoutMs
+      });
 
       const recentContributionTotals = (recentRuns ?? []).reduce(
         (totals, run: Record<string, unknown>) => {
@@ -338,17 +455,72 @@ export async function GET(request: NextRequest) {
         }
       );
 
+      const learningSummary = (learningProfiles ?? []).reduce(
+        (totals, profile) => {
+          totals.profileCount += 1;
+          totals.signalCount += profile.signalCount;
+          totals.acceptedCount += profile.acceptedCount;
+          totals.rejectedCount += profile.rejectedCount;
+          totals.deferredCount += profile.deferredCount;
+          totals.manualOverrideCount += profile.manualOverrideCount;
+          totals.confidenceBiasTotal += profile.confidenceBias;
+
+          if (profile.confidenceBias > 0) {
+            totals.positiveProfiles += 1;
+          }
+
+          if (profile.confidenceBias < 0) {
+            totals.negativeProfiles += 1;
+          }
+
+          return totals;
+        },
+        {
+          profileCount: 0,
+          signalCount: 0,
+          acceptedCount: 0,
+          rejectedCount: 0,
+          deferredCount: 0,
+          manualOverrideCount: 0,
+          positiveProfiles: 0,
+          negativeProfiles: 0,
+          confidenceBiasTotal: 0
+        }
+      );
+
       return NextResponse.json({
-        worker: getVocabularyAgentProcessStatus(),
+        worker: {
+          ...vocabularyWorker,
+          jobHealth: jobHealthByType.vocabulary_agent
+        },
         queueCounts: Object.fromEntries(vocabularyCounts),
-        entityWorker: getEntityAgentProcessStatus(),
+        entityWorker: {
+          ...entityWorker,
+          jobHealth: jobHealthByType.entity_agent
+        },
         entityQueueCounts: Object.fromEntries(entityCounts),
-        motifWorker: getMotifAgentProcessStatus(),
+        motifWorker: {
+          ...motifWorker,
+          jobHealth: jobHealthByType.motif_agent
+        },
         motifQueueCounts: Object.fromEntries(motifCounts),
-        personaWorker: getPersonaAgentProcessStatus(),
+        personaWorker: {
+          ...personaWorker,
+          jobHealth: jobHealthByType.persona_agent
+        },
         personaQueueCounts: Object.fromEntries(personaCounts),
-        cleanupWorker: getCleanupAgentProcessStatus(),
+        cleanupWorker: {
+          ...cleanupWorker,
+          jobHealth: jobHealthByType.cleanup_agent
+        },
         cleanupQueueCounts: Object.fromEntries(cleanupCounts),
+        jobHealthByType,
+        learningSummary: {
+          ...learningSummary,
+          averageConfidenceBias:
+            learningSummary.profileCount > 0 ? learningSummary.confidenceBiasTotal / learningSummary.profileCount : 0
+        },
+        learningProfiles: (learningProfiles ?? []).slice(0, 12),
         recentContributionTotals,
         recentRuns: recentRuns ?? [],
         recentJobs: recentJobs ?? []

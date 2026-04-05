@@ -131,6 +131,23 @@ a {
   }
 }
 
+@keyframes lafz-rain-fall {
+  0% {
+    transform: translateY(-60px) rotate(var(--rain-rot, -8deg));
+    opacity: 0;
+  }
+  8% {
+    opacity: var(--rain-opacity, 0.14);
+  }
+  88% {
+    opacity: var(--rain-opacity, 0.14);
+  }
+  100% {
+    transform: translateY(110vh) rotate(var(--rain-rot, -8deg));
+    opacity: 0;
+  }
+}
+
 @keyframes lafz-home-fade-in {
   from {
     opacity: 0;

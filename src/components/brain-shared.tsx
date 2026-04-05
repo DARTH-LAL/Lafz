@@ -117,6 +117,14 @@ export type ClaimsData = {
   claims: BrainClaim[];
 };
 
+export type AgentJobHealth = {
+  activeJobCount: number;
+  staleJobCount: number;
+  oldestStaleHeartbeatAt: string | null;
+  oldestStaleJobAgeMs: number | null;
+  sampleStaleJobKeys: string[];
+};
+
 export type AgentWorkerStatus = {
   runtimeMode: string;
   workerId: string | null;
@@ -126,6 +134,7 @@ export type AgentWorkerStatus = {
   lastKickReason: string | null;
   lastActivityAt: string | null;
   lastSummary: Record<string, unknown> | null;
+  jobHealth?: AgentJobHealth;
 };
 
 export type AgentRun = {
@@ -379,7 +388,7 @@ const AGENT_META: Array<{
 function AgentStatusDot({ worker, color }: { worker: AgentWorkerStatus; color: string }) {
   const active = worker.inFlight;
   const idle   = !active && worker.intervalActive;
-  const dotColor = active ? "#34d399" : idle ? color : "#4b3a5a";
+  const dotColor = active ? "#34d399" : idle ? color : "#ffffff";
   const pulse    = active;
   return (
     <span
@@ -387,6 +396,12 @@ function AgentStatusDot({ worker, color }: { worker: AgentWorkerStatus; color: s
       style={{ background: dotColor, boxShadow: active ? `0 0 8px ${dotColor}` : idle ? `0 0 5px ${dotColor}88` : "none" }}
     />
   );
+}
+
+function fmtAge(ms: number): string {
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  return `${Math.round(ms / 3_600_000)}h`;
 }
 
 function AgentCard({ worker, queueCounts, label, color, totals }: {
@@ -410,13 +425,19 @@ function AgentCard({ worker, queueCounts, label, color, totals }: {
     ? new Date(worker.lastActivityAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
 
+  const health = worker.jobHealth;
+  const hasStale = (health?.staleJobCount ?? 0) > 0;
+  const staleAgeLabel = health?.oldestStaleJobAgeMs != null ? fmtAge(health.oldestStaleJobAgeMs) : null;
+
   return (
     <div
       className="flex flex-col gap-3 rounded-2xl p-4"
       style={{
         background: "rgba(6,2,5,0.92)",
-        border: `1px solid ${color}33`,
-        boxShadow: `0 0 16px ${color}15, inset 0 1px 0 ${color}18`
+        border: `1px solid ${hasStale ? "rgba(251,113,133,0.45)" : color + "33"}`,
+        boxShadow: hasStale
+          ? "0 0 16px rgba(251,113,133,0.18), inset 0 1px 0 rgba(251,113,133,0.12)"
+          : `0 0 16px ${color}15, inset 0 1px 0 ${color}18`
       }}
     >
       {/* Header */}
@@ -429,7 +450,7 @@ function AgentCard({ worker, queueCounts, label, color, totals }: {
           className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
           style={{
             background: worker.inFlight ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)",
-            color: worker.inFlight ? "#34d399" : "#8a7898",
+            color: worker.inFlight ? "#34d399" : "#ffffff",
             border: `1px solid ${worker.inFlight ? "rgba(52,211,153,0.28)" : "rgba(255,255,255,0.10)"}`
           }}
         >
@@ -440,30 +461,82 @@ function AgentCard({ worker, queueCounts, label, color, totals }: {
       {/* Queue counts */}
       <div className="grid grid-cols-4 gap-1.5">
         {[
-          { label: "pending",   value: pending,    c: pending > 0 ? color : "#4b3a5a" },
-          { label: "running",   value: running,    c: running > 0 ? "#34d399" : "#4b3a5a" },
-          { label: "done",      value: completed,  c: completed > 0 ? "#8a7898" : "#4b3a5a" },
-          { label: "failed",    value: failed + deadLetter, c: (failed + deadLetter) > 0 ? "#fb7185" : "#4b3a5a" },
+          { label: "pend",   value: pending,    c: pending > 0 ? color : "#ffffff" },
+          { label: "run",    value: running,    c: running > 0 ? "#34d399" : "#ffffff" },
+          { label: "done",   value: completed,  c: "#ffffff" },
+          { label: "fail",   value: failed + deadLetter, c: (failed + deadLetter) > 0 ? "#fb7185" : "#ffffff" },
         ].map((stat) => (
-          <div key={stat.label} className="flex flex-col items-center gap-0.5 rounded-xl py-2" style={{ background: "rgba(0,0,0,0.30)", border: `1px solid ${stat.c}22` }}>
-            <span className="text-[14px] font-bold" style={{ color: stat.c }}>{stat.value}</span>
-            <span className="text-[8px] uppercase tracking-widest font-semibold text-[#4b3a5a]">{stat.label}</span>
+          <div key={stat.label} className="flex flex-col items-center gap-1 rounded-xl py-4" style={{ background: "rgba(0,0,0,0.30)", border: `1px solid ${stat.c}22` }}>
+            <span className="text-[20px] font-bold" style={{ color: stat.c }}>{stat.value}</span>
+            <span className="text-[9px] uppercase tracking-tight font-semibold text-[#ffffff]">{stat.label}</span>
           </div>
         ))}
       </div>
 
+      {/* Job health */}
+      {health && (
+        <div
+          className="flex flex-col gap-1.5 rounded-xl px-3 py-2.5"
+          style={{
+            background: hasStale ? "rgba(251,113,133,0.07)" : "rgba(0,0,0,0.22)",
+            border: hasStale ? "1px solid rgba(251,113,133,0.25)" : "1px solid rgba(255,255,255,0.06)"
+          }}
+        >
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: hasStale ? "#fb7185" : "#ffffff" }}>
+            Job Health
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {/* Active jobs in DB */}
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+              style={{
+                background: health.activeJobCount > 0 ? "rgba(52,211,153,0.10)" : "rgba(255,255,255,0.05)",
+                color: health.activeJobCount > 0 ? "#34d399" : "#ffffff",
+                border: `1px solid ${health.activeJobCount > 0 ? "rgba(52,211,153,0.25)" : "rgba(255,255,255,0.08)"}`
+              }}
+            >
+              {health.activeJobCount} active
+            </span>
+            {/* Stale jobs */}
+            {hasStale ? (
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+                style={{ background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.28)" }}
+              >
+                ⚠ {health.staleJobCount} stale{staleAgeLabel ? ` · oldest ${staleAgeLabel}` : ""}
+              </span>
+            ) : (
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+                style={{ background: "rgba(52,211,153,0.08)", color: "#34d399", border: "1px solid rgba(52,211,153,0.18)" }}
+              >
+                ✓ no stale
+              </span>
+            )}
+          </div>
+          {/* Sample stale keys */}
+          {hasStale && health.sampleStaleJobKeys.length > 0 && (
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              {health.sampleStaleJobKeys.slice(0, 3).map((key) => (
+                <p key={key} className="truncate text-[9px] font-mono text-[#fb7185] opacity-70">{key}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Recent contribution totals */}
       <div className="flex flex-col gap-1">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-[#4b3a5a]">Last 24 runs</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#ffffff]">Last 24 runs</p>
         {claimTotals && (
           <div className="flex flex-wrap gap-1.5">
             <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: `${color}12`, color, border: `1px solid ${color}28` }}>
               {claimTotals.claimsUpserted} claims
             </span>
-            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.08)" }}>
               {claimTotals.evidencesInserted} evidence
             </span>
-            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.08)" }}>
               {claimTotals.promotionsRecorded} promotions
             </span>
           </div>
@@ -476,7 +549,7 @@ function AgentCard({ worker, queueCounts, label, color, totals }: {
             <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(251,113,133,0.10)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.20)" }}>
               {cleanupTotals.rejected} rejected
             </span>
-            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.08)" }}>
               {cleanupTotals.deprecated} deprecated
             </span>
           </div>
@@ -485,8 +558,8 @@ function AgentCard({ worker, queueCounts, label, color, totals }: {
 
       {/* Last activity */}
       {lastActivity && (
-        <p className="text-[10px] text-[#4b3a5a]">
-          Last active <span className="text-[#8a7898]">{lastActivity}</span>
+        <p className="text-[10px] text-[#ffffff]">
+          Last active <span className="text-white">{lastActivity}</span>
         </p>
       )}
     </div>
@@ -513,8 +586,8 @@ export function AgentsPanel({ data, loading, onRefresh }: {
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
-          style={{ background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.30)", boxShadow: "0 0 10px rgba(167,139,250,0.15)" }}
+          className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-[12px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
+          style={{ background: "rgba(255,20,100,0.18)", border: "1px solid rgba(255,20,100,0.50)", boxShadow: "0 0 12px rgba(255,20,100,0.25)" }}
         >
           <svg viewBox="0 0 24 24" className={`h-3 w-3 fill-current ${loading ? "animate-spin" : ""}`} aria-hidden="true">
             <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -551,7 +624,7 @@ export function AgentsPanel({ data, loading, onRefresh }: {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowRuns(v => !v)}
-                className="flex items-center gap-1.5 self-start text-[10px] font-bold uppercase tracking-widest text-[#8a7898] hover:text-white transition"
+                className="flex items-center gap-1.5 self-start text-[10px] font-bold uppercase tracking-widest text-white hover:text-white transition"
               >
                 <svg viewBox="0 0 24 24" className={`h-3 w-3 fill-current transition-transform ${showRuns ? "rotate-90" : ""}`} aria-hidden="true">
                   <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
@@ -564,13 +637,13 @@ export function AgentsPanel({ data, loading, onRefresh }: {
                     <thead>
                       <tr style={{ borderBottom: "1px solid rgba(167,139,250,0.15)" }}>
                         {["Agent", "Status", "Started", "Duration", "Output"].map(h => (
-                          <th key={h} className="px-4 py-3 text-left font-bold uppercase tracking-widest text-[#4b3a5a]">{h}</th>
+                          <th key={h} className="px-4 py-3 text-left font-bold uppercase tracking-widest text-[#ffffff]">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {data.recentRuns.slice(0, 16).map((run) => {
-                        const agentColor = AGENT_META.find(a => a.label.toLowerCase() + "_agent" === run.agent_role)?.color ?? "#8a7898";
+                        const agentColor = AGENT_META.find(a => a.label.toLowerCase() + "_agent" === run.agent_role)?.color ?? "#ffffff";
                         const durationMs = run.started_at && run.finished_at
                           ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
                           : null;
@@ -592,17 +665,17 @@ export function AgentsPanel({ data, loading, onRefresh }: {
                                   run.status === "completed" ? { background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" } :
                                   run.status === "failed"    ? { background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.25)" } :
                                   run.status === "running"   ? { background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" } :
-                                  { background: "rgba(255,255,255,0.05)", color: "#8a7898", border: "1px solid rgba(255,255,255,0.10)" }
+                                  { background: "rgba(255,255,255,0.05)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.10)" }
                                 }
                               >
                                 {run.status}
                               </span>
                             </td>
-                            <td className="px-4 py-2.5 text-[#8a7898]">
+                            <td className="px-4 py-2.5 text-white">
                               {run.started_at ? new Date(run.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
                             </td>
-                            <td className="px-4 py-2.5 text-[#8a7898]">{duration}</td>
-                            <td className="px-4 py-2.5 text-[#8a7898] max-w-xs truncate">{outputStr}</td>
+                            <td className="px-4 py-2.5 text-white">{duration}</td>
+                            <td className="px-4 py-2.5 text-white max-w-xs truncate">{outputStr}</td>
                           </tr>
                         );
                       })}
