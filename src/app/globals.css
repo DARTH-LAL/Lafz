@@ -131,6 +131,36 @@ a {
   }
 }
 
+@keyframes lafz-beat-glow-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0px rgba(255, 20, 100, 0),
+      0 0 20px rgba(255, 20, 100, 0.30);
+  }
+  25% {
+    box-shadow:
+      0 0 0 10px rgba(255, 20, 100, 0.12),
+      0 0 55px rgba(255, 20, 100, 0.65),
+      inset 0 0 28px rgba(255, 20, 100, 0.18);
+  }
+  100% {
+    box-shadow:
+      0 0 0 22px rgba(255, 20, 100, 0),
+      0 0 20px rgba(255, 20, 100, 0.10);
+  }
+}
+
+@keyframes lafz-beat-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.10);
+    opacity: 0;
+  }
+}
+
 @keyframes lafz-rain-fall {
   0% {
     transform: translateY(-60px) rotate(var(--rain-rot, -8deg));

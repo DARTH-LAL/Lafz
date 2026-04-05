@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -75,6 +75,7 @@ function DisconnectIcon() {
 type PlayerCardProps = {
   playback: PlaybackState;
   visualProgressMs: number;
+  beatCount?: number;
   onPlaybackCommand: (
     command:
       | { action: "play" | "pause" | "next" | "previous" }
@@ -84,12 +85,25 @@ type PlayerCardProps = {
   ) => Promise<void>;
 };
 
-export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: PlayerCardProps) {
+export function PlayerCard({ playback, visualProgressMs, beatCount = 0, onPlaybackCommand }: PlayerCardProps) {
   if (!playback.track) {
     return null;
   }
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  // Beat glow — re-trigger CSS animation imperatively on each beat
+  const glowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (beatCount === 0) return;
+    const el = glowRef.current;
+    if (!el) return;
+    // Reset then re-apply to force animation restart
+    el.style.animation = "none";
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    el.offsetHeight; // trigger reflow
+    el.style.animation = "lafz-beat-glow-pulse 0.5s cubic-bezier(0.22,1,0.36,1) forwards";
+  }, [beatCount]);
 
   const triggerCommand = async (
     action:
@@ -113,7 +127,8 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
     <section className="flex h-full min-h-0 flex-col overflow-hidden px-7 py-5">
       <div className="relative mb-4 min-h-0 flex-1">
         <div className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.3)_0%,rgba(255,140,66,0.14)_42%,transparent_72%)] blur-[18px]" />
-        <div className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.20)] bg-[#130f20]">
+
+        <div ref={glowRef} className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.20)] bg-[#130f20]">
           {playback.track.albumArtUrl ? (
             <Image
               src={playback.track.albumArtUrl}
