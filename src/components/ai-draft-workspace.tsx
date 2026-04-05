@@ -145,22 +145,22 @@ export function AiDraftWorkspace({
         throw new Error("Lafz could not start the AI draft job.");
       }
 
-      setMessage("Running 3-model pipeline — GPT-5.1 drafting...");
+      setMessage("Running Gemini translation pipeline — drafting...");
       setMessageTone("success");
 
       const pipelineMessages = [
-        "Running 3-model pipeline — GPT-5.1 drafting...",
-        "Generator A (GPT-5.1) processing lyrics...",
-        "Handing off to Generator B (Claude Sonnet)...",
-        "Generator B (Claude) refining translations...",
+        "Running Gemini translation pipeline — drafting...",
+        "Generator A (Gemini) processing lyrics...",
+        "Handing off to Generator B (Gemini)...",
+        "Generator B (Gemini) refining translations...",
         "Sending both drafts to Gemini judge...",
         "Gemini evaluating and selecting best lines...",
         "Almost done — finalising translation...",
         "Still working — large tracks take a few minutes...",
-        "Wrapping up the 3-model evaluation..."
+        "Wrapping up the Gemini evaluation..."
       ];
 
-      // 400 attempts × 2s = 800s (~13 min) — enough for the full 3-model pipeline
+      // 400 attempts × 2s = 800s (~13 min) — enough for the full Gemini translation pipeline
       for (let attempt = 0; attempt < 400; attempt += 1) {
         await sleep(2000);
 
@@ -234,7 +234,7 @@ export function AiDraftWorkspace({
       <section className="lafz-card p-6">
         <p className="text-[10px] font-bold uppercase tracking-[2.2px] text-[rgba(255,20,100,0.65)]">AI Translation</p>
         <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[rgba(255,20,100,0.25)] bg-[rgba(255,20,100,0.12)] px-3 py-1 text-[12px] font-semibold text-[#ff6aaa]">
-          <span>✦</span> GPT-5.4 Mini + Claude + Gemini judge
+          <span>✦</span> Gemini translation + Gemini judge
         </div>
         <h2 className="mt-3 text-[22px] font-bold tracking-[-0.5px]">
           Generate a translation draft.
@@ -257,11 +257,44 @@ export function AiDraftWorkspace({
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[1.8px] text-[rgba(63,255,170,0.6)]">This generation cost</p>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: costSummary.generatorA.model.replace("gpt-", "GPT-"), color: "#ff4d96", cost: costSummary.generatorA.costUsd, input: costSummary.generatorA.inputTokens, output: costSummary.generatorA.outputTokens },
-                { label: costSummary.generatorB.model.split("-")[0] === "claude" ? "Claude" : costSummary.generatorB.model, color: "#a259ff", cost: costSummary.generatorB.costUsd, input: costSummary.generatorB.inputTokens, output: costSummary.generatorB.outputTokens },
-                { label: costSummary.judge.model.includes("gemini") ? "Gemini" : costSummary.judge.model, color: "#40e8ff", cost: costSummary.judge.costUsd, input: costSummary.judge.inputTokens, output: costSummary.judge.outputTokens },
-              ].map(({ label, color, cost, input, output }) => (
-                <div key={label} className="rounded-[12px] border border-[rgba(255,20,100,0.12)] bg-[rgba(255,20,100,0.05)] p-3 text-center">
+                {
+                  key: "generator-a",
+                  label: costSummary.generatorA.model.includes("gemini")
+                    ? "Gemini"
+                    : costSummary.generatorA.model.includes("claude")
+                      ? "Anthropic"
+                      : costSummary.generatorA.model.replace("gpt-", "GPT-"),
+                  color: "#ff4d96",
+                  cost: costSummary.generatorA.costUsd,
+                  input: costSummary.generatorA.inputTokens,
+                  output: costSummary.generatorA.outputTokens
+                },
+                {
+                  key: "generator-b",
+                  label: costSummary.generatorB.model.includes("gemini")
+                    ? "Gemini"
+                    : costSummary.generatorB.model.includes("claude")
+                      ? "Anthropic"
+                      : costSummary.generatorB.model.replace("gpt-", "GPT-"),
+                  color: "#a259ff",
+                  cost: costSummary.generatorB.costUsd,
+                  input: costSummary.generatorB.inputTokens,
+                  output: costSummary.generatorB.outputTokens
+                },
+                {
+                  key: "judge",
+                  label: costSummary.judge.model.includes("gemini")
+                    ? "Gemini"
+                    : costSummary.judge.model.includes("claude")
+                      ? "Anthropic"
+                      : costSummary.judge.model.replace("gpt-", "GPT-"),
+                  color: "#40e8ff",
+                  cost: costSummary.judge.costUsd,
+                  input: costSummary.judge.inputTokens,
+                  output: costSummary.judge.outputTokens
+                },
+              ].map(({ key, label, color, cost, input, output }) => (
+                <div key={key} className="rounded-[12px] border border-[rgba(255,20,100,0.12)] bg-[rgba(255,20,100,0.05)] p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: `${color}99` }}>{label}</p>
                   <p className="mt-1 text-[18px] font-bold" style={{ color }}>${cost.toFixed(4)}</p>
                   <p className="mt-0.5 text-[10px] text-white">{(input + output).toLocaleString()} tokens</p>
@@ -376,7 +409,7 @@ export function AiDraftWorkspace({
           <div className="mt-5 rounded-[14px] border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] p-4 text-[13px] leading-[1.65] text-[#ffc87a]">
             {aiConfigured
               ? "Lafz needs readable original lyrics before it can generate a draft."
-              : "Lafz could not initialize the 3-model translation pipeline yet."}
+              : "Lafz could not initialize the Gemini translation pipeline yet."}
           </div>
         )}
       </section>

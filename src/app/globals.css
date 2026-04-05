@@ -133,20 +133,18 @@ a {
 
 @keyframes lafz-beat-glow-pulse {
   0% {
-    box-shadow:
-      0 0 0 0px rgba(255, 20, 100, 0),
-      0 0 20px rgba(255, 20, 100, 0.30);
+    background: rgba(255, 20, 100, 0);
+    box-shadow: inset 0 0 0px rgba(255, 20, 100, 0);
   }
-  25% {
+  12% {
+    background: rgba(255, 20, 100, 0.22);
     box-shadow:
-      0 0 0 10px rgba(255, 20, 100, 0.12),
-      0 0 55px rgba(255, 20, 100, 0.65),
-      inset 0 0 28px rgba(255, 20, 100, 0.18);
+      inset 0 0 70px rgba(255, 20, 100, 0.80),
+      inset 0 0 140px rgba(255, 140, 66, 0.30);
   }
   100% {
-    box-shadow:
-      0 0 0 22px rgba(255, 20, 100, 0),
-      0 0 20px rgba(255, 20, 100, 0.10);
+    background: rgba(255, 20, 100, 0);
+    box-shadow: inset 0 0 0px rgba(255, 20, 100, 0);
   }
 }
 

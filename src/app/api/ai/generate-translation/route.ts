@@ -63,7 +63,7 @@ function getStatusMessage(status: string) {
   }
 
   if (status === "missing_ai_config") {
-    return "Configure the full 3-model translation pipeline before generating a translation draft.";
+    return "Configure the Gemini translation pipeline before generating a translation draft.";
   }
 
   if (status === "provider_unavailable") {
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown AI error.";
 
-    if (/could not reach openai|could not reach anthropic|could not reach gemini|econnrefused|fetch failed|connect|timeout|timed out|aborted/i.test(message)) {
+    if (/could not reach openai|could not reach gemini|econnrefused|fetch failed|connect|timeout|timed out|aborted/i.test(message)) {
       if (wantsJsonResponse(request)) {
         return NextResponse.json(
           {

@@ -3,14 +3,22 @@ import { serializeArtistMemoryForPrompt } from "@/features/ai/artist-profile-for
 import type {
   AiArtistMemory,
   AiCorrectionHint,
+  GeneratedTranslationLineDraft,
   PreviousTranslationRef,
   AiSongContext,
   AiVerseState,
   AiWorldModel,
   AiWorldModelLine
 } from "@/features/ai/types";
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  buildDraftSchema,
+  parseGeneratedLines
+} from "@/features/ai/openai";
 
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_GEMINI_TRANSLATION_MODEL = "gemini-2.5-flash";
 const DEFAULT_GEMINI_EVALUATOR_MODEL = "gemini-2.5-pro";
 const GEMINI_REQUEST_TIMEOUT_MS = 180_000;
 
@@ -216,6 +224,12 @@ export async function resolveGeminiEvaluatorModel() {
   return model || DEFAULT_GEMINI_EVALUATOR_MODEL;
 }
 
+export async function resolveGeminiTranslationModel() {
+  const value = process.env.GEMINI_TRANSLATION_MODEL?.trim();
+  if (value && value.length > 0) return value;
+  return DEFAULT_GEMINI_TRANSLATION_MODEL;
+}
+
 export function isGeminiConfigured() {
   return typeof process.env.GEMINI_API_KEY === "string" && process.env.GEMINI_API_KEY.trim().length > 0;
 }
@@ -226,6 +240,8 @@ async function callGeminiJson<T>(options: {
   userPrompt: string;
   errorLabel: string;
   usageSink?: { inputTokens: number; outputTokens: number };
+  temperature?: number;
+  responseJsonSchema?: unknown;
 }): Promise<T> {
   const response = await fetch(
     `${getGeminiBaseUrl()}/models/${encodeURIComponent(options.model)}:generateContent?key=${encodeURIComponent(getGeminiApiKey())}`,
@@ -247,8 +263,9 @@ async function callGeminiJson<T>(options: {
           }
         ],
         generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json"
+          temperature: options.temperature ?? 0.2,
+          responseMimeType: "application/json",
+          ...(options.responseJsonSchema ? { responseJsonSchema: options.responseJsonSchema } : {})
         }
       })
     }
@@ -277,6 +294,54 @@ async function callGeminiJson<T>(options: {
   } catch {
     throw new Error(`Gemini returned JSON that could not be parsed for ${options.errorLabel.toLowerCase()}.`);
   }
+}
+
+type RequestGeminiTranslationDraftOptions = Parameters<typeof buildSystemPrompt>[0] & {
+  draftVariant?: "generator_a" | "generator_b";
+};
+
+export async function requestGeminiTranslationDraft(
+  options: RequestGeminiTranslationDraftOptions,
+  usageSink?: { inputTokens: number; outputTokens: number }
+): Promise<{
+  model: string;
+  sourceLanguage: string;
+  lines: GeneratedTranslationLineDraft[];
+  usage: { inputTokens: number; outputTokens: number };
+}> {
+  if (options.lines.length === 0) {
+    throw new Error("No lyric lines were provided to the Gemini translation draft.");
+  }
+
+  const localSink = { inputTokens: 0, outputTokens: 0 };
+  const model = await resolveGeminiTranslationModel();
+  const parsed = await callGeminiJson<unknown>({
+    model,
+    systemPrompt: [
+      options.draftVariant === "generator_b"
+        ? "You are Generator B for Lafz. Prefer smoother, more natural English when it stays faithful."
+        : "You are Generator A for Lafz. Prefer conservative, literal English that stays very close to the source.",
+      buildSystemPrompt(options)
+    ].join(" "),
+    userPrompt: buildUserPrompt(options),
+    errorLabel: `Gemini ${options.draftVariant === "generator_b" ? "generator B" : "generator A"} translation request`,
+    usageSink: localSink,
+    temperature: options.draftVariant === "generator_b" ? 0.32 : 0.16,
+    responseJsonSchema: buildDraftSchema(options.lines.length)
+  });
+  const normalized = parseGeneratedLines(parsed, options.lines.length, "Gemini");
+
+  if (usageSink) {
+    usageSink.inputTokens += localSink.inputTokens;
+    usageSink.outputTokens += localSink.outputTokens;
+  }
+
+  return {
+    model,
+    sourceLanguage: normalized.sourceLanguage,
+    lines: normalized.lines,
+    usage: localSink
+  };
 }
 
 export async function requestGeminiDraftComparison(

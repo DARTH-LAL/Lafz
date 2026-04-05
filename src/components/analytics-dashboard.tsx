@@ -69,6 +69,13 @@ function periodLabel(p: Period): string {
   return "All time";
 }
 
+function getProviderLabel(model: string): string {
+  if (/gemini/i.test(model)) return "Gemini";
+  if (/claude/i.test(model)) return "Anthropic";
+  if (/gpt|openai/i.test(model)) return "OpenAI";
+  return model;
+}
+
 type Props = {
   initialData: AnalyticsData;
   initialPeriod: Period;
@@ -224,7 +231,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#fff" }}>No data yet</div>
-          <div>Run the 3-model pipeline on a track to start seeing analytics.</div>
+          <div>Run the Gemini translation pipeline on a track to start seeing analytics.</div>
         </div>
       ) : (
         <>
@@ -240,7 +247,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, background: "radial-gradient(circle,rgba(255,20,100,0.18),transparent 70%)", pointerEvents: "none" }} />
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: PINK_LIGHT, marginBottom: 6 }}>Generator A</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{data.generatorA.model}</div>
-              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>OpenAI</div>
+              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>{getProviderLabel(data.generatorA.model)}</div>
               <div style={{ fontSize: 11, color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
               <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: PINK_LIGHT }}>{data.winRate.a}%</div>
               <div style={{ width: "100%", height: 5, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
@@ -261,7 +268,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, background: "radial-gradient(circle,rgba(162,89,255,0.18),transparent 70%)", pointerEvents: "none" }} />
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: VIOLET, marginBottom: 6 }}>Generator B</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{data.generatorB.model}</div>
-              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>Anthropic</div>
+              <div style={{ fontSize: 12, color: "#fff", marginBottom: 20 }}>{getProviderLabel(data.generatorB.model)}</div>
               <div style={{ fontSize: 11, color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em" }}>Win Rate</div>
               <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: VIOLET }}>{data.winRate.b}%</div>
               <div style={{ width: "100%", height: 5, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden", margin: "14px 0" }}>
@@ -319,11 +326,11 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
               <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
                 <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: PINK_LIGHT }} />
-                  Generator A (GPT)
+                  Generator A ({getProviderLabel(data.generatorA.model)})
                 </div>
                 <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: VIOLET }} />
-                  Generator B (Claude)
+                  Generator B ({getProviderLabel(data.generatorB.model)})
                 </div>
                 <div style={{ fontSize: 12, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: CYAN }} />
@@ -371,9 +378,9 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
             <div style={{ background: BG, border: "1px solid rgba(255,20,100,0.40)", borderRadius: 16, padding: 22, boxShadow: "0 0 0 1px rgba(255,20,100,0.10), 0 0 20px rgba(255,20,100,0.28), 0 0 48px rgba(255,20,100,0.10)" }}>
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,20,100,0.65)", marginBottom: 16 }}>Avg Pipeline Speed</div>
               {[
-                { label: "Generator A (GPT)", val: data.speed.avgDurA, color: `linear-gradient(90deg,${PINK},${PINK_LIGHT})` },
-                { label: "Generator B (Claude)", val: data.speed.avgDurB, color: "linear-gradient(90deg,#7b2fff,#a259ff)" },
-                { label: "Judge (Gemini)", val: data.speed.avgDurG, color: "linear-gradient(90deg,#00c8e0,#40e8ff)" },
+                { label: `Generator A (${getProviderLabel(data.generatorA.model)})`, val: data.speed.avgDurA, color: `linear-gradient(90deg,${PINK},${PINK_LIGHT})` },
+                { label: `Generator B (${getProviderLabel(data.generatorB.model)})`, val: data.speed.avgDurB, color: "linear-gradient(90deg,#7b2fff,#a259ff)" },
+                { label: `Judge (${getProviderLabel(data.judge.model)})`, val: data.speed.avgDurG, color: "linear-gradient(90deg,#00c8e0,#40e8ff)" },
                 { label: "Total avg", val: data.speed.avgTotal, color: `linear-gradient(90deg,${PINK},${VIOLET},${CYAN})` },
               ].map(({ label, val, color }) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
@@ -396,9 +403,9 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
                 {[
-                  { label: data.generatorA.model.split(/[\s-]/)[0] ?? "GPT", val: data.generatorA.cost, tokens: data.generatorA.inputTokens + data.generatorA.outputTokens, color: PINK_LIGHT },
-                  { label: "Claude", val: data.generatorB.cost, tokens: data.generatorB.inputTokens + data.generatorB.outputTokens, color: VIOLET },
-                  { label: "Gemini", val: data.judge.cost, tokens: data.judge.inputTokens + data.judge.outputTokens, color: CYAN },
+                  { label: getProviderLabel(data.generatorA.model), val: data.generatorA.cost, tokens: data.generatorA.inputTokens + data.generatorA.outputTokens, color: PINK_LIGHT },
+                  { label: getProviderLabel(data.generatorB.model), val: data.generatorB.cost, tokens: data.generatorB.inputTokens + data.generatorB.outputTokens, color: VIOLET },
+                  { label: getProviderLabel(data.judge.model), val: data.judge.cost, tokens: data.judge.inputTokens + data.judge.outputTokens, color: CYAN },
                 ].map(({ label, val, tokens, color }) => (
                   <div key={label} style={{ background: "rgba(255,20,100,0.05)", border: "1px solid rgba(255,20,100,0.12)", borderRadius: 12, padding: 14, textAlign: "center" }}>
                     <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fff", marginBottom: 6 }}>{label}</div>

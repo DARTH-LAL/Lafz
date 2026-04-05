@@ -4,19 +4,19 @@ import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import { extractAndStoreGlossarySuggestions } from "@/features/ai/glossary-extractor";
 import { normalizeArtistKey } from "@/features/ai/glossary-repository";
-import { isThreeModelPipelineConfigured } from "@/features/ai/provider";
+import { isAiConfigured, isLegacyThreeModelTranslationPipelineEnabled } from "@/features/ai/provider";
 import { buildSongTranslationMemoryPack, mergeBrainMemoryIntoArtistContext } from "@/features/brain/memory-pack";
 import { syncDraftIntoLafzBrain } from "@/features/brain/sync";
-import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
-import { requestGeminiDraftComparison } from "@/features/ai/gemini";
+import { requestGeminiDraftComparison, requestGeminiTranslationDraft } from "@/features/ai/gemini";
 import {
   requestOpenAiMeaningAnalysis,
+  requestOpenAiTranslationDraft,
   requestOpenAiSongContext,
   requestOpenAiSurfacePolish,
   requestOpenAiSurfacePolishAudit,
-  requestOpenAiTranslationDraft,
   requestOpenAiWorldModel
 } from "@/features/ai/openai";
+import { requestAnthropicTranslationDraft } from "@/features/ai/anthropic";
 import { evaluateSurfacePolishCandidate } from "@/features/ai/surface-polish";
 import { normalizeLookupText, normalizeRomanizedText, tokenizeNormalizedRomanizedText } from "@/features/ai/romanized-normalization";
 import { buildTrackTranslationFromAiDraft, getAiTranslationDraftByTrackId, writeAiTranslationDraftFile } from "@/features/ai/repository";
@@ -1432,7 +1432,8 @@ async function generateDraftLinesInBatches(
   verseStateLookup: Map<number, AiVerseState>,
   worldModelLineLookup: Map<number, AiWorldModelLine>,
   meaningLines: MeaningAnalysisLine[],
-  providerLabel: "OpenAI" | "Anthropic",
+  providerLabel: "OpenAI" | "Anthropic" | "Gemini",
+  generatorLabel: "generator A" | "generator B",
   requestDraft: DraftRequester,
   previousDraftLookup?: Map<number, PreviousTranslationRef>
 ) {
@@ -1467,7 +1468,7 @@ async function generateDraftLinesInBatches(
   for (const batch of batches) {
     const aiResponse = await requestDraftBatchWithRecovery({
       provider: providerLabel,
-      stage: providerLabel === "OpenAI" ? "generator A draft generation" : "generator B draft generation",
+      stage: `${generatorLabel} draft generation`,
       batch,
       requestBatch: (currentBatch) =>
         requestDraft({
@@ -2630,7 +2631,7 @@ export async function generateAiTranslationDraft(
   const verseStateLookup = buildVerseStateLookup(verseStates);
   const worldModelLineLookup = buildWorldModelLineLookup(worldModelResponse.worldModel);
 
-  if (!isThreeModelPipelineConfigured()) {
+  if (!isAiConfigured()) {
     return {
       status: "missing_ai_config"
     };
@@ -2651,6 +2652,7 @@ export async function generateAiTranslationDraft(
   let genADurationMs = 0;
   let genBDurationMs = 0;
   let genGDurationMs = 0;
+  const useLegacyThreeModelTranslation = isLegacyThreeModelTranslationPipelineEnabled();
 
   const openAiRequester: DraftRequester = async (opts) => {
     const t0 = Date.now();
@@ -2668,6 +2670,27 @@ export async function generateAiTranslationDraft(
     return result;
   };
 
+  const geminiGeneratorARequester: DraftRequester = async (opts) => {
+    const t0 = Date.now();
+    const result = await requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_a" }, usageSinkA);
+    genADurationMs += Date.now() - t0;
+    genAModel = result.model;
+    return result;
+  };
+
+  const geminiGeneratorBRequester: DraftRequester = async (opts) => {
+    const t0 = Date.now();
+    const result = await requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_b" }, usageSinkB);
+    genBDurationMs += Date.now() - t0;
+    genBModel = result.model;
+    return result;
+  };
+
+  const generatorARequester = useLegacyThreeModelTranslation ? openAiRequester : geminiGeneratorARequester;
+  const generatorBRequester = useLegacyThreeModelTranslation ? anthropicRequester : geminiGeneratorBRequester;
+  const generatorAProviderLabel = useLegacyThreeModelTranslation ? "OpenAI" : "Gemini";
+  const generatorBProviderLabel = useLegacyThreeModelTranslation ? "Anthropic" : "Gemini";
+
   const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
     generateDraftLinesInBatches(
       options,
@@ -2684,8 +2707,9 @@ export async function generateAiTranslationDraft(
       verseStateLookup,
       worldModelLineLookup,
       meaningResponse.lines,
-      "OpenAI",
-      openAiRequester,
+      generatorAProviderLabel,
+      "generator A",
+      generatorARequester,
       previousDraftLookup
     ),
     generateDraftLinesInBatches(
@@ -2703,8 +2727,9 @@ export async function generateAiTranslationDraft(
       verseStateLookup,
       worldModelLineLookup,
       meaningResponse.lines,
-      "Anthropic",
-      anthropicRequester,
+      generatorBProviderLabel,
+      "generator B",
+      generatorBRequester,
       previousDraftLookup
     )
   ]);
@@ -2764,8 +2789,8 @@ export async function generateAiTranslationDraft(
     else confLow++;
   }
 
-  const costA = calcModelCost("openai", usageSinkA.inputTokens, usageSinkA.outputTokens);
-  const costB = calcModelCost("anthropic", usageSinkB.inputTokens, usageSinkB.outputTokens);
+  const costA = calcModelCost(useLegacyThreeModelTranslation ? "openai" : "gemini", usageSinkA.inputTokens, usageSinkA.outputTokens);
+  const costB = calcModelCost(useLegacyThreeModelTranslation ? "anthropic" : "gemini", usageSinkB.inputTokens, usageSinkB.outputTokens);
   const costG = calcModelCost("gemini", usageSinkG.inputTokens, usageSinkG.outputTokens);
   pipelineCostSummary = {
     generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, costUsd: costA },
@@ -2983,6 +3008,25 @@ export async function regenerateDraftLines(
   const usageSinkB = { inputTokens: 0, outputTokens: 0 };
   const usageSinkG = { inputTokens: 0, outputTokens: 0 };
   const verseState = verseStateLookup.get(representativeSourceLine.order) ?? null;
+  const useLegacyThreeModelTranslation = isLegacyThreeModelTranslationPipelineEnabled();
+
+  const generatorARequester: DraftRequester = useLegacyThreeModelTranslation
+    ? async (opts) => {
+        return requestOpenAiTranslationDraft(opts, usageSinkA);
+      }
+    : async (opts) => {
+        return requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_a" }, usageSinkA);
+      };
+
+  const generatorBRequester: DraftRequester = useLegacyThreeModelTranslation
+    ? async (opts) => {
+        return requestAnthropicTranslationDraft(opts, usageSinkB);
+      }
+    : async (opts) => {
+        return requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_b" }, usageSinkB);
+      };
+  const generatorAProviderLabel = useLegacyThreeModelTranslation ? "OpenAI" : "Gemini";
+  const generatorBProviderLabel = useLegacyThreeModelTranslation ? "Anthropic" : "Gemini";
 
   const meaningResponse = await withProviderStageRetry({
     provider: "OpenAI",
@@ -3013,11 +3057,11 @@ export async function regenerateDraftLines(
 
   const meaningLine = meaningResponse.lines[0];
   const generatorAResponse = await withProviderStageRetry({
-    provider: "OpenAI",
+    provider: generatorAProviderLabel,
     stage: "line regeneration generator A",
     retries: 1,
     action: () =>
-      requestOpenAiTranslationDraft({
+      generatorARequester({
         title: draft.title,
         artist: draft.artist,
         album: draft.album,
@@ -3048,16 +3092,16 @@ export async function regenerateDraftLines(
               confidence: primaryLine.confidence,
               manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
             }
-          }
-        ]
-      }, usageSinkA)
+            }
+          ]
+      })
   });
   const generatorBResponse = await withProviderStageRetry({
-    provider: "Anthropic",
+    provider: generatorBProviderLabel,
     stage: "line regeneration generator B",
     retries: 1,
     action: () =>
-      requestAnthropicTranslationDraft({
+      generatorBRequester({
         title: draft.title,
         artist: draft.artist,
         album: draft.album,
@@ -3088,9 +3132,9 @@ export async function regenerateDraftLines(
               confidence: primaryLine.confidence,
               manuallyReviewed: primaryLine.selectorReason === "Manually reviewed in Lafz."
             }
-          }
-        ]
-      }, usageSinkB)
+            }
+          ]
+      })
   });
 
   const generatorALineResponse = generatorAResponse.lines[0];

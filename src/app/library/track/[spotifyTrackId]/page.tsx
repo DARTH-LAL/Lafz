@@ -48,7 +48,7 @@ function getAiMessage(status: string | undefined, detail: string | undefined) {
   }
 
   if (status === "missing_ai_config") {
-    return "Configure the full 3-model translation pipeline before generating AI translation drafts.";
+    return "Configure the Gemini translation pipeline before generating AI translation drafts.";
   }
 
   if (status === "missing_lyrics") {
