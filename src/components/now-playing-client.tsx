@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBeatSync } from "@/hooks/use-beat-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -74,16 +73,6 @@ export function NowPlayingClient() {
   const visualProgressMs = usePlaybackClock(payload?.playback ?? null);
   const playback = payload?.playback ?? null;
 
-  const [beatCount, setBeatCount] = useState(0);
-  const [debugBpm, setDebugBpm]   = useState<number | null>(null);
-  const onBeat = useCallback(() => setBeatCount((n) => n + 1), []);
-  useBeatSync({
-    trackId: playback?.track?.spotifyTrackId ?? null,
-    visualProgressMs,
-    isPlaying: playback?.isPlaying ?? false,
-    onBeat,
-    onBpmLoaded: setDebugBpm,
-  });
   const resolvedTrackDetailId =
     payload?.translation?.spotifyTrackId ?? payload?.aiDraft?.spotifyTrackId ?? playback?.track?.spotifyTrackId ?? null;
   const resolvedTrackDetailHref = resolvedTrackDetailId
@@ -262,7 +251,7 @@ export function NowPlayingClient() {
             ) : (
               <>
                 <div className="min-h-0 overflow-hidden border-b border-[rgba(255,20,100,0.15)] lg:border-b-0 lg:border-r">
-                  <PlayerCard playback={playback} visualProgressMs={visualProgressMs} onPlaybackCommand={handlePlaybackCommand} beatCount={beatCount} debugBpm={debugBpm} />
+                  <PlayerCard playback={playback} visualProgressMs={visualProgressMs} onPlaybackCommand={handlePlaybackCommand} />
                 </div>
 
                 <div className="relative min-h-0 overflow-hidden">

@@ -159,6 +159,21 @@ a {
   }
 }
 
+@keyframes lafz-ring-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(255, 20, 100, 0.30),
+      0 0 10px rgba(255, 20, 100, 0.15),
+      0 0 24px rgba(255, 20, 100, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2.5px rgba(255, 20, 100, 0.80),
+      0 0 20px rgba(255, 20, 100, 0.50),
+      0 0 50px rgba(255, 80, 140, 0.25);
+  }
+}
+
 @keyframes lafz-rain-fall {
   0% {
     transform: translateY(-60px) rotate(var(--rain-rot, -8deg));

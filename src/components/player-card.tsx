@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -75,8 +75,6 @@ function DisconnectIcon() {
 type PlayerCardProps = {
   playback: PlaybackState;
   visualProgressMs: number;
-  beatCount?: number;
-  debugBpm?: number | null;
   onPlaybackCommand: (
     command:
       | { action: "play" | "pause" | "next" | "previous" }
@@ -86,62 +84,13 @@ type PlayerCardProps = {
   ) => Promise<void>;
 };
 
-export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm, onPlaybackCommand }: PlayerCardProps) {
+export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: PlayerCardProps) {
   if (!playback.track) {
     return null;
   }
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-
-  // Beat glow — outer ring outside overflow-hidden so shadow radiates outward
-  const ringRef      = useRef<HTMLDivElement>(null);
-  const bgGlowRef    = useRef<HTMLDivElement>(null);
-  const beatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Outward box-shadow (no inset) — baseline always visible, peak on each beat
-  const BASELINE_SHADOW =
-    "0 0 0 1.5px rgba(255,20,100,0.45), 0 0 14px rgba(255,20,100,0.30)";
-  const PEAK_SHADOW =
-    "0 0 0 3px rgba(255,20,100,0.95), 0 0 22px rgba(255,20,100,0.75), 0 0 55px rgba(255,80,140,0.40)";
-
-  // Set baseline ring on mount
-  useEffect(() => {
-    const ring = ringRef.current;
-    if (ring) ring.style.boxShadow = BASELINE_SHADOW;
-  }, []);
-
-  useEffect(() => {
-    if (beatCount === 0) return;
-
-    if (beatTimerRef.current) clearTimeout(beatTimerRef.current);
-
-    const ring = ringRef.current;
-    const bg   = bgGlowRef.current;
-
-    // Fast punch to peak
-    if (ring) {
-      ring.style.transition = "box-shadow 0.07s ease-in";
-      ring.style.boxShadow  = PEAK_SHADOW;
-    }
-    if (bg) {
-      bg.style.transition = "opacity 0.07s ease-in, transform 0.07s ease-in";
-      bg.style.opacity    = "0.95";
-      bg.style.transform  = "scale(1.07)";
-    }
-
-    // Slow breath back to baseline
-    beatTimerRef.current = setTimeout(() => {
-      if (ring) {
-        ring.style.transition = "box-shadow 0.55s ease-out";
-        ring.style.boxShadow  = BASELINE_SHADOW;
-      }
-      if (bg) {
-        bg.style.transition = "opacity 0.55s ease-out, transform 0.55s ease-out";
-        bg.style.opacity    = "0.55";
-        bg.style.transform  = "scale(1)";
-      }
-    }, 90);
-  }, [beatCount]);
+  const bgGlowRef = useRef<HTMLDivElement>(null);
 
   const triggerCommand = async (
     action:
@@ -166,8 +115,16 @@ export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm
       <div className="relative mb-4 min-h-0 flex-1">
         <div ref={bgGlowRef} className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.55)_0%,rgba(255,140,66,0.25)_42%,transparent_72%)] blur-[18px]" style={{ opacity: 0.6 }} />
 
-        {/* Beat ring — sibling of the image container, outside overflow-hidden so shadow goes outward */}
-        <div ref={ringRef} className="pointer-events-none absolute inset-0 rounded-[22px]" />
+        {/* Breathing glow ring — CSS animation, pauses with the song */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-[22px]"
+          style={{
+            animation: playback.isPlaying
+              ? "lafz-ring-breathe 2.4s ease-in-out infinite"
+              : "none",
+            boxShadow: "0 0 0 1.5px rgba(255,20,100,0.30), 0 0 10px rgba(255,20,100,0.15)",
+          }}
+        />
 
         <div className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.15)] bg-[#130f20]">
           {playback.track.albumArtUrl ? (
