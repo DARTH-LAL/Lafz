@@ -93,50 +93,56 @@ export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  // Beat glow — direct JS transition, no CSS keyframe restart issues
-  const glowRef   = useRef<HTMLDivElement>(null);
-  const bgGlowRef = useRef<HTMLDivElement>(null);
+  // Beat glow — always-on baseline ring that pulses brighter on each beat
+  const glowRef      = useRef<HTMLDivElement>(null);
+  const bgGlowRef    = useRef<HTMLDivElement>(null);
   const beatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const BASELINE_SHADOW =
+    "inset 0 0 0 1.5px rgba(255,20,100,0.35), inset 0 0 10px rgba(255,20,100,0.18)";
+  const PEAK_SHADOW =
+    "inset 0 0 0 3px rgba(255,20,100,0.95), inset 0 0 20px rgba(255,20,100,0.70), inset 0 0 45px rgba(255,80,140,0.30)";
+
+  // Set baseline on mount so the border is always softly visible
+  useEffect(() => {
+    const overlay = glowRef.current;
+    if (overlay) {
+      overlay.style.opacity   = "1";
+      overlay.style.boxShadow = BASELINE_SHADOW;
+    }
+  }, []);
 
   useEffect(() => {
     if (beatCount === 0) return;
 
-    // Clear any in-progress fade
     if (beatTimerRef.current) clearTimeout(beatTimerRef.current);
 
     const overlay = glowRef.current;
     const bg      = bgGlowRef.current;
 
-    // Snap to full brightness instantly — border ring only, no image tint
+    // Quick ease-in to peak — feels like a punch on the beat
     if (overlay) {
-      overlay.style.transition = "none";
-      overlay.style.opacity    = "1";
-      overlay.style.background = "transparent";
-      // Inset border ring: sharp 3px inner stroke + soft inner halo radiating from edges
-      overlay.style.boxShadow  =
-        "inset 0 0 0 3px rgba(255,20,100,1), " +
-        "inset 0 0 18px rgba(255,20,100,0.80), " +
-        "inset 0 0 40px rgba(255,80,140,0.35)";
+      overlay.style.transition = "box-shadow 0.07s ease-in";
+      overlay.style.boxShadow  = PEAK_SHADOW;
     }
     if (bg) {
-      bg.style.transition = "none";
-      bg.style.opacity    = "1";
-      bg.style.transform  = "scale(1.08)";
+      bg.style.transition = "opacity 0.07s ease-in, transform 0.07s ease-in";
+      bg.style.opacity    = "0.95";
+      bg.style.transform  = "scale(1.07)";
     }
 
-    // Fade out over 450ms
+    // Slow ease-out back to baseline — smooth breath-out
     beatTimerRef.current = setTimeout(() => {
       if (overlay) {
-        overlay.style.transition = "box-shadow 0.45s ease-out, opacity 0.45s ease-out";
-        overlay.style.opacity    = "0";
-        overlay.style.boxShadow  = "none";
+        overlay.style.transition = "box-shadow 0.55s ease-out";
+        overlay.style.boxShadow  = BASELINE_SHADOW;
       }
       if (bg) {
-        bg.style.transition = "all 0.45s ease-out";
+        bg.style.transition = "opacity 0.55s ease-out, transform 0.55s ease-out";
         bg.style.opacity    = "0.55";
         bg.style.transform  = "scale(1)";
       }
-    }, 80);
+    }, 90);
   }, [beatCount]);
 
   const triggerCommand = async (
@@ -163,8 +169,8 @@ export function PlayerCard({ playback, visualProgressMs, beatCount = 0, debugBpm
         <div ref={bgGlowRef} className="lafz-beat-glow absolute -inset-3 rounded-[28px] bg-[radial-gradient(ellipse_at_50%_60%,rgba(255,45,120,0.55)_0%,rgba(255,140,66,0.25)_42%,transparent_72%)] blur-[18px]" style={{ opacity: 0.6 }} />
 
         <div className="relative h-full overflow-hidden rounded-[22px] border border-[rgba(255,20,100,0.20)] bg-[#130f20]">
-          {/* Beat flash overlay */}
-          <div ref={glowRef} className="pointer-events-none absolute inset-0 z-10 rounded-[22px]" style={{ opacity: 0 }} />
+          {/* Beat border ring — always on at baseline, pulses brighter on each beat */}
+          <div ref={glowRef} className="pointer-events-none absolute inset-0 z-10 rounded-[22px]" />
           {playback.track.albumArtUrl ? (
             <Image
               src={playback.track.albumArtUrl}
