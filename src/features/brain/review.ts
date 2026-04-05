@@ -268,7 +268,8 @@ export function evaluateBrainClaimReview(input: BrainClaimReviewInput): BrainCla
       `Past feedback trends negative (${formatSignedScore(learningBias)} bias).`
     );
   } else if (learningBias > 0.08) {
-    score = clampScore(score - Math.min(0.12, learningBias * 0.12));
+    // Positive learning history should soften review pressure, but not enough to hide weak claims.
+    score = clampScore(score - Math.min(0.08, learningBias * 0.08));
   }
 
   if (claim.status === "accepted" && claim.evidenceCount >= 3 && claim.confidenceScore >= 0.82) {

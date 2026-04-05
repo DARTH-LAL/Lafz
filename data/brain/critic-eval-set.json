@@ -255,6 +255,45 @@
       }
     },
     {
+      "id": "entity-positive-bias-floor",
+      "description": "Accepted entity claim with positive learning bias should still be reviewable when it stays weak and decayed.",
+      "input": {
+        "claim": {
+          "id": "eval-entity-4",
+          "claimKey": "artist::artist-h::artist_entity_role_observation::boss",
+          "claimType": "artist_entity_role_observation",
+          "scopeType": "artist",
+          "scopeKey": "artist-h",
+          "normalizedKey": "boss",
+          "status": "accepted",
+          "confidenceScore": 0.53,
+          "sourceCount": 1,
+          "evidenceCount": 2,
+          "updatedAt": "2026-04-01T00:00:00.000Z",
+          "payload": {
+            "cleanup": {
+              "decayCount": 1
+            },
+            "manual": {}
+          }
+        },
+        "latestPromotion": {
+          "decision": "accepted",
+          "decidedBy": "cleanup_agent",
+          "createdAt": "2026-04-01T00:00:00.000Z"
+        },
+        "learningProfile": {
+          "confidenceBias": 0.3,
+          "signalCount": 4
+        }
+      },
+      "expected": {
+        "reviewBand": "low",
+        "reviewRecommendation": "monitor",
+        "shouldQueue": true
+      }
+    },
+    {
       "id": "relationship-accepted-deferred",
       "description": "Accepted relationship claim with a deferred signal should be reviewed soon.",
       "input": {
