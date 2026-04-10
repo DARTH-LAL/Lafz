@@ -75,6 +75,7 @@ function DisconnectIcon() {
 type PlayerCardProps = {
   playback: PlaybackState;
   visualProgressMs: number;
+  consumerMode?: boolean;
   onPlaybackCommand: (
     command:
       | { action: "play" | "pause" | "next" | "previous" }
@@ -84,7 +85,7 @@ type PlayerCardProps = {
   ) => Promise<void>;
 };
 
-export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: PlayerCardProps) {
+export function PlayerCard({ playback, visualProgressMs, consumerMode = false, onPlaybackCommand }: PlayerCardProps) {
   if (!playback.track) {
     return null;
   }
@@ -171,27 +172,28 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
         </div>
 
         <div className="flex items-center justify-center gap-3">
-          {/* Shuffle */}
-          <button
-            type="button"
-            onClick={() => { void triggerCommand({ action: "shuffle", enabled: !playback.shuffleEnabled }); }}
-            disabled={pendingAction !== null}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
-            style={playback.shuffleEnabled ? {
-              background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
-              border: "1px solid rgba(255,20,100,0.60)",
-              color: "#fff",
-              boxShadow: "0 0 12px rgba(255,20,100,0.55)"
-            } : {
-              background: "rgba(6,2,5,0.92)",
-              border: "1px solid rgba(255,20,100,0.35)",
-              color: "#ff9abf",
-              boxShadow: "0 0 6px rgba(255,20,100,0.15)"
-            }}
-            aria-label="Shuffle"
-          >
-            <ShuffleIcon />
-          </button>
+          {!consumerMode ? (
+            <button
+              type="button"
+              onClick={() => { void triggerCommand({ action: "shuffle", enabled: !playback.shuffleEnabled }); }}
+              disabled={pendingAction !== null}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+              style={playback.shuffleEnabled ? {
+                background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+                border: "1px solid rgba(255,20,100,0.60)",
+                color: "#fff",
+                boxShadow: "0 0 12px rgba(255,20,100,0.55)"
+              } : {
+                background: "rgba(6,2,5,0.92)",
+                border: "1px solid rgba(255,20,100,0.35)",
+                color: "#ff9abf",
+                boxShadow: "0 0 6px rgba(255,20,100,0.15)"
+              }}
+              aria-label="Shuffle"
+            >
+              <ShuffleIcon />
+            </button>
+          ) : null}
           {/* Previous */}
           <button
             type="button"
@@ -228,62 +230,74 @@ export function PlayerCard({ playback, visualProgressMs, onPlaybackCommand }: Pl
           >
             <NextIcon />
           </button>
-          {/* Repeat */}
-          <button
-            type="button"
-            onClick={() => { void triggerCommand({ action: "repeat", mode: nextRepeatMode }); }}
-            disabled={pendingAction !== null}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
-            style={playback.repeatMode !== "off" ? {
-              background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
-              border: "1px solid rgba(255,20,100,0.60)",
-              color: "#fff",
-              boxShadow: "0 0 12px rgba(255,20,100,0.55)"
-            } : {
-              background: "rgba(6,2,5,0.92)",
-              border: "1px solid rgba(255,20,100,0.35)",
-              color: "#ff9abf",
-              boxShadow: "0 0 6px rgba(255,20,100,0.15)"
-            }}
-            aria-label="Repeat"
-          >
-            <RepeatIcon />
-          </button>
+          {!consumerMode ? (
+            <button
+              type="button"
+              onClick={() => { void triggerCommand({ action: "repeat", mode: nextRepeatMode }); }}
+              disabled={pendingAction !== null}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:scale-110"
+              style={playback.repeatMode !== "off" ? {
+                background: "linear-gradient(135deg,#ff1464,#ff6aaa)",
+                border: "1px solid rgba(255,20,100,0.60)",
+                color: "#fff",
+                boxShadow: "0 0 12px rgba(255,20,100,0.55)"
+              } : {
+                background: "rgba(6,2,5,0.92)",
+                border: "1px solid rgba(255,20,100,0.35)",
+                color: "#ff9abf",
+                boxShadow: "0 0 6px rgba(255,20,100,0.15)"
+              }}
+              aria-label="Repeat"
+            >
+              <RepeatIcon />
+            </button>
+          ) : null}
         </div>
 
         {/* Playing on + action buttons */}
-        <div className="mt-5 border-t border-[rgba(255,20,100,0.15)] pt-4">
-          <p className="mb-3 text-[11px] font-medium text-white/50">
-            Playing on <span className="font-semibold text-white">{playback.deviceName ?? "Spotify app"}</span>
-          </p>
-          <div className="grid gap-2">
-            <Link
-              href={`/library/track/${playback.track.spotifyTrackId}`}
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-[1px]"
-              style={{
-                border: "1px solid rgba(255,20,100,0.50)",
-                boxShadow: "0 0 8px rgba(255,20,100,0.25)",
-                textShadow: "0 0 10px rgba(255,20,100,0.55)"
-              }}
-            >
-              <TrackDetailIcon />
-              Track detail
-            </Link>
-            <form action="/api/spotify/logout" method="post" className="w-full">
-              <button
-                type="submit"
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white/60 transition hover:-translate-y-[1px] hover:text-white"
+        {!consumerMode ? (
+          <div className="mt-5 border-t border-[rgba(255,20,100,0.15)] pt-4">
+            <p className="mb-3 text-[11px] font-medium text-white/50">
+              Playing on <span className="font-semibold text-white">{playback.deviceName ?? "Spotify app"}</span>
+            </p>
+            <div className="grid gap-2">
+              <Link
+                href={`/library/track/${playback.track.spotifyTrackId}`}
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-[1px]"
                 style={{
-                  border: "1px solid rgba(255,20,100,0.22)",
-                  boxShadow: "0 0 5px rgba(255,20,100,0.10)"
+                  border: "1px solid rgba(255,20,100,0.50)",
+                  boxShadow: "0 0 8px rgba(255,20,100,0.25)",
+                  textShadow: "0 0 10px rgba(255,20,100,0.55)"
                 }}
               >
-                <DisconnectIcon />
-                Disconnect
-              </button>
-            </form>
+                <TrackDetailIcon />
+                Track detail
+              </Link>
+              <form action="/api/spotify/logout" method="post" className="w-full">
+                <button
+                  type="submit"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white/60 transition hover:-translate-y-[1px] hover:text-white"
+                  style={{
+                    border: "1px solid rgba(255,20,100,0.22)",
+                    boxShadow: "0 0 5px rgba(255,20,100,0.10)"
+                  }}
+                >
+                  <DisconnectIcon />
+                  Disconnect
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-5 border-t border-[rgba(255,20,100,0.15)] pt-4">
+            <p className="text-[11px] font-medium text-white/50">
+              Reading from <span className="font-semibold text-white">{playback.deviceName ?? "system media"}</span>
+            </p>
+            <p className="mt-2 text-[12px] leading-[1.6] text-white/60">
+              Desktop sync mode keeps the consumer app lightweight and decoupled from Spotify Web API.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

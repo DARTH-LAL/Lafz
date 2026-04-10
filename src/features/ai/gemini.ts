@@ -161,6 +161,7 @@ function buildGeminiComparisonSystemPrompt(options: RequestGeminiDraftComparison
     "Heavily penalize ad-lib collapse: never reduce a meaningful lyric line to an ad-lib like 'uh-huh', 'yeah', or a tag.",
     "scoreA and scoreB must each rate semanticAccuracy, contextFit, perspectiveFidelity, repetitionRisk, and driftRisk on a 0-5 scale.",
     "Return only JSON with detectedSourceLanguage and lines. Each line must include winner, chosen, confidence, ambiguity, note, selectorReason, suspiciousDuplicate, adlibCollapseRisk, semanticDriftRisk, scoreA, and scoreB.",
+    "When you write a note, keep it short, polished, and reader-facing. Explain the slang or cultural point directly without mentioning Generator A, Generator B, Gemini, OpenAI, or any internal evaluation labels.",
     "winner must be one of: generator_a, generator_b, blended."
   ];
 

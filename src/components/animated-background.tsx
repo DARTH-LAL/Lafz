@@ -3,7 +3,34 @@
 // Fixed background with drifting neon pink blobs — intensity 3 (high)
 // Drop inside any `relative` page wrapper. Blobs are pointer-events-none and fixed.
 
-export function AnimatedBackground() {
+type AnimatedBackgroundProps = {
+  lightweight?: boolean;
+};
+
+export function AnimatedBackground({ lightweight = false }: AnimatedBackgroundProps) {
+  if (lightweight) {
+    return (
+      <>
+        <div className="pointer-events-none fixed inset-0 z-0 bg-[#2a0d14]" />
+        <div
+          className="pointer-events-none fixed inset-0 z-[1]"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,20,100,0.08) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+            opacity: 0.45,
+          }}
+        />
+        <div
+          className="pointer-events-none fixed inset-0 z-[1]"
+          style={{
+            background: "radial-gradient(circle at 50% 0%, rgba(255,20,100,0.18), transparent 50%)",
+            opacity: 0.8,
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       {/* Base background colour */}

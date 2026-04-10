@@ -10,6 +10,7 @@ import {
   findAiTranslationDraftByMetadata,
   getAiTranslationDraftByTrackId
 } from "@/features/ai/repository";
+import { serializeAiDraftForPlayback } from "@/features/ai/serialize";
 import { fetchCurrentSpotifyPlayback, SpotifyUnauthorizedError } from "@/features/spotify/playback";
 import { refreshSpotifySession } from "@/features/spotify/server-session";
 import {
@@ -23,12 +24,20 @@ import { findTranslationByMetadata, getTranslationByTrackId, getTranslationFileH
 
 export const dynamic = "force-dynamic";
 
+function isConsumerPlaybackRequest(request: NextRequest) {
+  return request.nextUrl.searchParams.get("mode") === "consumer";
+}
+
 export async function GET(request: NextRequest) {
-  ensureVocabularyAgentWorkerStarted();
-  ensureEntityAgentWorkerStarted();
-  ensureMotifAgentWorkerStarted();
-  ensurePersonaAgentWorkerStarted();
-  ensureCleanupAgentWorkerStarted();
+  const consumerMode = isConsumerPlaybackRequest(request);
+
+  if (!consumerMode) {
+    ensureVocabularyAgentWorkerStarted();
+    ensureEntityAgentWorkerStarted();
+    ensureMotifAgentWorkerStarted();
+    ensurePersonaAgentWorkerStarted();
+    ensureCleanupAgentWorkerStarted();
+  }
 
   const existingSession = readSpotifySessionFromRequest(request);
 
@@ -46,6 +55,21 @@ export async function GET(request: NextRequest) {
     }
 
     let playback = await fetchCurrentSpotifyPlayback(session.accessToken);
+
+    if (consumerMode) {
+      const consumerResponse = NextResponse.json({
+        playback,
+        translation: null,
+        aiDraft: null,
+        translationFileHint: null
+      } satisfies PlaybackApiResponse);
+
+      if (sessionWasRefreshed) {
+        writeSpotifySession(consumerResponse, session);
+      }
+
+      return consumerResponse;
+    }
 
     if (playback.track) {
       const [exactTranslation, exactAiDraft] = await Promise.all([
@@ -73,22 +97,7 @@ export async function GET(request: NextRequest) {
         playback,
         translation: resolvedTranslation,
         aiDraft: aiDraft
-          ? {
-              spotifyTrackId: aiDraft.spotifyTrackId,
-              exists: true,
-              lineCount: aiDraft.lines.length,
-              mode: aiDraft.mode,
-              model: aiDraft.generator.model,
-              sourceLanguage: aiDraft.sourceLanguage,
-              targetLanguage: aiDraft.targetLanguage,
-              lines: aiDraft.lines.map((line) => ({
-                order: line.order,
-                original: line.original,
-                translated: line.chosen,
-                transliteration: line.transliteration,
-                note: line.note
-              }))
-            }
+          ? serializeAiDraftForPlayback(aiDraft)
           : null,
         translationFileHint: getTranslationFileHint(playback.track.spotifyTrackId)
       } satisfies PlaybackApiResponse);
@@ -118,6 +127,19 @@ export async function GET(request: NextRequest) {
         session = await refreshSpotifySession(session);
         sessionWasRefreshed = true;
         const playback = await fetchCurrentSpotifyPlayback(session.accessToken);
+
+        if (consumerMode) {
+          const consumerResponse = NextResponse.json({
+            playback,
+            translation: null,
+            aiDraft: null,
+            translationFileHint: null
+          } satisfies PlaybackApiResponse);
+
+          writeSpotifySession(consumerResponse, session);
+          return consumerResponse;
+        }
+
         const [exactTranslation, exactAiDraft] = playback.track
           ? await Promise.all([
               getTranslationByTrackId(playback.track.spotifyTrackId),
@@ -145,22 +167,7 @@ export async function GET(request: NextRequest) {
           playback,
           translation: resolvedTranslation,
           aiDraft: aiDraft
-            ? {
-                spotifyTrackId: aiDraft.spotifyTrackId,
-                exists: true,
-                lineCount: aiDraft.lines.length,
-                mode: aiDraft.mode,
-                model: aiDraft.generator.model,
-                sourceLanguage: aiDraft.sourceLanguage,
-                targetLanguage: aiDraft.targetLanguage,
-                lines: aiDraft.lines.map((line) => ({
-                  order: line.order,
-                  original: line.original,
-                  translated: line.chosen,
-                  transliteration: line.transliteration,
-                  note: line.note
-                }))
-              }
+            ? serializeAiDraftForPlayback(aiDraft)
             : null,
           translationFileHint: playback.track ? getTranslationFileHint(playback.track.spotifyTrackId) : null
         } satisfies PlaybackApiResponse);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { findActiveLineIndex } from "@/features/sync/engine";
+import { formatTranslationNote } from "@/features/translations/note-format";
 import type { TrackTranslation } from "@/features/translations/types";
 import { cx, formatMilliseconds } from "@/lib/utils";
 
@@ -104,6 +105,7 @@ export function LyricsPanel({ translation, progressMs, isPlaying, onSeek }: Lyri
           const isActive = index === activeLineIndex;
           const isUpcoming = activeLineIndex >= 0 ? index > activeLineIndex : true;
           const isExpanded = isActive || expandedLineIndex === index;
+          const noteText = formatTranslationNote(line.note);
 
           return (
             <div key={`${line.startMs}-${index}`}>
@@ -176,7 +178,7 @@ export function LyricsPanel({ translation, progressMs, isPlaying, onSeek }: Lyri
                       {line.transliteration ? (
                         <p className="mt-1 text-[13px] italic leading-[1.55] text-[rgba(255,20,100,0.60)]">{line.transliteration}</p>
                       ) : null}
-                      {line.note ? <p className="mt-3 text-sm leading-7 text-white">{line.note}</p> : null}
+                      {noteText ? <p className="mt-3 text-sm leading-7 text-white">{noteText}</p> : null}
                     </div>
                   ) : null}
                 </div>

@@ -145,22 +145,22 @@ export function AiDraftWorkspace({
         throw new Error("Lafz could not start the AI draft job.");
       }
 
-      setMessage("Running Gemini translation pipeline — drafting...");
+      setMessage("Running OpenAI + Gemini translation pipeline — drafting...");
       setMessageTone("success");
 
       const pipelineMessages = [
-        "Running Gemini translation pipeline — drafting...",
-        "Generator A (Gemini) processing lyrics...",
+        "Running OpenAI + Gemini translation pipeline — drafting...",
+        "Generator A (OpenAI) processing lyrics...",
         "Handing off to Generator B (Gemini)...",
         "Generator B (Gemini) refining translations...",
         "Sending both drafts to Gemini judge...",
         "Gemini evaluating and selecting best lines...",
         "Almost done — finalising translation...",
         "Still working — large tracks take a few minutes...",
-        "Wrapping up the Gemini evaluation..."
+        "Wrapping up the OpenAI + Gemini evaluation..."
       ];
 
-      // 400 attempts × 2s = 800s (~13 min) — enough for the full Gemini translation pipeline
+      // 400 attempts × 2s = 800s (~13 min) — enough for the full OpenAI + Gemini translation pipeline
       for (let attempt = 0; attempt < 400; attempt += 1) {
         await sleep(2000);
 
@@ -409,7 +409,7 @@ export function AiDraftWorkspace({
           <div className="mt-5 rounded-[14px] border border-[rgba(255,160,30,0.20)] bg-[rgba(255,160,30,0.08)] p-4 text-[13px] leading-[1.65] text-[#ffc87a]">
             {aiConfigured
               ? "Lafz needs readable original lyrics before it can generate a draft."
-              : "Lafz could not initialize the Gemini translation pipeline yet."}
+              : "Lafz could not initialize the OpenAI + Gemini translation pipeline yet."}
           </div>
         )}
       </section>

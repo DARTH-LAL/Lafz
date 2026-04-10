@@ -4,7 +4,7 @@ import { getTrackCorrectionExamples } from "@/features/ai/correction-memory";
 import { getAiGlossaryEntries, getGlossarySearchTerms, type AiGlossaryEntry } from "@/features/ai/glossary";
 import { extractAndStoreGlossarySuggestions } from "@/features/ai/glossary-extractor";
 import { normalizeArtistKey } from "@/features/ai/glossary-repository";
-import { isAiConfigured, isLegacyThreeModelTranslationPipelineEnabled } from "@/features/ai/provider";
+import { isAiConfigured } from "@/features/ai/provider";
 import { buildSongTranslationMemoryPack, mergeBrainMemoryIntoArtistContext } from "@/features/brain/memory-pack";
 import { syncDraftIntoLafzBrain } from "@/features/brain/sync";
 import { requestGeminiDraftComparison, requestGeminiTranslationDraft } from "@/features/ai/gemini";
@@ -52,6 +52,7 @@ const SYNCED_GROUP_BREAK_GAP_MS = 12_000;
 const LARGE_TRACK_LINE_COUNT = 56;
 const VERY_LARGE_TRACK_LINE_COUNT = 84;
 const SURFACE_POLISH_BATCH_SIZE = 10;
+const GENERATOR_B_RETRY_DELAY_MS = 1500;
 
 function getInitialBatchSize(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   if (sourceLyricsKind === "plain") {
@@ -95,6 +96,48 @@ function getComparisonContextWindowLines(totalLineCount: number) {
 
 function shouldIncludeGroupText(sourceLyricsKind: "synced" | "plain", totalLineCount: number) {
   return sourceLyricsKind === "plain" || totalLineCount < LARGE_TRACK_LINE_COUNT;
+}
+
+function isTransientGeminiError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /high demand|temporarily unavailable|please try again later|rate limit|429|timeout|timed out|fetch failed|econnreset|econnrefused|aborted/i.test(message);
+}
+
+async function retryGeminiGeneratorB<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    if (!isTransientGeminiError(error)) {
+      throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, GENERATOR_B_RETRY_DELAY_MS));
+    return action();
+  }
+}
+
+async function requestGeneratorBTranslationDraftWithFallback(
+  options: Parameters<typeof requestOpenAiTranslationDraft>[0],
+  usageSink: { inputTokens: number; outputTokens: number }
+) {
+  try {
+    return await retryGeminiGeneratorB(() =>
+      requestGeminiTranslationDraft({ ...options, draftVariant: "generator_b" }, usageSink)
+    );
+  } catch (error) {
+    if (!isTransientGeminiError(error)) {
+      throw error;
+    }
+
+    console.warn("[lafz] Gemini generator B is unavailable; falling back to OpenAI for this draft.");
+    const fallback = await requestOpenAiTranslationDraft(options, usageSink);
+
+    return {
+      model: fallback.model,
+      sourceLanguage: fallback.sourceLanguage,
+      lines: fallback.lines
+    };
+  }
 }
 
 type SourceDraftLine = {
@@ -2652,8 +2695,6 @@ export async function generateAiTranslationDraft(
   let genADurationMs = 0;
   let genBDurationMs = 0;
   let genGDurationMs = 0;
-  const useLegacyThreeModelTranslation = isLegacyThreeModelTranslationPipelineEnabled();
-
   const openAiRequester: DraftRequester = async (opts) => {
     const t0 = Date.now();
     const result = await requestOpenAiTranslationDraft(opts, usageSinkA);
@@ -2680,16 +2721,16 @@ export async function generateAiTranslationDraft(
 
   const geminiGeneratorBRequester: DraftRequester = async (opts) => {
     const t0 = Date.now();
-    const result = await requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_b" }, usageSinkB);
+    const result = await requestGeneratorBTranslationDraftWithFallback(opts, usageSinkB);
     genBDurationMs += Date.now() - t0;
     genBModel = result.model;
     return result;
   };
 
-  const generatorARequester = useLegacyThreeModelTranslation ? openAiRequester : geminiGeneratorARequester;
-  const generatorBRequester = useLegacyThreeModelTranslation ? anthropicRequester : geminiGeneratorBRequester;
-  const generatorAProviderLabel = useLegacyThreeModelTranslation ? "OpenAI" : "Gemini";
-  const generatorBProviderLabel = useLegacyThreeModelTranslation ? "Anthropic" : "Gemini";
+  const generatorARequester = openAiRequester;
+  const generatorBRequester = geminiGeneratorBRequester;
+  const generatorAProviderLabel = "OpenAI";
+  const generatorBProviderLabel = "Gemini";
 
   const [generatorAInitialDraft, generatorBInitialDraft] = await Promise.all([
     generateDraftLinesInBatches(
@@ -2712,25 +2753,27 @@ export async function generateAiTranslationDraft(
       generatorARequester,
       previousDraftLookup
     ),
-    generateDraftLinesInBatches(
-      options,
-      sourceLines,
-      lyricsCache.kind,
-      meaningResponse.sourceLanguage,
-      contextResponse.songContext,
-      worldModelResponse.worldModel,
-      contextResponse.artistMemory,
-      contextResponse.preferredRenderings,
-      contextResponse.artistCorrectionExamples,
-      contextResponse.trackCorrectionExamples,
-      normalizedSourceLookup,
-      verseStateLookup,
-      worldModelLineLookup,
-      meaningResponse.lines,
-      generatorBProviderLabel,
-      "generator B",
-      generatorBRequester,
-      previousDraftLookup
+    retryGeminiGeneratorB(() =>
+      generateDraftLinesInBatches(
+        options,
+        sourceLines,
+        lyricsCache.kind,
+        meaningResponse.sourceLanguage,
+        contextResponse.songContext,
+        worldModelResponse.worldModel,
+        contextResponse.artistMemory,
+        contextResponse.preferredRenderings,
+        contextResponse.artistCorrectionExamples,
+        contextResponse.trackCorrectionExamples,
+        normalizedSourceLookup,
+        verseStateLookup,
+        worldModelLineLookup,
+        meaningResponse.lines,
+        generatorBProviderLabel,
+        "generator B",
+        generatorBRequester,
+        previousDraftLookup
+      )
     )
   ]);
 
@@ -2789,8 +2832,8 @@ export async function generateAiTranslationDraft(
     else confLow++;
   }
 
-  const costA = calcModelCost(useLegacyThreeModelTranslation ? "openai" : "gemini", usageSinkA.inputTokens, usageSinkA.outputTokens);
-  const costB = calcModelCost(useLegacyThreeModelTranslation ? "anthropic" : "gemini", usageSinkB.inputTokens, usageSinkB.outputTokens);
+  const costA = calcModelCost("openai", usageSinkA.inputTokens, usageSinkA.outputTokens);
+  const costB = calcModelCost("gemini", usageSinkB.inputTokens, usageSinkB.outputTokens);
   const costG = calcModelCost("gemini", usageSinkG.inputTokens, usageSinkG.outputTokens);
   pipelineCostSummary = {
     generatorA: { model: genAModel, inputTokens: usageSinkA.inputTokens, outputTokens: usageSinkA.outputTokens, costUsd: costA },
@@ -3008,25 +3051,11 @@ export async function regenerateDraftLines(
   const usageSinkB = { inputTokens: 0, outputTokens: 0 };
   const usageSinkG = { inputTokens: 0, outputTokens: 0 };
   const verseState = verseStateLookup.get(representativeSourceLine.order) ?? null;
-  const useLegacyThreeModelTranslation = isLegacyThreeModelTranslationPipelineEnabled();
+  const generatorARequester: DraftRequester = async (opts) => requestOpenAiTranslationDraft(opts, usageSinkA);
 
-  const generatorARequester: DraftRequester = useLegacyThreeModelTranslation
-    ? async (opts) => {
-        return requestOpenAiTranslationDraft(opts, usageSinkA);
-      }
-    : async (opts) => {
-        return requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_a" }, usageSinkA);
-      };
-
-  const generatorBRequester: DraftRequester = useLegacyThreeModelTranslation
-    ? async (opts) => {
-        return requestAnthropicTranslationDraft(opts, usageSinkB);
-      }
-    : async (opts) => {
-        return requestGeminiTranslationDraft({ ...opts, draftVariant: "generator_b" }, usageSinkB);
-      };
-  const generatorAProviderLabel = useLegacyThreeModelTranslation ? "OpenAI" : "Gemini";
-  const generatorBProviderLabel = useLegacyThreeModelTranslation ? "Anthropic" : "Gemini";
+  const generatorBRequester: DraftRequester = async (opts) => requestGeneratorBTranslationDraftWithFallback(opts, usageSinkB);
+  const generatorAProviderLabel = "OpenAI";
+  const generatorBProviderLabel = "Gemini";
 
   const meaningResponse = await withProviderStageRetry({
     provider: "OpenAI",

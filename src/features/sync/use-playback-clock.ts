@@ -6,7 +6,7 @@ import { PLAYBACK_UI_TICK_MS } from "@/features/spotify/config";
 import type { PlaybackState } from "@/features/spotify/types";
 import { clamp } from "@/lib/utils";
 
-export function usePlaybackClock(playback: PlaybackState | null) {
+export function usePlaybackClock(playback: PlaybackState | null, tickMs = PLAYBACK_UI_TICK_MS) {
   const [progressMs, setProgressMs] = useState(0);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export function usePlaybackClock(playback: PlaybackState | null) {
       return;
     }
 
-    const fetchedAt = new Date(playback.fetchedAt).getTime();
+    const fetchedAt = parseFetchedAtMs(playback.fetchedAt);
 
     const updateProgress = () => {
       const elapsedMs = playback.isPlaying ? Date.now() - fetchedAt : 0;
@@ -30,8 +30,12 @@ export function usePlaybackClock(playback: PlaybackState | null) {
 
     updateProgress();
 
+    if (!playback.isPlaying) {
+      return;
+    }
+
     // Between network polls we advance a lightweight local clock so lyric highlighting feels live instead of jumping every few seconds.
-    const timer = window.setInterval(updateProgress, PLAYBACK_UI_TICK_MS);
+    const timer = window.setInterval(updateProgress, tickMs);
 
     return () => window.clearInterval(timer);
   }, [
@@ -39,8 +43,20 @@ export function usePlaybackClock(playback: PlaybackState | null) {
     playback?.isPlaying,
     playback?.progressMs,
     playback?.track?.durationMs,
-    playback?.track?.spotifyTrackId
+    playback?.track?.spotifyTrackId,
+    tickMs
   ]);
 
   return progressMs;
+}
+
+function parseFetchedAtMs(value: string) {
+  const asDate = new Date(value).getTime();
+
+  if (Number.isFinite(asDate)) {
+    return asDate;
+  }
+
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? asNumber : Date.now();
 }

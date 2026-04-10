@@ -1,5 +1,7 @@
 import { listCloudDataKeys, readCloudDataJson, writeCloudDataJson, toCloudDataHint } from "@/features/cloud/data-store";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
+import { findLibraryTrackArtworkUrlByMetadata, findLibraryTrackArtworkUrlByTrackId } from "@/features/library/track-art";
+import { formatTranslationNote, sanitizeTranslationNotes } from "@/features/translations/note-format";
 import type { TrackTranslation, TranslationLine, TranslationStubFile } from "@/features/translations/types";
 
 const translationSearchDirectories = [
@@ -16,6 +18,19 @@ function asOptionalString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
+function asOptionalStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const items = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : undefined;
+}
+
 function normalizeLookupText(value: string) {
   return value
     .normalize("NFKD")
@@ -27,41 +42,148 @@ function normalizeLookupText(value: string) {
     .replace(/\s+/g, " ");
 }
 
-function normalizeArtistTokens(value: string) {
-  return value
+function normalizeLooseTitle(value: string) {
+  return normalizeLookupText(
+    value
+      .replace(/^\(\s*\d+\s*\)\s*/, "")
+      .replace(/\((?:[^()]|\([^()]*\))*\)/g, " ")
+      .replace(/\[[^\]]*\]/g, " ")
+      .replace(/\s(?:[-–—]|[|•·:])\s.*$/, " ")
+      .replace(/\b(?:feat|ft|featuring)\b.*$/i, " ")
+  );
+}
+
+function normalizeArtistTokens(value: string | null | undefined) {
+  return String(value ?? "")
     .split(/,|&|\bfeat\.?\b|\bft\.?\b|\bwith\b/gi)
     .map((entry) => normalizeLookupText(entry))
     .filter(Boolean);
+}
+
+function scoreTitleMatch(targetTitle: string, translationTitle: string) {
+  const normalizedTargetTitle = normalizeLookupText(targetTitle);
+  const normalizedTranslationTitle = normalizeLookupText(translationTitle);
+
+  if (!normalizedTargetTitle || !normalizedTranslationTitle) {
+    return null;
+  }
+
+  if (normalizedTargetTitle === normalizedTranslationTitle) {
+    return 100;
+  }
+
+  const looseTargetTitle = normalizeLooseTitle(targetTitle);
+  const looseTranslationTitle = normalizeLooseTitle(translationTitle);
+
+  if (!looseTargetTitle || !looseTranslationTitle) {
+    return null;
+  }
+
+  if (looseTargetTitle === looseTranslationTitle) {
+    return 92;
+  }
+
+  if (looseTargetTitle.includes(looseTranslationTitle) || looseTranslationTitle.includes(looseTargetTitle)) {
+    const shorterLength = Math.min(looseTargetTitle.length, looseTranslationTitle.length);
+    const longerLength = Math.max(looseTargetTitle.length, looseTranslationTitle.length);
+    const overlapRatio = longerLength > 0 ? shorterLength / longerLength : 0;
+
+    if (overlapRatio >= 0.8) {
+      return 88;
+    }
+
+    if (overlapRatio >= 0.65) {
+      return 82;
+    }
+
+    return 74;
+  }
+
+  return null;
+}
+
+function scoreBestTitleMatch(targetTitle: string, translationTitles: Array<string | null | undefined>) {
+  let bestScore: number | null = null;
+
+  for (const translationTitle of translationTitles) {
+    if (typeof translationTitle !== "string" || !translationTitle.trim()) {
+      continue;
+    }
+
+    const score = scoreTitleMatch(targetTitle, translationTitle);
+    if (score !== null && (bestScore === null || score > bestScore)) {
+      bestScore = score;
+    }
+  }
+
+  return bestScore;
 }
 
 function scoreTranslationMetadataMatch(
   translation: TrackTranslation,
   target: {
     title: string;
-    artist: string;
+    artist?: string | null;
+  },
+  identity?: {
+    canonicalTitle?: string | null;
+    canonicalArtist?: string | null;
+    alternateTitles?: string[] | null;
+    matchConfidence?: number | null;
   }
 ) {
-  const normalizedTitle = normalizeLookupText(target.title);
-  const normalizedArtist = normalizeLookupText(target.artist);
+  const confidenceBonus = Number.isFinite(identity?.matchConfidence ?? NaN)
+    ? Math.max(0, Math.min(5, Math.round((identity?.matchConfidence ?? 1) * 2)))
+    : 0;
+  const titleCandidates = [
+    translation.title,
+    identity?.canonicalTitle ?? null,
+    ...(identity?.alternateTitles ?? [])
+  ];
+  const titleScore = scoreBestTitleMatch(target.title, titleCandidates);
 
-  if (!normalizedTitle || normalizeLookupText(translation.title) !== normalizedTitle) {
+  if (titleScore === null) {
     return null;
   }
 
-  const translationArtist = normalizeLookupText(translation.artist);
+  const normalizedArtist = normalizeLookupText(target.artist ?? "");
+  const artistCandidates = [translation.artist, identity?.canonicalArtist ?? null];
+  const normalizedArtistCandidates = artistCandidates
+    .filter((candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0)
+    .map((candidate) => normalizeLookupText(candidate));
 
-  if (translationArtist === normalizedArtist) {
-    return 100;
+  if (!normalizedArtist) {
+    return titleScore + confidenceBonus;
+  }
+
+  if (normalizedArtistCandidates.some((candidate) => candidate === normalizedArtist)) {
+    return titleScore + 20 + confidenceBonus;
   }
 
   const targetTokens = new Set(normalizeArtistTokens(target.artist));
-  const overlap = normalizeArtistTokens(translation.artist).filter((token) => targetTokens.has(token)).length;
+  const overlap = artistCandidates
+    .filter((candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0)
+    .flatMap((candidate) => normalizeArtistTokens(candidate))
+    .filter((token) => targetTokens.has(token)).length;
 
   if (overlap === 0) {
     return null;
   }
 
-  return overlap * 10;
+  return titleScore + overlap * 10 + confidenceBonus;
+}
+
+function isMissingPublishedTranslationIdentityColumnsError(error: unknown) {
+  const detail = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = detail.toLowerCase();
+
+  return [
+    "canonical_title",
+    "canonical_artist",
+    "alternate_titles",
+    "source_host",
+    "match_confidence"
+  ].some((column) => normalized.includes(column));
 }
 
 function isTranslationStubFile(value: unknown): value is TranslationStubFile {
@@ -97,7 +219,7 @@ function parseTranslationLine(value: unknown, index: number): TranslationLine {
     original,
     translated,
     transliteration: asOptionalString(transliteration),
-    note: asOptionalString(note)
+    note: formatTranslationNote(asOptionalString(note)) ?? undefined
   };
 }
 
@@ -183,33 +305,115 @@ async function writeTrackTranslationToSupabase(translation: TrackTranslation) {
     return;
   }
 
-  const { error } = await supabase.from("published_translations").upsert(
-    {
-      spotify_track_id: translation.spotifyTrackId,
-      translation_json: translation,
-      is_synced: true,
-      updated_at: new Date().toISOString()
-    },
-    {
-      onConflict: "spotify_track_id"
-    }
-  );
+  const sanitizedTranslation = sanitizeTranslationNotes(translation);
+  const albumArtUrl =
+    await findLibraryTrackArtworkUrlByTrackId(sanitizedTranslation.spotifyTrackId).catch(() => null) ??
+    await findLibraryTrackArtworkUrlByMetadata({
+      title: sanitizedTranslation.title,
+      artist: sanitizedTranslation.artist,
+      album: (sanitizedTranslation as { album?: string | null }).album ?? null
+    }).catch(() => null);
+  const canonicalTitle = sanitizedTranslation.title.trim();
+  const canonicalArtist = sanitizedTranslation.artist.trim();
+  const alternateTitles = [...new Set([
+    canonicalTitle,
+    normalizeLooseTitle(canonicalTitle)
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0))];
+  const matchConfidence = Number.isFinite(translation.matchConfidence ?? null) ? (translation.matchConfidence ?? null) : 1;
+  const publishedRow: Record<string, unknown> = {
+    spotify_track_id: sanitizedTranslation.spotifyTrackId,
+    translation_json: sanitizedTranslation,
+    canonical_title: canonicalTitle,
+    canonical_artist: canonicalArtist,
+    alternate_titles: alternateTitles,
+    source_host: translation.sourceHost ?? null,
+    match_confidence: matchConfidence ?? 1,
+    is_synced: true,
+    updated_at: new Date().toISOString()
+  };
+
+  if (albumArtUrl) {
+    publishedRow.album_art_url = albumArtUrl;
+  }
+
+  const { error } = await supabase.from("published_translations").upsert(publishedRow, {
+    onConflict: "spotify_track_id"
+  });
 
   if (error) {
+    if (isMissingPublishedTranslationIdentityColumnsError(error)) {
+      const fallbackRow: Record<string, unknown> = {
+        spotify_track_id: translation.spotifyTrackId,
+        translation_json: translation,
+        is_synced: true,
+        updated_at: new Date().toISOString()
+      };
+
+      if (albumArtUrl) {
+        fallbackRow.album_art_url = albumArtUrl;
+      }
+
+      const fallback = await supabase.from("published_translations").upsert(fallbackRow, {
+        onConflict: "spotify_track_id"
+      });
+
+      if (fallback.error) {
+        console.error(`Could not write published translation ${translation.spotifyTrackId} to Supabase.`, fallback.error);
+      }
+
+      return;
+    }
+
     console.error(`Could not write published translation ${translation.spotifyTrackId} to Supabase.`, error);
   }
 }
 
-async function findTrackTranslationByMetadataFromSupabase(target: { title: string; artist: string }) {
+async function findTrackTranslationByMetadataFromSupabase(target: { title: string; artist?: string | null }) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
     return null;
   }
 
-  const { data, error } = await supabase.from("published_translations").select("spotify_track_id, translation_json");
+  const { data, error } = await supabase
+    .from("published_translations")
+    .select("spotify_track_id, translation_json, canonical_title, canonical_artist, alternate_titles, match_confidence");
 
   if (error) {
+    if (isMissingPublishedTranslationIdentityColumnsError(error)) {
+      const fallbackQuery = await supabase.from("published_translations").select("spotify_track_id, translation_json");
+
+      if (fallbackQuery.error) {
+        console.error("Could not search published translations in Supabase.", fallbackQuery.error);
+        return null;
+      }
+
+      let fallbackBestMatch: {
+        score: number;
+        translation: TrackTranslation;
+      } | null = null;
+
+      for (const row of fallbackQuery.data ?? []) {
+        try {
+          const parsed = parseTrackTranslation(row.translation_json, `supabase:published_translations/${row.spotify_track_id}`);
+          const score = scoreTranslationMetadataMatch(parsed, target);
+
+          if (score !== null && (!fallbackBestMatch || score > fallbackBestMatch.score)) {
+            fallbackBestMatch = {
+              score,
+              translation: parsed
+            };
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message === TRANSLATION_STUB_SENTINEL) {
+            continue;
+          }
+        }
+      }
+
+      return fallbackBestMatch?.translation ?? null;
+    }
+
     console.error("Could not search published translations in Supabase.", error);
     return null;
   }
@@ -222,7 +426,12 @@ async function findTrackTranslationByMetadataFromSupabase(target: { title: strin
   for (const row of data ?? []) {
     try {
       const parsed = parseTrackTranslation(row.translation_json, `supabase:published_translations/${row.spotify_track_id}`);
-      const score = scoreTranslationMetadataMatch(parsed, target);
+      const score = scoreTranslationMetadataMatch(parsed, target, {
+        canonicalTitle: asOptionalString(row.canonical_title) ?? undefined,
+        canonicalArtist: asOptionalString(row.canonical_artist) ?? undefined,
+        alternateTitles: asOptionalStringArray(row.alternate_titles) ?? undefined,
+        matchConfidence: typeof row.match_confidence === "number" ? row.match_confidence : null
+      });
 
       if (score !== null && (!bestMatch || score > bestMatch.score)) {
         bestMatch = {
@@ -245,9 +454,10 @@ export function getTranslationFileHint(trackId: string) {
 }
 
 export async function writeTrackTranslationFile(translation: TrackTranslation) {
-  const filePath = `data/translations/local/${translation.spotifyTrackId}.json`;
-  await writeCloudDataJson(filePath, translation);
-  await writeTrackTranslationToSupabase(translation);
+  const sanitizedTranslation = sanitizeTranslationNotes(translation);
+  const filePath = `data/translations/local/${sanitizedTranslation.spotifyTrackId}.json`;
+  await writeCloudDataJson(filePath, sanitizedTranslation);
+  await writeTrackTranslationToSupabase(sanitizedTranslation);
   return toCloudDataHint(filePath);
 }
 
@@ -281,7 +491,7 @@ export async function getTranslationByTrackId(trackId: string) {
   return null;
 }
 
-export async function findTranslationByMetadata(target: { title: string; artist: string }) {
+export async function findTranslationByMetadata(target: { title: string; artist?: string | null }) {
   const cloudMatch = await findTrackTranslationByMetadataFromSupabase(target);
 
   if (cloudMatch) {

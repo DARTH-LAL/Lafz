@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import type { PlaybackApiResponse } from "@/features/spotify/types";
+import { formatTranslationNote } from "@/features/translations/note-format";
 import { cx } from "@/lib/utils";
 
 type UntimedLyricsPanelProps = {
@@ -63,6 +64,7 @@ export function UntimedLyricsPanel({ draft, trackTitle, trackArtist, trackHref }
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-20 pt-4 lg:px-6">
         {draft.lines.map((line, index) => {
           const isExpanded = expandedLineIndex === index;
+          const noteText = formatTranslationNote(line.note);
 
           return (
             <div
@@ -103,7 +105,7 @@ export function UntimedLyricsPanel({ draft, trackTitle, trackArtist, trackHref }
                   {line.transliteration ? (
                     <p className="mt-1 text-[13px] italic leading-[1.55] text-white/70">{line.transliteration}</p>
                   ) : null}
-                  {line.note ? <p className="mt-3 leading-7 text-white">{line.note}</p> : null}
+                  {noteText ? <p className="mt-3 leading-7 text-white">{noteText}</p> : null}
                 </div>
               ) : null}
             </div>

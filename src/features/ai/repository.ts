@@ -25,6 +25,7 @@ import type {
 import type { AiGlossaryEntry } from "@/features/ai/glossary";
 import { getSupabaseServerClient } from "@/features/cloud/supabase";
 import { normalizeLookupText as normalizeRomanizedLookupText } from "@/features/ai/romanized-normalization";
+import { formatTranslationNote, sanitizeTranslationNotes } from "@/features/translations/note-format";
 import type { TrackTranslation } from "@/features/translations/types";
 
 const aiTranslationDraftsRoot = "data/translations/drafts";
@@ -65,30 +66,91 @@ function normalizeLookupText(value: string) {
     .replace(/\s+/g, " ");
 }
 
-function normalizeArtistTokens(value: string) {
-  return value
+function normalizeLooseTitle(value: string) {
+  return normalizeLookupText(
+    value
+      .replace(/^\(\s*\d+\s*\)\s*/, "")
+      .replace(/\((?:[^()]|\([^()]*\))*\)/g, " ")
+      .replace(/\[[^\]]*\]/g, " ")
+      .replace(/\s(?:[-–—]|[|•·:])\s.*$/, " ")
+      .replace(/\b(?:feat|ft|featuring)\b.*$/i, " ")
+  );
+}
+
+function normalizeArtistTokens(value: string | null | undefined) {
+  return String(value ?? "")
     .split(/,|&|\bfeat\.?\b|\bft\.?\b|\bwith\b/gi)
     .map((entry) => normalizeLookupText(entry))
     .filter(Boolean);
+}
+
+function scoreTitleMatch(targetTitle: string, draftTitle: string) {
+  const normalizedTargetTitle = normalizeLookupText(targetTitle);
+  const normalizedDraftTitle = normalizeLookupText(draftTitle);
+
+  if (!normalizedTargetTitle || !normalizedDraftTitle) {
+    return null;
+  }
+
+  if (normalizedTargetTitle === normalizedDraftTitle) {
+    return 100;
+  }
+
+  const looseTargetTitle = normalizeLooseTitle(targetTitle);
+  const looseDraftTitle = normalizeLooseTitle(draftTitle);
+
+  if (!looseTargetTitle || !looseDraftTitle) {
+    return null;
+  }
+
+  if (looseTargetTitle === looseDraftTitle) {
+    return 92;
+  }
+
+  if (looseTargetTitle.includes(looseDraftTitle) || looseDraftTitle.includes(looseTargetTitle)) {
+    const shorterLength = Math.min(looseTargetTitle.length, looseDraftTitle.length);
+    const longerLength = Math.max(looseTargetTitle.length, looseDraftTitle.length);
+    const overlapRatio = longerLength > 0 ? shorterLength / longerLength : 0;
+
+    if (overlapRatio >= 0.8) {
+      return 88;
+    }
+
+    if (overlapRatio >= 0.65) {
+      return 82;
+    }
+
+    return 74;
+  }
+
+  return null;
 }
 
 function scoreDraftMetadataMatch(
   draft: AiTranslationDraftFile,
   target: {
     title: string;
-    artist: string;
+    artist?: string | null;
     album?: string | null;
   }
 ) {
-  const normalizedTitle = normalizeLookupText(target.title);
-  const normalizedArtist = normalizeLookupText(target.artist);
+  const titleScore = scoreTitleMatch(target.title, draft.title);
 
-  if (!normalizedTitle || normalizeLookupText(draft.title) !== normalizedTitle) {
+  if (titleScore === null) {
     return null;
   }
 
+  const normalizedArtist = normalizeLookupText(target.artist ?? "");
   let score = 0;
   const draftArtist = normalizeLookupText(draft.artist);
+
+  if (!normalizedArtist) {
+    if (target.album && normalizeLookupText(draft.album) === normalizeLookupText(target.album)) {
+      score += 20;
+    }
+
+    return score + titleScore;
+  }
 
   if (draftArtist === normalizedArtist) {
     score += 100;
@@ -107,7 +169,7 @@ function scoreDraftMetadataMatch(
     score += 20;
   }
 
-  return score;
+  return score + titleScore;
 }
 
 function parseStringArray(value: unknown) {
@@ -137,7 +199,7 @@ function parseAiDraftLine(value: unknown, index: number): AiDraftLine {
   const chosen = asString(value.chosen) ?? natural ?? literal ?? legacyTranslated;
   const transliteration =
     value.transliteration === null ? null : typeof value.transliteration === "string" ? value.transliteration.trim() || null : null;
-  const note = value.note === null ? null : typeof value.note === "string" ? value.note.trim() || null : null;
+  const note = formatTranslationNote(value.note === null ? null : typeof value.note === "string" ? value.note : null);
   const ambiguity =
     value.ambiguity === null ? null : typeof value.ambiguity === "string" ? value.ambiguity.trim() || null : null;
   const confidence = asConfidence(value.confidence) ?? "medium";
@@ -947,7 +1009,7 @@ export async function getAiTranslationDraftByTrackId(spotifyTrackId: string) {
   return rawDraft ? parseAiTranslationDraftFile(rawDraft, filePath) : null;
 }
 
-export async function findAiTranslationDraftByMetadata(target: { title: string; artist: string; album?: string | null }) {
+export async function findAiTranslationDraftByMetadata(target: { title: string; artist?: string | null; album?: string | null }) {
   const supabaseDrafts = await listAiTranslationDraftRecordsFromSupabase();
 
   if (supabaseDrafts && supabaseDrafts.length > 0) {
@@ -1057,13 +1119,20 @@ export function buildTrackTranslationFromAiDraft(draft: AiTranslationDraftFile):
     artist: draft.artist,
     sourceLanguage: draft.sourceLanguage,
     targetLanguage: draft.targetLanguage,
-    lines: syncedLines.map((line) => ({
-      startMs: line.startMs,
-      endMs: line.endMs,
-      original: line.original,
-      translated: line.chosen,
-      transliteration: line.transliteration ?? undefined,
-      note: line.note ?? undefined
-    }))
+    lines: sanitizeTranslationNotes({
+      spotifyTrackId: draft.spotifyTrackId,
+      title: draft.title,
+      artist: draft.artist,
+      sourceLanguage: draft.sourceLanguage,
+      targetLanguage: draft.targetLanguage,
+      lines: syncedLines.map((line) => ({
+        startMs: line.startMs,
+        endMs: line.endMs,
+        original: line.original,
+        translated: line.chosen,
+        transliteration: line.transliteration ?? undefined,
+        note: line.note ?? undefined
+      }))
+    }).lines
   };
 }

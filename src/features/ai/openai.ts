@@ -798,7 +798,7 @@ export function buildSystemPrompt(options: RequestAiTranslationDraftOptions) {
       ? "Return transliteration only when it adds value. If the original line is already in Latin characters or transliteration would be redundant, return null."
       : "Return null for transliteration on every line.",
     options.includeNotes
-      ? "Return a short note only when slang, cultural context, wordplay, or double meaning needs explanation. Otherwise return null."
+      ? "Return a short, reader-facing note only when slang, cultural context, wordplay, or double meaning needs explanation. Keep it concise, plain, and consumer-friendly. Never mention Generator A, Generator B, Gemini, OpenAI, or any internal model labels. Otherwise return null."
       : "Return null for note on every line.",
     "Set confidence to low, medium, or high based on how certain you are about the line meaning.",
     buildSharedContextHints(options, options.sourceLanguage),

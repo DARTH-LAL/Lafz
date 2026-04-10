@@ -231,7 +231,7 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#fff" }}>No data yet</div>
-          <div>Run the Gemini translation pipeline on a track to start seeing analytics.</div>
+          <div>Run the OpenAI + Gemini translation pipeline on a track to start seeing analytics.</div>
         </div>
       ) : (
         <>
@@ -382,8 +382,8 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                 { label: `Generator B (${getProviderLabel(data.generatorB.model)})`, val: data.speed.avgDurB, color: "linear-gradient(90deg,#7b2fff,#a259ff)" },
                 { label: `Judge (${getProviderLabel(data.judge.model)})`, val: data.speed.avgDurG, color: "linear-gradient(90deg,#00c8e0,#40e8ff)" },
                 { label: "Total avg", val: data.speed.avgTotal, color: `linear-gradient(90deg,${PINK},${VIOLET},${CYAN})` },
-              ].map(({ label, val, color }) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
+              ].map(({ label, val, color }, index) => (
+                <div key={`${label}-${index}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,20,100,0.08)" }}>
                   <div style={{ fontSize: 13, color: "#fff", flex: 1 }}>{label}</div>
                   <div style={{ flex: 2, height: 6, background: "rgba(255,20,100,0.08)", borderRadius: 99, overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 99, background: color, width: `${Math.min(100, (val / maxSpeed) * 100)}%`, transition: "width 0.5s ease" }} />
@@ -406,8 +406,8 @@ export default function AnalyticsDashboard({ initialData, initialPeriod, reasoni
                   { label: getProviderLabel(data.generatorA.model), val: data.generatorA.cost, tokens: data.generatorA.inputTokens + data.generatorA.outputTokens, color: PINK_LIGHT },
                   { label: getProviderLabel(data.generatorB.model), val: data.generatorB.cost, tokens: data.generatorB.inputTokens + data.generatorB.outputTokens, color: VIOLET },
                   { label: getProviderLabel(data.judge.model), val: data.judge.cost, tokens: data.judge.inputTokens + data.judge.outputTokens, color: CYAN },
-                ].map(({ label, val, tokens, color }) => (
-                  <div key={label} style={{ background: "rgba(255,20,100,0.05)", border: "1px solid rgba(255,20,100,0.12)", borderRadius: 12, padding: 14, textAlign: "center" }}>
+                ].map(({ label, val, tokens, color }, index) => (
+                  <div key={`${label}-${index}`} style={{ background: "rgba(255,20,100,0.05)", border: "1px solid rgba(255,20,100,0.12)", borderRadius: 12, padding: 14, textAlign: "center" }}>
                     <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fff", marginBottom: 6 }}>{label}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color }}>{formatCost(val)}</div>
                     <div style={{ fontSize: 11, color: "#fff", marginTop: 3 }}>{formatTokens(tokens)}</div>

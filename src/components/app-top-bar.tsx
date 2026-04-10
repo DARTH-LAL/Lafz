@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 type AppTopBarProps = {
   connected?: boolean;
   className?: string;
+  consumerMode?: boolean;
+  homeHref?: string;
+  statusLabel?: string;
 };
 
 function HomeIcon() {
@@ -65,8 +68,9 @@ function buildNavItemClass(isActive: boolean) {
   ].join(" ");
 }
 
-export function AppTopBar({ connected = false, className }: AppTopBarProps) {
+export function AppTopBar({ connected = false, className, consumerMode = false, homeHref, statusLabel = "Spotify connected" }: AppTopBarProps) {
   const pathname = usePathname();
+  const logoHref = homeHref ?? (connected ? "/" : "/login");
 
   return (
     <nav
@@ -77,10 +81,10 @@ export function AppTopBar({ connected = false, className }: AppTopBarProps) {
         className ?? ""
       ].join(" ")}
     >
-      <Link href={connected ? "/" : "/login"} className="text-[24px] font-extrabold tracking-[-1px] text-[#fff0f6] [text-shadow:0_0_18px_rgba(255,255,255,0.12)]">
-        la
-        <span className="bg-[linear-gradient(135deg,#ff1464_0%,#ff6ba8_100%)] bg-clip-text text-transparent [filter:drop-shadow(0_0_8px_rgba(255,20,100,0.7))]">F</span>
-        z
+      <Link href={logoHref} style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1, textDecoration: "none", display: "inline-flex", alignItems: "baseline" }}>
+        <span style={{ color: "#ffffff" }}>la</span>
+        <span style={{ color: "#ff1464" }}>F</span>
+        <span style={{ color: "#ffffff" }}>z</span>
       </Link>
 
       <div className="flex items-center gap-2">
@@ -101,48 +105,52 @@ export function AppTopBar({ connected = false, className }: AppTopBarProps) {
                 animation: "lafz-pulse 2s ease-in-out infinite"
               }}
             />
-            Spotify connected
+            {statusLabel}
           </div>
         ) : null}
 
-        <Link href="/" className={buildNavItemClass(pathname === "/")} aria-label="Now playing">
-          <HomeIcon />
-        </Link>
-        <Link
-          href="/library/queue"
-          className={buildNavItemClass(pathname === "/library/queue" || pathname.startsWith("/library/track/"))}
-          aria-label="Translation queue"
-        >
-          <QueueIcon />
-        </Link>
-        <Link
-          href="/library/import"
-          className={buildNavItemClass(pathname === "/library/import")}
-          aria-label="Import music"
-        >
-          <ImportIcon />
-        </Link>
-        <Link
-          href="/analytics"
-          className={buildNavItemClass(pathname === "/analytics")}
-          aria-label="AI analytics"
-        >
-          <AnalyticsIcon />
-        </Link>
-        <Link
-          href="/brain"
-          className={buildNavItemClass(pathname === "/brain")}
-          aria-label="Lafz Brain"
-        >
-          <BrainIcon />
-        </Link>
-        <Link
-          href="/settings"
-          className={buildNavItemClass(pathname === "/settings")}
-          aria-label="Settings"
-        >
-          <SettingsIcon />
-        </Link>
+        {!consumerMode ? (
+          <>
+            <Link href="/" className={buildNavItemClass(pathname === "/")} aria-label="Now playing">
+              <HomeIcon />
+            </Link>
+            <Link
+              href="/library/queue"
+              className={buildNavItemClass(pathname === "/library/queue" || pathname.startsWith("/library/track/"))}
+              aria-label="Translation queue"
+            >
+              <QueueIcon />
+            </Link>
+            <Link
+              href="/library/import"
+              className={buildNavItemClass(pathname === "/library/import")}
+              aria-label="Import music"
+            >
+              <ImportIcon />
+            </Link>
+            <Link
+              href="/analytics"
+              className={buildNavItemClass(pathname === "/analytics")}
+              aria-label="AI analytics"
+            >
+              <AnalyticsIcon />
+            </Link>
+            <Link
+              href="/brain"
+              className={buildNavItemClass(pathname === "/brain")}
+              aria-label="Lafz Brain"
+            >
+              <BrainIcon />
+            </Link>
+            <Link
+              href="/settings"
+              className={buildNavItemClass(pathname === "/settings")}
+              aria-label="Settings"
+            >
+              <SettingsIcon />
+            </Link>
+          </>
+        ) : null}
       </div>
     </nav>
   );

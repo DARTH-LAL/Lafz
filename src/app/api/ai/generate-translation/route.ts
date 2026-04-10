@@ -63,7 +63,7 @@ function getStatusMessage(status: string) {
   }
 
   if (status === "missing_ai_config") {
-    return "Configure the Gemini translation pipeline before generating a translation draft.";
+    return "Configure the OpenAI + Gemini translation pipeline before generating a translation draft.";
   }
 
   if (status === "provider_unavailable") {

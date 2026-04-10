@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-consumer-capability",
+  "description": "Capability for the Lafz desktop consumer window.",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:3001/*",
+      "http://127.0.0.1:3000/*",
+      "https://*.vercel.app/*",
+      "https://*.supabase.co/*"
+    ]
+  },
+  "platforms": ["macOS"],
+  "permissions": [
+    "core:default"
+  ]
+}

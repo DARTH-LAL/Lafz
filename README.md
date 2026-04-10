@@ -37,6 +37,53 @@ This repository is intentionally scoped as a personal prototype:
 
 If you want Lafz to keep running when your terminal closes, see [`deploy/systemd/README.md`](deploy/systemd/README.md) for the systemd setup that runs the web app and the brain worker as always-on services.
 
+## Desktop app
+
+ Lafz now also includes a lightweight Tauri shell in [`src-tauri/`](src-tauri/) with a standalone desktop UI in [`desktop/`](desktop/) that follows the active system player and reads translations directly from Supabase.
+
+- Use `npm run desktop:dev` for local development.
+- The desktop consumer lane reads local playback state from the Tauri backend and fetches translations from your Lafz database, so it can stay independent from Spotify Web API playback calls.
+- To enable desktop auto-update, set `LAFZ_UPDATE_ENDPOINTS` to one or more HTTPS release manifest URLs and `LAFZ_UPDATER_PUBKEY` to the matching Minisign public key before running `npm run desktop:app`. When those vars are present, the build generates updater artifacts automatically.
+- The updater also needs `TAURI_SIGNING_PRIVATE_KEY` (and optionally `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) so the release artifacts can be signed.
+- Use `LAFZ_UPDATER_ALLOW_INSECURE=true` only for local testing against a non-HTTPS endpoint.
+- Apply [`supabase/lafz_desktop_public_read.sql`](supabase/lafz_desktop_public_read.sql) once in Supabase so the desktop app can read `published_translations` without the web server.
+- Use `LAFZ_DESKTOP_URL` only if you want to override the local desktop shell URL during development.
+- The packaged desktop build defaults to ad-hoc macOS signing via `APPLE_SIGNING_IDENTITY=-`. If you later add a real Apple Developer ID signing identity, set `APPLE_SIGNING_IDENTITY` to that value and rebuild.
+- Use `npm run desktop:app` if you want the `.app` bundle only and want to skip DMG packaging for now.
+- The packaged app opens a native Tauri window, not Safari or a browser tab.
+- The desktop capability currently allows localhost backend URLs, Vercel-hosted Lafz routes, and Supabase REST calls; if you use a custom domain, add it in `src-tauri/capabilities/desktop-consumer.json`.
+
+### Cloudflare R2 desktop updates
+
+Lafz can publish shared desktop updates to Cloudflare R2. The pattern is:
+
+1. Create a public R2 bucket or custom domain for release files.
+2. Set the desktop build endpoint to the per-platform manifest path:
+
+   ```bash
+   LAFZ_UPDATE_ENDPOINTS=https://YOUR-PUBLIC-R2-BASE/desktop-updates/{{target}}/{{arch}}/latest.json
+   ```
+
+3. Set `LAFZ_UPDATER_PUBKEY` and `TAURI_SIGNING_PRIVATE_KEY` before building.
+4. Build the desktop app with `npm run desktop:app`.
+5. Publish the generated updater bundle to R2:
+
+   ```bash
+   LAFZ_UPDATE_BASE_URL=https://YOUR-PUBLIC-R2-BASE \
+   R2_ACCOUNT_ID=... \
+   R2_BUCKET=... \
+   R2_ACCESS_KEY_ID=... \
+   R2_SECRET_ACCESS_KEY=... \
+   npm run desktop:publish-update
+   ```
+
+The publish script uploads the signed updater artifact, its signature, and a `latest.json` manifest to:
+
+- `desktop-updates/<target>/<arch>/latest.json`
+- `desktop-updates/<target>/<arch>/<version>/<artifact>`
+
+That keeps one shared update channel for every desktop user, while still letting macOS and Windows publish their own platform-specific builds.
+
 ## Architecture
 
 The project keeps the reusable parts separated so the same core logic can later move into iPhone, Android, or React Native clients.
@@ -57,6 +104,8 @@ The project keeps the reusable parts separated so the same core logic can later 
 │       ├── drafts/               # AI-generated draft files, ignored by git
 │       ├── local/                # your private translation files, ignored by git
 │       └── samples/              # placeholder sample data committed to the repo
+├── desktop/                      # local fallback screen for the desktop shell
+├── src-tauri/                    # Tauri shell for the downloadable consumer app
 ├── public/
 ├── src/
 │   ├── app/
@@ -121,6 +170,9 @@ The project keeps the reusable parts separated so the same core logic can later 
 - `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist and single-song imports
 - `src/app/library/queue/page.tsx`: protected aggregated queue for translation work
 - `src/app/library/track/[spotifyTrackId]/page.tsx`: protected track detail view with JSON preview
+- `src-tauri/src/main.rs`: creates the Tauri window and opens the translation-focused Lafz route
+- `src-tauri/tauri.conf.json`: Tauri window and build configuration
+- `desktop/index.html`: local fallback screen if the configured Lafz URL is unavailable
 
 ## Auth approach
 

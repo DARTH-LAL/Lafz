@@ -14,6 +14,11 @@ export type TrackTranslation = {
   sourceLanguage: string;
   targetLanguage: string;
   lines: TranslationLine[];
+  canonicalTitle?: string;
+  canonicalArtist?: string;
+  alternateTitles?: string[];
+  sourceHost?: string | null;
+  matchConfidence?: number | null;
 };
 
 export type TranslationStubFile = {
