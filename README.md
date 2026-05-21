@@ -1,742 +1,167 @@
 # Lafz
 
-Lafz is a web-first personal prototype that connects to your Spotify account, reads the currently playing track plus playback progress, and overlays your own local translated lyric data in sync with the song.
+Lafz is a music translation platform that pairs playback detection with a translation library so listeners can follow songs in real time, understand slang and context, and keep the experience visually polished across web and desktop.
 
-This repository is intentionally scoped as a personal prototype:
+It started as a web prototype and now includes a consumer desktop shell built with Tauri. The project is designed around a simple idea: music is more powerful when the meaning moves with the song.
 
-- It does not stream or download audio.
-- It does not scrape lyrics websites.
-- It only uses Spotify's official OAuth and Web API.
-- It only reads and writes local JSON files that you control.
-- It keeps copyright-sensitive lyric content out of git by ignoring `data/translations/local`.
-- It keeps imported playlist library files local by ignoring `data/library/playlists`.
+## The Idea
 
-## Current feature set
+Lafz helps turn songs into something you can actually read along with.
 
-- Spotify login/authentication
-- Current playback polling from Spotify
-- Track title, artist, album art, playback state, and progress display
-- Local translation lookup by Spotify track ID
-- Synced translated lyric rendering
-- Active-line highlight
-- Smooth auto-scroll to the active line
-- Tap-to-expand line details for original text, transliteration, and notes
-- Local Spotify playlist importer for building a translation work queue
-- Single-song Spotify importer for pulling one track into the queue quickly
-- Automatic local translation file creation for imported tracks
-- Local translation queue aggregated across imported playlists
-- Track detail view with translation JSON preview
-- Local fallback import for `.lrc`, synced JSON, or plain lyrics text
-- AI-assisted translation drafts from locally cached original lyrics
-- Multi-pass AI translation pipeline with song context, artist memory, selector pass, low-confidence review, and correction memory
-- Automatic synced playback when timed lyrics are available
-- Plain reading mode when only untimed lyrics are available
-- Clean loading, empty, and error states
+- Detect the currently playing track from the system player or browser.
+- Match that song against a translation library.
+- Show synced translated lines when timing data exists.
+- Fall back to a clean unsynced reading view when timing is missing.
+- Keep the translation and playback experience lightweight, local-first, and easy to expand.
 
-## Always-on deployment
+## What’s in this repo
 
-If you want Lafz to keep running when your terminal closes, see [`deploy/systemd/README.md`](deploy/systemd/README.md) for the systemd setup that runs the web app and the brain worker as always-on services.
+This repository contains the full Lafz codebase:
 
-## Desktop app
+- a Next.js web app
+- a Tauri desktop app for macOS and Windows
+- Supabase-backed data access and access control
+- a translation drafting pipeline powered by multiple AI providers
+- desktop packaging and update tooling
+- Cloudflare R2 release publishing support
 
- Lafz now also includes a lightweight Tauri shell in [`src-tauri/`](src-tauri/) with a standalone desktop UI in [`desktop/`](desktop/) that follows the active system player and reads translations directly from Supabase.
+## Tech Stack
 
-- Use `npm run desktop:dev` for local development.
-- The desktop consumer lane reads local playback state from the Tauri backend and fetches translations from your Lafz database, so it can stay independent from Spotify Web API playback calls.
-- To enable desktop auto-update, set `LAFZ_UPDATE_ENDPOINTS` to one or more HTTPS release manifest URLs and `LAFZ_UPDATER_PUBKEY` to the matching Minisign public key before running `npm run desktop:app`. When those vars are present, the build generates updater artifacts automatically.
-- The updater also needs `TAURI_SIGNING_PRIVATE_KEY` (and optionally `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) so the release artifacts can be signed.
-- Use `LAFZ_UPDATER_ALLOW_INSECURE=true` only for local testing against a non-HTTPS endpoint.
-- Apply [`supabase/lafz_desktop_public_read.sql`](supabase/lafz_desktop_public_read.sql) once in Supabase so the desktop app can read `published_translations` without the web server.
-- Use `LAFZ_DESKTOP_URL` only if you want to override the local desktop shell URL during development.
-- The packaged desktop build defaults to ad-hoc macOS signing via `APPLE_SIGNING_IDENTITY=-`. If you later add a real Apple Developer ID signing identity, set `APPLE_SIGNING_IDENTITY` to that value and rebuild.
-- Use `npm run desktop:app` if you want the `.app` bundle only and want to skip DMG packaging for now.
-- The packaged app opens a native Tauri window, not Safari or a browser tab.
-- The desktop capability currently allows localhost backend URLs, Vercel-hosted Lafz routes, and Supabase REST calls; if you use a custom domain, add it in `src-tauri/capabilities/desktop-consumer.json`.
+### Languages
 
-### Cloudflare R2 desktop updates
+- TypeScript
+- JavaScript
+- Rust
+- SQL
+- HTML / CSS
 
-Lafz can publish shared desktop updates to Cloudflare R2. The pattern is:
+### Frameworks and Runtime
 
-1. Create a public R2 bucket or custom domain for release files.
-2. Set the desktop build endpoint to the per-platform manifest path:
+- Next.js
+- React
+- Tauri
+- Node.js / npm
 
-   ```bash
-   LAFZ_UPDATE_ENDPOINTS=https://YOUR-PUBLIC-R2-BASE/desktop-updates/{{target}}/{{arch}}/latest.json
-   ```
+### Backend and Storage
 
-3. Set `LAFZ_UPDATER_PUBKEY` and `TAURI_SIGNING_PRIVATE_KEY` before building.
-4. Build the desktop app with `npm run desktop:app`.
-5. Publish the generated updater bundle to R2:
+- Supabase
+- PostgreSQL
+- Cloudflare R2
 
-   ```bash
-   LAFZ_UPDATE_BASE_URL=https://YOUR-PUBLIC-R2-BASE \
-   R2_ACCOUNT_ID=... \
-   R2_BUCKET=... \
-   R2_ACCESS_KEY_ID=... \
-   R2_SECRET_ACCESS_KEY=... \
-   npm run desktop:publish-update
-   ```
+### Desktop / Native
 
-The publish script uploads the signed updater artifact, its signature, and a `latest.json` manifest to:
+- Rust-based Tauri shell
+- macOS Automation / AppleScript
+- Windows Media Session integration
 
-- `desktop-updates/<target>/<arch>/latest.json`
-- `desktop-updates/<target>/<arch>/<version>/<artifact>`
+### AI and Integrations
 
-That keeps one shared update channel for every desktop user, while still letting macOS and Windows publish their own platform-specific builds.
+- OpenAI API
+- Google Gemini API
+- Anthropic API
+- Spotify Web API / OAuth
+
+### UI and Support Libraries
+
+- Tailwind CSS
+- `@supabase/supabase-js`
+- `@tauri-apps/api`
+- `react-force-graph`
+- `three`
+- `@aws-sdk/client-s3`
 
 ## Architecture
 
-The project keeps the reusable parts separated so the same core logic can later move into iPhone, Android, or React Native clients.
+The project is split into a web layer, a desktop layer, and shared domain logic.
 
-### Folder structure
+### Web app
+
+The web app is the main product surface for translation browsing, library management, and AI-assisted drafting.
+
+### Desktop app
+
+The desktop client is a consumer-focused Tauri app that:
+
+- reads the active song from the system player or browser
+- looks up the song in Supabase
+- renders synced or unsynced translations
+- supports private beta access control
+- supports update delivery through Cloudflare R2
+
+### Shared logic
+
+Most of the product logic lives in shared TypeScript modules so the same translation, matching, and formatting rules can be reused across surfaces.
+
+## Repo Layout
 
 ```text
 .
-├── data/
-│   ├── library/
-│   │   └── playlists/            # imported playlist JSON files, ignored by git
-│   ├── ai/
-│   │   ├── glossaries/           # local glossary overrides + committed starter glossary samples
-│   │   └── memory/               # optional artist-memory JSON for recurring tone/slang
-│   ├── lyrics/
-│   │   └── cache/                # locally imported lyrics cache, ignored by git
-│   └── translations/
-│       ├── drafts/               # AI-generated draft files, ignored by git
-│       ├── local/                # your private translation files, ignored by git
-│       └── samples/              # placeholder sample data committed to the repo
-├── desktop/                      # local fallback screen for the desktop shell
-├── src-tauri/                    # Tauri shell for the downloadable consumer app
-├── public/
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── library/
-│   │   │   │   ├── import-playlist/
-│   │   │   │   └── import-track/
-│   │   │   ├── lyrics/
-│   │   │   ├── playback/
-│   │   │   └── spotify/
-│   │   ├── library/
-│   │   │   ├── import/           # protected manual playlist + single-song import page
-│   │   │   ├── queue/            # protected aggregated translation work queue
-│   │   │   └── track/[spotifyTrackId]/
-│   │   ├── login/
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/
-│   ├── features/
-│   │   ├── ai/                   # three-model translation pipeline, memory, and draft repository
-│   │   ├── library/              # queue aggregation, filtering, sorting
-│   │   ├── lyrics/               # cache inspection, LRC parsing, and local import handling
-│   │   ├── spotify/              # auth, playback, server-side playlist importer
-│   │   ├── sync/                 # active-line engine + local playback clock
-│   │   └── translations/         # JSON types, local translation file creation, inspection
-│   └── lib/
-├── .env.example
-├── package.json
+├── data/               # local translation, AI, and lyrics caches
+├── desktop/            # standalone desktop UI
+├── deploy/             # always-on deployment helpers
+├── public/             # static assets
+├── scripts/            # build and release scripts
+├── src/                # Next.js app and shared domain code
+├── src-tauri/          # Tauri desktop shell
+├── supabase/           # database migrations and RPCs
 └── README.md
 ```
 
-### File responsibilities
+## Desktop Packaging
 
-- `src/features/spotify/auth.ts`: builds the Spotify authorize URL and exchanges or refreshes tokens
-- `src/features/spotify/session.ts`: stores tokens in secure HTTP-only cookies
-- `src/features/spotify/playback.ts`: fetches and normalizes `/me/player`
-- `src/features/spotify/playlist-import.ts`: validates playlist input, fetches playlist data, normalizes tracks, deduplicates, and writes local playlist JSON files
-- `src/features/spotify/track-import.ts`: validates single-track input, fetches track metadata, and writes local single-song library JSON files
-- `src/features/spotify/server-session.ts`: refreshes Spotify sessions for server routes
-- `src/features/ai/openai.ts`: OpenAI adapter for song-context generation, meaning analysis, and Generator A drafting
-- `src/features/ai/anthropic.ts`: Anthropic adapter for Generator B drafting
-- `src/features/ai/gemini.ts`: Gemini evaluator for A/B line comparisons
-- `src/features/ai/glossary.ts`: loads categorized glossary hints plus your own overrides for slang, idioms, phrases, and references
-- `src/features/ai/artist-memory.ts`: loads optional artist-level translation memory for recurring tone and preferred renderings
-- `src/features/ai/translation-draft.ts`: builds song context, grouped verse batches, refinement passes, and final selector output before writing synced or untimed draft files
-- `src/features/ai/repository.ts`: stores and inspects local AI draft files
-- `src/features/library/queue.ts`: reads imported playlist JSON files, deduplicates tracks, inspects translation files, and derives queue-ready status records
-- `src/features/lyrics/repository.ts`: stores and inspects the local original-lyrics cache and imports local `.lrc` / JSON / plain text fallback content
-- `src/features/lyrics/lrc.ts`: parses and formats LRC-style synced lyric timestamps
-- `src/features/ai/correction-memory.ts`: learns from reviewed draft edits and stores preferred renderings in local track and artist memory files
-- `src/features/translations/repository.ts`: loads local JSON by track ID and safely ignores empty placeholder files
-- `src/features/translations/stubs.ts`: ensures local translation files exist without overwriting existing files
-- `src/features/translations/inspection.ts`: inspects local translation files for existence, line count, preview JSON, and last-modified timestamps
-- `src/features/sync/engine.ts`: finds the active line for a given `progressMs`
-- `src/features/sync/use-playback-clock.ts`: keeps a lightweight client-side progress clock between polls
-- `src/app/api/playback/route.ts`: returns the current playback snapshot plus matching local translation
-- `src/app/api/library/import-playlist/route.ts`: runs the protected local playlist import
-- `src/app/api/library/import-track/route.ts`: runs the protected local single-song import
-- `src/app/api/ai/generate-translation/route.ts`: generates an AI translation draft from the cached original lyrics for a track
-- `src/app/api/lyrics/import/route.ts`: imports local lyrics text as a fallback cache file for a track
-- `src/app/library/import/page.tsx`: protected dev/admin page for manual playlist and single-song imports
-- `src/app/library/queue/page.tsx`: protected aggregated queue for translation work
-- `src/app/library/track/[spotifyTrackId]/page.tsx`: protected track detail view with JSON preview
-- `src-tauri/src/main.rs`: creates the Tauri window and opens the translation-focused Lafz route
-- `src-tauri/tauri.conf.json`: Tauri window and build configuration
-- `desktop/index.html`: local fallback screen if the configured Lafz URL is unavailable
+Lafz ships a desktop build for beta and consumer testing.
 
-## Auth approach
+- macOS users get a universal `.dmg`
+- Windows users build from the same repo into a Windows installer
+- desktop updates can be published to Cloudflare R2
 
-Lafz uses Spotify's server-side Authorization Code flow for the web prototype.
+## Getting Started
 
-- Spotify sends the user back to `/api/spotify/callback` with an auth code.
-- Lafz exchanges that code for access and refresh tokens on the server.
-- Tokens are stored in HTTP-only cookies so the browser UI never gets raw Spotify secrets.
-- The auth layer is isolated from playback and sync logic so it can be swapped for PKCE or a native auth flow later.
-
-## Playback detection approach
-
-The current MVP uses polling.
-
-- The client polls `/api/playback` every 4 seconds.
-- The API route refreshes the Spotify access token if needed.
-- The API route calls Spotify `GET /me/player`.
-- The response is normalized into a small playback object the UI can render.
-- Between polls, the browser advances a lightweight local clock so active lyric highlighting feels live.
-
-## Library importer
-
-Lafz includes a protected manual import page at:
-
-- `http://127.0.0.1:3000/library/import`
-
-### Playlist import
-
-You can paste either:
-
-- a full Spotify playlist URL such as `https://open.spotify.com/playlist/...`
-- a raw Spotify playlist ID
-- a Spotify URI such as `spotify:playlist:...`
-
-The playlist importer will:
-
-1. extract the playlist ID
-2. fetch playlist metadata from Spotify
-3. page through playlist tracks until the full playlist is imported
-4. skip local tracks, unsupported items, unavailable tracks, and duplicate Spotify track IDs
-5. normalize imported tracks into Lafz library records
-6. save the result to `data/library/playlists/<playlistId>.json`
-7. automatically ensure `data/translations/local/<spotifyTrackId>.json` exists for every imported track
-
-Important: for newly created Spotify Development Mode apps, playlist item access is currently limited. In Spotify's February 11, 2026 Development Mode update and migration guide, playlist item access is described as available only for playlists the user owns or collaborates on. If a public playlist from another account returns `403 Forbidden`, copy it into one of your own playlists first, then import that copy.
-
-### Single-song import
-
-You can also paste:
-
-- a full Spotify track URL such as `https://open.spotify.com/track/...`
-- a raw Spotify track ID
-- a Spotify URI such as `spotify:track:...`
-
-The single-song importer will:
-
-1. extract the Spotify track ID
-2. fetch the track metadata from Spotify
-3. normalize that track into a Lafz library record
-4. write a small local JSON file to `data/library/playlists/single-track-<spotifyTrackId>.json`
-5. automatically ensure `data/translations/local/<spotifyTrackId>.json` exists
-
-This keeps the queue logic unchanged because single-song imports still land in the same local library folder.
-
-## Translation queue
-
-Lafz includes a protected queue page at:
-
-- `http://127.0.0.1:3000/library/queue`
-
-The queue reads every local playlist file from:
-
-- `data/library/playlists/*.json`
-
-Then it:
-
-1. flattens all playlist tracks into one combined queue
-2. deduplicates songs by `spotify_track_id`
-3. preserves every source playlist a song came from
-4. inspects `data/translations/local/<spotifyTrackId>.json`
-5. derives a practical UI status from the local translation file
-
-### Queue status logic
-
-- `pending`: no local translation file exists
-- `stub` (`Needs lyrics` in the UI): translation file exists but `lines` is empty, or the file needs attention
-- `translated`: translation file exists and contains at least one synced line
-
-Lafz also keeps the library file's explicit `translation_status` field, but the queue UI prioritizes the practical file-based status above for daily translation work.
-
-### Queue filters and sorting
-
-The queue supports:
-
-- search by title, artist, album, playlist name, or Spotify track ID
-- filter by status
-- filter by language
-- filter by source playlist
-- sort by title, artist, recently updated, or status
-
-### Track detail page
-
-Each queue item links to:
-
-- `http://127.0.0.1:3000/library/track/<spotifyTrackId>`
-
-The detail page shows:
-
-- track metadata
-- source playlists
-- translation file presence and line count
-- last modified time
-- a JSON preview of the current local translation file
-- guidance when a local translation file is unexpectedly missing
-
-## Spotify developer setup
-
-1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Create a new app.
-3. In the app settings, add this redirect URI for local development:
-   - `http://127.0.0.1:3000/api/spotify/callback`
-4. Save the settings.
-
-Important: use `127.0.0.1`, not `localhost`, for the local redirect URI.
-
-### Required scopes
-
-Lafz currently requests these Spotify scopes:
-
-- `user-read-playback-state`
-- `user-read-currently-playing`
-- `playlist-read-private`
-- `playlist-read-collaborative`
-
-Important: if you already signed into Lafz before the playlist importer was added, disconnect Spotify and reconnect once so the new playlist scopes are granted.
-
-## Environment variables
-
-Copy `.env.example` to `.env.local` and fill in your Spotify app credentials:
-
-```bash
-cp .env.example .env.local
-```
-
-```env
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/spotify/callback
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_GENERATOR_A_MODEL=gpt-5.1
-OPENAI_BASE_URL=https://api.openai.com/v1
-ANTHROPIC_API_KEY=your_anthropic_api_key
-ANTHROPIC_BASE_URL=https://api.anthropic.com/v1
-ANTHROPIC_GENERATOR_B_MODEL=claude-sonnet-4-20250514
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
-GEMINI_EVALUATOR_MODEL=gemini-2.5-pro
-```
-
-Lafz now runs a single three-model pipeline. `OPENAI_GENERATOR_A_MODEL` and `OPENAI_BASE_URL` are optional and default to `gpt-5.1` and `https://api.openai.com/v1`.
-
-Set all three providers to enable generation:
-- Generator A: OpenAI via `OPENAI_GENERATOR_A_MODEL`
-- Generator B: Anthropic via `ANTHROPIC_GENERATOR_B_MODEL`
-- Evaluator: Gemini via `GEMINI_EVALUATOR_MODEL`
-
-## Translation files
-
-Put your real translation files here:
-
-- `data/translations/local/<spotifyTrackId>.json`
-
-That directory is git-ignored so your own lyric data stays local.
-
-A committed placeholder example lives here:
-
-- `data/translations/samples/sample-track-id.json`
-
-### Full translation JSON shape
-
-```json
-{
-  "spotifyTrackId": "TRACK_ID_HERE",
-  "title": "Song Title",
-  "artist": "Artist Name",
-  "sourceLanguage": "Punjabi",
-  "targetLanguage": "English",
-  "lines": [
-    {
-      "startMs": 0,
-      "endMs": 4200,
-      "original": "original lyric line",
-      "translated": "translated line",
-      "transliteration": "optional romanized line",
-      "note": "optional slang or cultural meaning"
-    }
-  ]
-}
-```
-
-### Auto-created local translation file shape
-
-When playlist or single-song import brings a track into Lafz for the first time, Lafz automatically writes a minimal local translation file like this:
-
-```json
-{
-  "spotify_track_id": "TRACK_ID_HERE",
-  "language": "unknown",
-  "lines": []
-}
-```
-
-Lafz intentionally treats these empty files as placeholders, not as finished synced translations.
-
-## Original lyrics sources
-
-### Local lyrics import
-
-Paste local lyrics content on the track detail page to create the original-lyrics cache for a song.
-
-Supported input:
-
-- `.lrc` timed lyrics
-- synced lyric JSON with `lines`
-- plain lyric text
-
-That local fallback is also stored here:
-
-- `data/lyrics/cache/<spotifyTrackId>.json`
-
-The lyrics cache is git-ignored so imported original lyrics do not end up in the repo by default.
-
-## AI translation drafts
-
-Once a track has original lyrics cached, the track detail page can generate an AI-assisted translation draft.
-
-### AI draft flow
-
-1. Lafz reads the cached original lyrics from `data/lyrics/cache/<spotifyTrackId>.json`.
-2. Lafz loads any matching glossary hints for the detected language from `data/ai/glossaries`.
-3. Lafz runs the three-model pipeline: OpenAI handles song context and meaning analysis, OpenAI and Anthropic generate draft candidates, and Gemini judges the final line selection.
-4. Lafz builds a song-level context summary first so later passes can stay consistent about tone, themes, and recurring phrases.
-5. Lafz loads any matching artist memory from `data/ai/memory/artists`.
-6. Lafz generates paired draft candidates so nearby verse lines can help disambiguate each other.
-7. Lafz runs a Gemini judge pass that chooses the safest final display line from Generator A and Generator B.
-8. Lafz saves the generated result locally to:
-   - `data/translations/drafts/<spotifyTrackId>.json`
-   - the draft is reviewed on the same track page; Lafz does not bounce you back to now-playing after a successful generation
-9. If the cached lyrics are synced, Lafz can also write a playback-ready translation file to:
-   - `data/translations/local/<spotifyTrackId>.json`
-10. If the cached lyrics are plain and untimed, Lafz keeps the AI result as a draft only so your synced translation file is not polluted with fake timestamps.
-11. Untimed drafts still appear on the now-playing screen in a plain reading mode, even though they are not karaoke-style synced yet.
-
-### Local glossary hints
-
-Lafz includes a small starter glossary for common romanized Punjabi lyric terms, and you can add your own local overrides here:
-
-- `data/ai/glossaries/local/common.json`
-- `data/ai/glossaries/local/punjabi.json`
-- `data/ai/glossaries/local/hindi.json`
-- `data/ai/glossaries/local/urdu.json`
-- `data/ai/glossaries/local/artists/<artist-name>.json`
-- `data/ai/glossaries/local/tracks/<spotifyTrackId>.json`
-
-Each file can be either a simple array of entries or a categorized object:
-
-```json
-[
-  {
-    "term": "jatta",
-    "meaning": "jatt / bro / young man",
-    "note": "Vocative address for a man."
-  }
-]
-```
-
-```json
-{
-  "slang": [
-    {
-      "term": "jatta",
-      "meaning": "used to address a Jatt man; often carries swagger or pride",
-      "note": "Usually better treated as a vocative than translated literally."
-    }
-  ],
-  "idioms": [
-    {
-      "term": "teri meri da ni hunda",
-      "meaning": "there is no yours and mine",
-      "note": "Used to express non-possessive loyalty or friendship."
-    }
-  ],
-  "preferredRenderings": [
-    {
-      "term": "yaari",
-      "meaning": "loyal friendship"
-    }
-  ]
-}
-```
-
-Local glossary files are git-ignored so you can keep refining them as the AI learns your preferred interpretations for slang, idioms, and recurring artist vocabulary.
-
-### Artist memory
-
-If an artist keeps using the same tone, references, or preferred English renderings, you can add an optional memory file at:
-
-- `data/ai/memory/artists/<artist-name>.json`
-
-Example:
-
-```json
-{
-  "displayName": "Karan Aujla",
-  "translationPreferences": [
-    "Keep flex lines sharp and restrained instead of over-poetic.",
-    "Prefer conservative translations when a threat or boast could be read two ways."
-  ],
-  "recurringThemes": ["status", "loyalty", "swagger", "competition"],
-  "toneNotes": ["cool confidence", "dry flex", "less melodrama"],
-  "notes": ["Do not over-explain references unless the line is genuinely unclear."],
-  "preferredRenderings": [
-    {
-      "term": "yaari",
-      "meaning": "loyal friendship"
-    }
-  ]
-}
-```
-
-Lafz blends this memory into the song-context, refinement, and selector passes so line choices stay more consistent across the same artist.
-
-### AI draft overwrite rules
-
-- If the current translation file is missing or still just a stub, Lafz can replace it with the synced AI draft automatically.
-- If the current translation file already has translated lines, Lafz preserves it unless you explicitly enable overwrite on the track page.
-- AI drafts are always saved separately first, even when a synced translation file is also written.
-
-### OpenAI setup
-
-If you want the higher-quality hosted AI path:
-
-1. Create an API key in the [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Add it to `.env.local`:
-   - `OPENAI_API_KEY=...`
-3. Optionally choose a model:
-   - `OPENAI_GENERATOR_A_MODEL=gpt-5.1`
-
-Lafz uses OpenAI automatically for song context, meaning analysis, and Generator A once `OPENAI_API_KEY` is present.
-
-### Example AI draft JSON shape
-
-```json
-{
-  "spotifyTrackId": "TRACK_ID_HERE",
-  "title": "Song Title",
-  "artist": "Artist Name",
-  "album": "Album Name",
-  "durationMs": 201320,
-  "sourceLanguage": "Punjabi",
-  "targetLanguage": "English",
-  "generatedAt": "2026-03-21T13:15:00.000Z",
-  "mode": "synced",
-  "sourceLyricsKind": "synced",
-  "generator": {
-    "provider": "multi",
-    "model": "A:gpt-5.1 | B:claude-sonnet-4-20250514 | Eval:gemini-2.5-pro"
-  },
-  "lines": [
-    {
-      "order": 0,
-      "original": "original lyric line",
-      "literal": "close meaning in English",
-      "natural": "clean natural English line",
-      "chosen": "the default line Lafz should display",
-      "translated": "same as chosen for backward compatibility",
-      "transliteration": "optional romanized line",
-      "note": "optional slang or cultural meaning",
-      "ambiguity": "optional note when the line has multiple plausible readings",
-      "confidence": "medium",
-      "startMs": 0,
-      "endMs": 4200
-    }
-  ]
-}
-```
-
-## Playlist library output
-
-Imported playlists are written here:
-
-- `data/library/playlists/<playlistId>.json`
-
-### Example playlist output JSON shape
-
-```json
-{
-  "source": "spotify",
-  "playlist_id": "37i9dQZF1DXcBWIGoYBM5M",
-  "playlist_name": "Today's Top Hits",
-  "playlist_url": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-  "owner_display_name": "Spotify",
-  "imported_at": "2026-03-21T12:00:00.000Z",
-  "total_tracks_fetched": 50,
-  "imported_track_count": 47,
-  "skipped_track_count": 3,
-  "tracks": [
-    {
-      "spotify_track_id": "4iV5W9uYEdYUVa79Axb7Rh",
-      "title": "Example Song",
-      "artist": "Example Artist",
-      "album": "Example Album",
-      "duration_ms": 201320,
-      "source_playlist_id": "37i9dQZF1DXcBWIGoYBM5M",
-      "source_playlist_name": "Today's Top Hits",
-      "language": "unknown",
-      "translation_status": "pending",
-      "spotify_track_url": "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh"
-    }
-  ]
-}
-```
-
-### Example derived queue record shape
-
-```json
-{
-  "spotify_track_id": "4iV5W9uYEdYUVa79Axb7Rh",
-  "title": "Example Song",
-  "artist": "Example Artist",
-  "album": "Example Album",
-  "duration_ms": 201320,
-  "source_playlists": [
-    {
-      "playlist_id": "37i9dQZF1DXcBWIGoYBM5M",
-      "playlist_name": "Today's Top Hits",
-      "playlist_url": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
-    }
-  ],
-  "language": "Punjabi",
-  "explicit_translation_status": "pending",
-  "derived_status": "stub",
-  "translation_file_exists": true,
-  "translation_file_path": "/absolute/path/to/data/translations/local/4iV5W9uYEdYUVa79Axb7Rh.json",
-  "translation_line_count": 0,
-  "translation_last_modified_at": "2026-03-21T12:10:00.000Z",
-  "translation_parse_error": null,
-  "spotify_track_url": "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh"
-}
-```
-
-## Running locally
-
-### Prerequisites
-
-- Node.js 20+
-- npm
-- A Spotify account with an active playback session on one of your devices
-
-### Install and start
+### Web app
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open:
+Then open:
 
-- login: [http://127.0.0.1:3000/login](http://127.0.0.1:3000/login)
-- now playing: [http://127.0.0.1:3000/](http://127.0.0.1:3000/)
-- library importer: [http://127.0.0.1:3000/library/import](http://127.0.0.1:3000/library/import)
-- translation queue: [http://127.0.0.1:3000/library/queue](http://127.0.0.1:3000/library/queue)
+```text
+http://127.0.0.1:3000
+```
 
-## Testing the importer with real Spotify data
+### Desktop app
 
-### Playlist test
+```bash
+npm run desktop:dev
+```
 
-1. Start Lafz locally with `npm run dev`.
-2. Sign into Spotify at `/login`.
-3. If you signed in before the playlist scopes were added, disconnect and reconnect once.
-4. Open `/library/import`.
-5. Paste a Spotify playlist URL or playlist ID.
-6. Submit the import.
-7. Confirm that Lafz creates:
-   - `data/library/playlists/<playlistId>.json`
-   - `data/translations/local/<spotifyTrackId>.json`
-8. Open one of the generated files and begin filling in your own translation data.
+### Desktop build
 
-### Single-song test
+```bash
+npm run desktop:app
+```
 
-1. Open `/library/import`.
-2. Paste a Spotify track URL or track ID into the single-song import form.
-3. Submit the import.
-4. Confirm that Lafz creates:
-   - `data/library/playlists/single-track-<spotifyTrackId>.json`
-   - `data/translations/local/<spotifyTrackId>.json`
-5. Open `/library/queue` and confirm the song appears there immediately.
+## Why this stack works well for Lafz
 
-## Testing the translation queue
+- **Next.js + React** give the translation UI a fast, modern frontend.
+- **Tauri + Rust** keep the desktop shell small and native-feeling.
+- **Supabase + PostgreSQL** make the song and translation data easy to manage centrally.
+- **Cloudflare R2** gives the desktop client a simple release/update channel.
+- **OpenAI / Gemini / Anthropic** let Lafz draft and refine translations with multiple model perspectives.
 
-1. Import one or more playlists from `/library/import`.
-2. Open `/library/queue`.
-3. Confirm the page shows a deduplicated combined list of imported tracks.
-4. Use the status filter to switch between `pending`, `Needs lyrics`, and `translated`.
-5. Use the language and playlist filters to narrow the queue.
-6. Open a track detail page from the queue.
-7. Confirm the track already has `data/translations/local/<spotifyTrackId>.json` after import.
-8. Add one or more synced lines to that JSON file and refresh the queue.
-9. Confirm the track moves from `Needs lyrics` to `translated` once `lines` contains at least one item.
+## Current Focus
 
-## Testing AI drafts
+The project is focused on:
 
-1. Configure OpenAI, Anthropic, and Gemini in `.env.local`.
-2. Restart Lafz with `npm run dev`.
-3. Open `/library/queue`.
-4. Open a track detail page.
-5. Import local lyrics first.
-6. In the `AI translation draft` section, choose the source and target languages.
-7. Optionally keep transliteration and note generation enabled.
-9. Click `Generate AI draft`.
-10. Confirm Lafz creates:
-   - `data/translations/drafts/<spotifyTrackId>.json`
-11. If the original lyrics cache was synced, confirm Lafz also updates:
-   - `data/translations/local/<spotifyTrackId>.json`
-12. Confirm the track page now shows:
-   - song context
-   - low-confidence lines first
-   - literal, natural, and slang-aware candidates
-13. Save any review edits directly on the same page.
+- matching songs accurately across players and browsers
+- showing translations in the right synced or unsynced style
+- making the desktop app feel consumer-ready
+- keeping the translation library server-backed so it stays up to date
+- shipping updates without forcing users to reinstall manually
 
-## How the sync logic works
+## Notes
 
-1. The browser signs in through Spotify.
-2. Lafz saves Spotify tokens in HTTP-only cookies.
-3. The browser polls `/api/playback`.
-4. The server refreshes tokens when needed and calls Spotify `/me/player`.
-5. The server looks for a matching local translation JSON file by track ID.
-6. The browser predicts progress between polls with a lightweight local timer.
-7. The sync engine picks the active line for the current `progressMs`.
-8. The UI highlights the active line and auto-scrolls it into view.
-
-## Notes about private data
-
-- `data/translations/local` is ignored by git so your own lyric translations stay local by default.
-- `data/library/playlists` is ignored by git so imported playlist libraries stay local by default.
-- Only placeholder sample data is committed in this repo.
-- If you later add admin uploads or a shared database, keep that as a separate layer rather than storing copyrighted material in the public repo.
-
-## Assumptions in the current importer
-
-- The importer supports Spotify playlists plus single-track imports.
-- Local playlist files and unavailable tracks are skipped instead of being forced into the library.
-- Duplicate Spotify track IDs are deduplicated within a playlist import.
-- Duplicate Spotify track IDs are deduplicated again across all imported playlist files when building the queue.
-- Empty auto-created translation files are treated as placeholders and not as synced translation files.
-- The queue treats malformed translation JSON as needing attention and keeps going instead of crashing the whole page.
-- Existing translation files are preserved automatically during import.
-
-## Future-ready extension points
-
-This structure is meant to support later additions such as:
-
-- Apple Music support via another playback adapter
-- saved songs and favorites
-- deeper line-by-line meaning views
-- admin-uploaded translation sources
-- React Native or native mobile clients reusing the sync and translation logic
+- This repo is intentionally built around music translation and playback sync, not audio downloading.
+- Desktop access and update flows are handled separately from the main web app.
+- The repo is actively evolving, so some build and deployment details may change as the consumer app hardens.
