@@ -4,6 +4,12 @@ Lafz is a music translation platform that pairs playback detection with a transl
 
 It started as a web prototype and now includes a consumer desktop shell built with Tauri. The project is designed around a simple idea: music is more powerful when the meaning moves with the song.
 
+## About
+
+Lafz turns music into something you can read, follow, and understand while it plays.
+
+It detects the active song, matches it against a translation library, and renders the result in a clean reading experience across web and desktop. When timing data is available, translations stay synced to playback. When timing is missing, Lafz falls back to a polished unsynced reading mode instead of dropping the user into a blank state.
+
 ## The Idea
 
 Lafz helps turn songs into something you can actually read along with.
